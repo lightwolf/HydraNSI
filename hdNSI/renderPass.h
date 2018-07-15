@@ -144,6 +144,8 @@ private:
     NSIContext_t _ctx;
 
     // Our camera-related handles.
+    void _CreateNSICamera();
+
     std::string _cameraXformHandle;
     std::string _cameraShapeHandle;
 
@@ -152,10 +154,22 @@ private:
     std::string _outputDriverHandle;
 
     // Our headlight handle.
+    void _CreateNSIHeadLight();
+
     std::string _headlightXformHandle;
     std::string _headlightShapeHandle;
     std::string _headlightGeoAttrsHandle;
     std::string _headlightShaderHandle;
+
+    // Our environment light handles.
+    void _CreateNSIEnvironmentLight();
+
+    std::string _envlightXformHandle;
+    std::string _envlightShapeHandle;
+    std::string _envlightGeoAttrsHandle;
+    std::string _envlightShaderHandle;
+    std::string _envlightFileShaderHandle;
+    std::string _envlightCoordShaderHandle;
 
     // Status of the 3Delight renderer.
     enum RenderStatus {

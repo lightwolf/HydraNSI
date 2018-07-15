@@ -215,6 +215,12 @@ HdNSIMesh::_CreateNSIMesh(NSIContext_t ctx)
         newShape = true;
     }
 
+    // Set clockwisewinding for the mesh.
+    const HdNSIConfig &config = HdNSIConfig::GetInstance();
+    if (config.meshClockwisewinding) {
+        nsi.SetAttribute(_masterShapeHandle, NSI::IntegerArg("clockwisewinding", 1));
+    }
+
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
 
@@ -247,7 +253,6 @@ HdNSIMesh::_CreateNSIMesh(NSIContext_t ctx)
         // Create the default shader node.
         _shaderHandle = std::string(colorKey) + "|default1";
 
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
         const std::string &shaderPath =
             config.delight + "/maya/osl/dl3DelightMaterial";
 

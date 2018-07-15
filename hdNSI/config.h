@@ -73,6 +73,36 @@ public:
     /// Override with *HDNSI_CAMERA_LIGHT_INTENSITY*.
     float cameraLightIntensity;
 
+    /// Path to the environment light file.
+    ///
+    /// Override with *HDNSI_ENV_LIGHT_IMAGE*.
+    std::string envLightPath;
+
+    /// Format of the enviroment image
+    ///
+    /// Override with *HDNSI_ENV_LIGHT_MAPPING*.
+    int envLightMapping;
+
+    /// Intensity of the enviroment image
+    ///
+    /// Override with *HDNSI_ENV_LIGHT_INTENSITY*
+    float envLightIntensity;
+
+    /// If we render the environment as background.
+    ///
+    /// Override with *HDNSI_ENV_AS_BACKGROUND*
+    int envAsBackground;
+
+    /// If we render the environment as background.
+    ///
+    /// Override with *HDNSI_ENV_USE_SKY*
+    int envUseSky;
+
+    /// Set the clockwise to mesh.
+    ///
+    /// Override with *HDNSI_MESH_CLOCKWISEWINDING*
+    int meshClockwisewinding;
+
 private:
     // The constructor initializes the config variables with their
     // default or environment-provided override, and optionally prints
