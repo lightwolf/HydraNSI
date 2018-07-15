@@ -44,7 +44,7 @@ Once you are able to build Pixar USD, building HydraNSI is very easy:
 |                 |                             | macOS   | /Applications/3Delight/lib/lib3delight.dylib            |
 |                 |                             | Windows | C:\Program Files\3Delight\lib                           |
 
-## Testing
+## Features
 
 Currently HydraNSI supports the following:
 
@@ -55,10 +55,19 @@ Currently HydraNSI supports the following:
   - Curves (hair/fur)
 - Instancing of primitives
 - Cameras
-- Shading: currently meshes and points are shaded using *dl3DelightMaterial.oso* which defaults to a mostly diffusive material (Oren-Nayar) with a degree of glossy reflection (GGX); while curves are shaded with *dlHairAndFur.oso* (Chiang-d'Eon).
-- Lighting: currently everything is lit by *directionalLight.oso* from the camera pov (note that in NSI directional lights are actual environment lights, and with the default angle of 360 degrees this light behaves like a uniform white light environment).
+- Shading:
+  - Polygons, subdivisions and points use *dl3DelightMaterial* which defaults to a mostly diffusive material (Oren-Nayar model) with a degree of glossy reflection (GGX model).
+  - Curves are shaded with *dlHairAndFur* (Marschner-Chiang-d'Eon model).
+- Lighting:
+  - Headlight: a directionl light that uses *directionalLight* and which shines from the camera pov
+    > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
+  - Omni Envlight: this is another directional light that uses *directionalLight*
+    > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
+  - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordignly.
+    > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be for example create by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command: *tdlmake -envlatl filename.exr filename.tdl.tif*.
+ 
 
-**How to test**
+## Testing
 
 From an environment where both `usdview` and the NSI command-line renderer `renderdl` can be executed:
 
@@ -69,7 +78,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
   - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
   - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
 - Explore the source code and issues in this repository & contribute
-
+- Optionally configure HydraNSI settings via (see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp).
 
 > Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
 
@@ -77,7 +86,6 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 ## Future
 
 We are looking for community contributions to implement the following:
-
 
 - add **usdShade** schema support for 3Delight OSL materials: [Issue #1](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/1)
 - add **usdLux** schema support for 3delight OSL lights: [Issue #2](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/2)
@@ -87,7 +95,7 @@ We are looking for community contributions to implement the following:
 
 ## Feedback & Contributions
 
-Feel free to log issues or submit pull requests on this repository. 
+Feel free to log issues or submit pull requests on this repository. Contributors will added to the be credits.
 
 If you need to get in touch with us e-mail [support@3delight.com](mailto:support@3delight.com)
 
