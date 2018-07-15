@@ -65,23 +65,23 @@ Currently HydraNSI supports the following:
 - Lighting:
   - Headlight: a directional light that uses a *directionalLight* emitter and which shines from the camera pov. It is always active.
     
-    > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
+  > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
   
   - Environment: 
     - Omni Envlight: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is not set in the configuration (see below).
       
-      > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
+    > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
     
     - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable:
 
-      > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
+    > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
     
-      ```bash
-      tdlmake -envlatl filename.exr filename.tdl.tif
-      ```
+    ```bash
+    tdlmake -envlatl filename.exr filename.tdl.tif
+    ```
     - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which allows to optionally use a HDRI procedural sky (Hosek-Wilkie model) for (procedual) image-based lighting. It can be enabled via environment variable:
  
-       > Use the HDNSI_ENV_USE_SKY environment variable set to 1 to enable the procedual sky environment.
+    > Use the HDNSI_ENV_USE_SKY environment variable set to 1 to enable the procedual sky environment.
 
 ## Testing
 
