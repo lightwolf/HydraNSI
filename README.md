@@ -49,14 +49,14 @@ Once you are able to build Pixar USD, building HydraNSI is very easy:
 Currently HydraNSI supports the following:
 
 - Geometric primitives:
-  - polygon mesh
-  - subdivision surfaces
-  - points (particles))
-  - curves (hair/fur)
-- instancing of primitives
-- cameras
-- shading: currently meshes and points are shaded using dl3DelightMaterial.oso which defaults to a mostly diffusive material (oren-nayar) with a degree of glossy refelection (ggx).
-- lighting: currently everything is lit by a directional light shining light from the camera pov (note that in NSI directional lights are actual environment lights, and with the default angle of 360 degrees this light behaves is like a uniform white light environment).
+  - Polygon mesh
+  - Subdivision surfaces
+  - Points (particles)
+  - Curves (hair/fur)
+- Instancing of primitives
+- Cameras
+- Shading: currently meshes and points are shaded using dl3DelightMaterial.oso which defaults to a mostly diffusive material (oren-nayar) with a degree of glossy refelection (ggx); while curves are shaded with dlHairAndFur.oso (chiang-d'eon).
+- Lighting: currently everything is lit by a directional light from the camera pov (note that in NSI directional lights are actual environment lights, and with the default angle of 360 degrees this light behaves like a uniform white light environment).
 
 **How to test**
 
@@ -71,7 +71,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 - Explore the source code and issues in this repository & contribute
 
 
-> Contributors may contact us at support@3delight.com to obtain a copy of 3Delight NSI for development purposes.
+> Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
 
 
 ## Future
@@ -95,7 +95,7 @@ We are looking for community contributions to implement the following:
 
 Feel free to log issues or submit pull requests on this repository. 
 
-If you need to get in touch with us e-mail support@3delight.com
+If you need to get in touch with us e-mail [support@3delight.com](mailto:support@3delight.com)
 
 
 ## Credits
