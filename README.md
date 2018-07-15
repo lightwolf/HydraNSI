@@ -35,20 +35,14 @@ Once you are able to build Pixar USD, building HydraNSI is very easy:
   
 3. Obtain a copy of 3Delight | NSI contaiing the rendering library, include headers and OSL shaders, then set the following CMAKE variables:
 
-| CMAKE Variable | Value                   | Note — *default install path examples*                                                                                                                      |
-| -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NSI_INCLUDE_DIR  | /path/to/nsi-include-folder | Linux:
-`/usr/local/3delight-version/Linux_64/include`
-macOS:
-/Applications/3Delight/include
-Windows:
-C:\Program Files\3Delight\include                      |
-| NSI_LIBRARY      | /path/to/nsi-library-file   | Linux:
-/usr/local/3delight-version/Linux_64/lib/lib3delight.so
-macOS:
-/Applications/3Delight/lib/lib3delight.dylib
-Windows:
-C:\Program Files\3Delight\lib |
+| CMAKE Variable | Value                   | Note — *default install path examples*                              |
+| -------------- | ----------------------- | ------------------------------------------------------------------- |
+| NSI_INCLUDE_DIR  | /path/to/nsi-include-folder | Linux: /usr/local/3delight-version/Linux_64/include
+                                                   macOS: /Applications/3Delight/include
+                                                   Windows:C:\Program Files\3Delight\include                     |
+| NSI_LIBRARY      | /path/to/nsi-library-file   | Linux: /usr/local/3delight-version/Linux_64/lib/lib3delight.so
+                                                   macOS: /Applications/3Delight/lib/lib3delight.dylib
+						   Windows: C:\Program Files\3Delight\lib                        |
 
 ## Testing
 
@@ -102,6 +96,7 @@ We are looking for community contributions to implement the following:
 ## Feedback & Contributions
 
 Feel free to log issues or submit pull requests on this repository. 
+
 If you need to get in touch with us e-mail support@3delight.com
 
 
@@ -110,6 +105,7 @@ If you need to get in touch with us e-mail support@3delight.com
 This work was authored by:
 
 **J Cube Inc.** — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
+
 Copyright © 2018 Illumination Research Ptv Ltd.
 
 
