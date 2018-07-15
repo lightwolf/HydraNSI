@@ -1,14 +1,20 @@
 # HydraNSI (hdNSI)
 
-![](https://assets.gitlab-static.net/uploads/-/system/project/avatar/7466299/nsi_logo_round.png)
-
 This repository contains a render delegate for Hydra using the NSI technology.
 
 ![](images/nsi_kitchen.png)
 
+| Kitchen | Hair | Points |
+| -------- | -------- | -------- | 
+| ![](/uploads/c9e2fa6aa4f3cf0f559e6c71efd0b5e8/nsi_kitchen_detail.png) | ![](/uploads/53a9d2d71039d834649beeff557c1fb1/nsi_1M_hair.png)   | ![](/uploads/65657d5171a65125cf1c295f84d16a63/nsi_pointcloud.png)  |
+
 And three more images here:
 
 https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Images
+
+![](https://assets.gitlab-static.net/uploads/-/system/project/avatar/7466299/nsi_logo_round.png)
+
+
 
 ## Background
 
