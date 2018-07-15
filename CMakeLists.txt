@@ -1,0 +1,7 @@
+add_subdirectory(hdStream)
+if (${PXR_BUILD_EMBREE_PLUGIN})
+    add_subdirectory(hdEmbree)
+endif()
+if (${PXR_BUILD_NSI_PLUGIN})
+    add_subdirectory(hdNSI)
+endif()
