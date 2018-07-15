@@ -1,5 +1,7 @@
 # HydraNSI (hdNSI)
 
+![](https://assets.gitlab-static.net/uploads/-/system/project/avatar/7466299/nsi_logo_round.png)
+
 This repository contains a render delegate for Hydra using the NSI technology.
 
 ![](images/nsi_kitchen.png)
