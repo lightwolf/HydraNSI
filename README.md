@@ -14,7 +14,7 @@ NSI (Nodal Scene Interface) is a simple and flexible scene description API which
 
 > https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/nsi.pdf)
 
-HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualisation. As a practical example, it can be added to the USD viewing utility **usdview**.
+HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility **usdview**.
 
 
 ## Building
@@ -33,7 +33,7 @@ Once you are able to build Pixar USD, building HydraNSI is very easy:
 | PXR_BUILD_NSI_PLUGIN | 1         |
 
   
-3. Obtain a copy of 3Delight | NSI contaiing the rendering library, include headers and OSL shaders, then set the following CMAKE variables:
+3. Obtain a copy of 3Delight | NSI containing the rendering library, include headers and OSL shaders, then set the following CMAKE variables:
 
 | CMAKE Variable  | Value                       |         |                                                         |
 | --------------- | --------------------------- | ------- | ------------------------------------------------------- |
@@ -55,8 +55,8 @@ Currently HydraNSI supports the following:
   - Curves (hair/fur)
 - Instancing of primitives
 - Cameras
-- Shading: currently meshes and points are shaded using dl3DelightMaterial.oso which defaults to a mostly diffusive material (oren-nayar) with a degree of glossy refelection (ggx); while curves are shaded with dlHairAndFur.oso (chiang-d'eon).
-- Lighting: currently everything is lit by a directional light from the camera pov (note that in NSI directional lights are actual environment lights, and with the default angle of 360 degrees this light behaves like a uniform white light environment).
+- Shading: currently meshes and points are shaded using *dl3DelightMaterial.oso* which defaults to a mostly diffusive material (Oren-Nayar) with a degree of glossy reflection (GGX); while curves are shaded with *dlHairAndFur.oso* (Chiang-d'Eon).
+- Lighting: currently everything is lit by *directionalLight.oso* from the camera pov (note that in NSI directional lights are actual environment lights, and with the default angle of 360 degrees this light behaves like a uniform white light environment).
 
 **How to test**
 
