@@ -65,6 +65,7 @@ Currently HydraNSI supports the following:
     > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
   - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordingly.
     > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
+    
     ```bash
     tdlmake -envlatl filename.exr filename.tdl.tif
     ```
@@ -75,6 +76,7 @@ Currently HydraNSI supports the following:
 From an environment where both `usdview` and the NSI command-line renderer `renderdl` can be executed:
 
 - On your terminal, launch `usdview`:
+  
   ```bash
   usdview /path/to/file.usd
   ```
