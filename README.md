@@ -65,9 +65,9 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 - On your terminal, launch `usdview`, e.g: *usdview /path/to/file.usd*
 - Switch to View> Hydra Renderer: “NSI”
 - Try loading some USD files, e.g:
-  - Kitchen
-  - Instanced city
-  - Apple USDZ examples (which can be unzipped to access the usd files)
+  - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
+  - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
+  - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
 - Explore the source code and issues in this repository & contribute
 
 
