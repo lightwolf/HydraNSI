@@ -60,21 +60,28 @@ Currently HydraNSI supports the following:
 - Instancing of primitives
 - Cameras
 - Shading:
-  - Polygons, subdivisions and points use *dl3DelightMaterial* which defaults to a mostly diffusive material (Oren-Nayar model) with a degree of glossy reflection (GGX model).
-  - Curves are shaded with *dlHairAndFur* (Marschner-Chiang-d'Eon model).
+  - Polygons, subdivisions and points use the *dl3DelightMaterial* material which defaults to a mostly diffusive material (Oren-Nayar model) with a degree of glossy reflection (GGX model).
+  - Curves are shaded with the *dlHairAndFur* material (Marschner-Chiang-d'Eon model).
 - Lighting:
-  - Headlight: a directional light that uses *directionalLight* and which shines from the camera pov
-    > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
-  - Omni Envlight: this is another directional light that uses *directionalLight*
-    > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordingly.
-  
-    > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
+  - Headlight: a directional light that uses a *directionalLight* emitter and which shines from the camera pov. It is always active.
     
-    ```bash
-    tdlmake -envlatl filename.exr filename.tdl.tif
-    ```
+    > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
+  
+  - Environment: 
+    - Omni Envlight: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is not set in the configuration (see below).
+      
+      > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
+    
+    - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable:
+
+      > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
+    
+      ```bash
+      tdlmake -envlatl filename.exr filename.tdl.tif
+      ```
+    - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which allows to optionally use a HDRI procedural sky (Hosek-Wilkie model) for (procedual) image-based lighting. It can be enabled via environment variable:
  
+       > Use the HDNSI_ENV_USE_SKY environment variable set to 1 to enable the procedual sky environment.
 
 ## Testing
 
@@ -82,9 +89,9 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 
 - On your terminal, launch `usdview`:
   
-  ```bash
-  usdview /path/to/file.usd
-  ```
+    ```bash
+    usdview /path/to/file.usd
+    ```
 - Switch to View> Hydra Renderer: “NSI”.
 - Try loading some USD files, e.g:
   - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
