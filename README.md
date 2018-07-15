@@ -20,8 +20,11 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 
 ## Demo Video 
 
-Upcoming...
+![Sample Video](https://gitlab.com/3DelightOpenSource/HydraNSI/uploads/683abdd0535432b4483ff9135833ebcf/out.mp4)
 
+And other 8 videos here:
+
+https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos
 
 ## Building
 > This code was tested with Pixar USD version 0.8.5a and 3Delight NSI v13.4.9
