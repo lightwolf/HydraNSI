@@ -4,6 +4,10 @@ This repository contains a render delegate for Hydra using the NSI technology.
 
 ![](images/nsi_kitchen.png)
 
+And three more images here:
+
+https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Images
+
 ## Background
 
 **Hydra**
@@ -20,7 +24,7 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 
 ## Demo Video 
 
-![Sample Video](https://gitlab.com/3DelightOpenSource/HydraNSI/uploads/683abdd0535432b4483ff9135833ebcf/out.mp4)
+![Demo Video](https://gitlab.com/3DelightOpenSource/HydraNSI/uploads/683abdd0535432b4483ff9135833ebcf/out.mp4)
 
 And other 8 videos here:
 
