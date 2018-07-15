@@ -14,7 +14,7 @@ NSI (Nodal Scene Interface) is a simple and flexible scene description API which
 
 > https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/nsi.pdf)
 
-HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualisation. As a practical example, it can be added to the USD viewing utility `usdview.
+HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualisation. As a practical example, it can be added to the USD viewing utility `usdview`.
 
 
 ## Building
@@ -27,26 +27,28 @@ Once you are able to build Pixar USD, building HydraNSI is very easy:
   https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin
   
 2. Make sure to use a CMAKE set to build `hdNSI`:
-| **CMAKE Variable**     | **Value** |
-| ---------------------- | --------- |
-| `PXR_BUILD_NSI_PLUGIN` | 1         |
+
+| CMAKE Variable       | Value     |
+| -------------------- | --------- |
+| PXR_BUILD_NSI_PLUGIN | 1         |
 
   
 3. Obtain a copy of 3Delight | NSI contaiing the rendering library, include headers and OSL shaders, then set the following CMAKE variables:
-| **CMAKE Variable** | **Value**                   | **Note** — *default install path examples*                                                                                                                      |
-| ------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NSI_INCLUDE_DIR`  | /path/to/nsi-include-folder | Linux:
+
+| CMAKE Variable | Value                   | Note — *default install path examples*                                                                                                                      |
+| -------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NSI_INCLUDE_DIR  | /path/to/nsi-include-folder | Linux:
 `/usr/local/3delight-version/Linux_64/include`
 macOS:
-`/Applications/3Delight/include`
+/Applications/3Delight/include
 Windows:
-`C:\Program Files\3Delight\include`                      |
-| `NSI_LIBRARY`      | /path/to/nsi-library-file   | Linux:
-`/usr/local/3delight-version/Linux_64/lib/lib3delight.so`
+C:\Program Files\3Delight\include                      |
+| NSI_LIBRARY      | /path/to/nsi-library-file   | Linux:
+/usr/local/3delight-version/Linux_64/lib/lib3delight.so
 macOS:
-`/Applications/3Delight/lib/lib3delight.dylib`
+/Applications/3Delight/lib/lib3delight.dylib
 Windows:
-`C:\Program Files\3Delight\lib` |
+C:\Program Files\3Delight\lib |
 
 ## Testing
 
@@ -85,14 +87,14 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 We are looking for community contributions to implement the following:
 
 
-- add `usdShade` schema support for 3Delight OSL materials:
+- add **usdShade** schema support for 3Delight OSL materials:
   - [https://graphics.pixar.com/usd/docs/UsdShade-Material-Assignment.html](https://graphics.pixar.com/usd/docs/UsdShade-Material-Assignment.html)
   - https://graphics.pixar.com/usd/docs/api/usd_shade_page_front.html
-- add `usdLux` schema support for 3delight OSL lights:
+- add **usdLux** schema support for 3delight OSL lights:
   -  [https://graphics.pixar.com/usd/docs/api/usd_lux_page_front.html](https://graphics.pixar.com/usd/docs/api/usd_lux_page_front.html)
-- add upcoming `usdVolume` schema support for 3Delight OpenVDB volumes:
+- add upcoming **usdVolume** schema support for 3Delight OpenVDB volumes:
   - based on Side Effects work-in-progress contributions to USD
-- add OSL matching shaders for `UsdPreviewSurface`:
+- add OSL matching shaders for **UsdPreviewSurface**:
   - https://graphics.pixar.com/usd/docs/UsdPreviewSurface-Proposal.html
 
 
@@ -107,8 +109,8 @@ If you need to get in touch with us e-mail support@3delight.com
 
 This work was authored by:
 
-> J Cube Inc. — Marco Pantaleoni, Bo Zhou and Paolo Berto Durante
-> Copyright © 2018 Illumination Research Ptv Ltd
+**J Cube Inc.** — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
+Copyright © 2018 Illumination Research Ptv Ltd.
 
 
 ## License
