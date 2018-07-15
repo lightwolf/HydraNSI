@@ -59,26 +59,33 @@ Currently HydraNSI supports the following:
   - Polygons, subdivisions and points use *dl3DelightMaterial* which defaults to a mostly diffusive material (Oren-Nayar model) with a degree of glossy reflection (GGX model).
   - Curves are shaded with *dlHairAndFur* (Marschner-Chiang-d'Eon model).
 - Lighting:
-  - Headlight: a directionl light that uses *directionalLight* and which shines from the camera pov
+  - Headlight: a directional light that uses *directionalLight* and which shines from the camera pov
     > Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations.
   - Omni Envlight: this is another directional light that uses *directionalLight*
     > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordignly.
-    > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be for example create by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command: *tdlmake -envlatl filename.exr filename.tdl.tif*.
+  - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordingly.
+    > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
+    ```bash
+    tdlmake -envlatl filename.exr filename.tdl.tif
+    ```
  
 
 ## Testing
 
 From an environment where both `usdview` and the NSI command-line renderer `renderdl` can be executed:
 
-- On your terminal, launch `usdview`, e.g: *usdview /path/to/file.usd*
-- Switch to View> Hydra Renderer: “NSI”
+- On your terminal, launch `usdview`:
+  ```bash
+  usdview /path/to/file.usd
+  ```
+- Switch to View> Hydra Renderer: “NSI”.
 - Try loading some USD files, e.g:
   - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
   - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
   - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
-- Explore the source code and issues in this repository & contribute
+- In `usdview` you can set "View> Complexity: Medium" to enable subdivision surfaces. 
 - Optionally configure HydraNSI settings via (see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp).
+- Further explore the source code and issues in this repository & contribute.
 
 > Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
 
