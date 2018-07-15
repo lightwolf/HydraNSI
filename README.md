@@ -12,7 +12,7 @@ Pixar USD (Universal Scene Description) introduced a model/API called Hydra (all
 **NSI**
 NSI (Nodal Scene Interface) is a simple and flexible scene description API which is purposely designed to communicate with a render engine. It is used by the new 3Delight NSI renderer together with OSL (Open Shading Language) for shading. One of the goals of NSI is interactive rendering of editable scene descriptions: this feature, as well as many other, make NSI a perfect candidate for a Hydra rendering backend which we call HydraNSI (*hdNSI*). 
 
-> https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/nsi.pdf)
+> https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/nsi.pdf
 
 HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility **usdview**.
 
