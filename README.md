@@ -2,6 +2,8 @@
 
 This repository contains a render delegate for Hydra using the NSI technology.
 
+![](images/nsi_kitchen.png)
+
 ## Background
 
 **Hydra**
