@@ -16,6 +16,10 @@ NSI (Nodal Scene Interface) is a simple and flexible scene description API which
 
 HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility **usdview**.
 
+## Demo Video 
+
+Upcoming...
+
 
 ## Building
 > This code was tested with Pixar USD version 0.8.5a and 3Delight NSI v13.4.9
@@ -64,6 +68,7 @@ Currently HydraNSI supports the following:
   - Omni Envlight: this is another directional light that uses *directionalLight*
     > As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
   - HDRI file texture: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture can be specified, this will light the environment accordingly.
+  
     > Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command:
     
     ```bash
