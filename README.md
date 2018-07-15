@@ -79,16 +79,10 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 We are looking for community contributions to implement the following:
 
 
-- add **usdShade** schema support for 3Delight OSL materials:
-  - [https://graphics.pixar.com/usd/docs/UsdShade-Material-Assignment.html](https://graphics.pixar.com/usd/docs/UsdShade-Material-Assignment.html)
-  - https://graphics.pixar.com/usd/docs/api/usd_shade_page_front.html
-- add **usdLux** schema support for 3delight OSL lights:
-  -  [https://graphics.pixar.com/usd/docs/api/usd_lux_page_front.html](https://graphics.pixar.com/usd/docs/api/usd_lux_page_front.html)
-- add upcoming **usdVolume** schema support for 3Delight OpenVDB volumes:
-  - based on Side Effects work-in-progress contributions to USD
-- add OSL matching shaders for **UsdPreviewSurface**:
-  - https://graphics.pixar.com/usd/docs/UsdPreviewSurface-Proposal.html
-
+- add **usdShade** schema support for 3Delight OSL materials: [Issue #1](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/1)
+- add **usdLux** schema support for 3delight OSL lights: [Issue #2](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/2)
+- add upcoming **usdVolume** schema support for 3Delight OpenVDB volumes: [Issue #3](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/3)
+- add OSL matching shaders for **UsdPreviewSurface**: [issue #4](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/4)
 
 
 ## Feedback & Contributions
