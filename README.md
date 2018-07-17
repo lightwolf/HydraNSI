@@ -2,7 +2,8 @@
 
 This repository contains a render delegate for Hydra using the NSI technology.
 
-![](images/nsi_kitchen.png)
+![](/uploads/8bc6d08ad137bea790682be25bd9f5f3/nsi_kitchen.png)
+
 
 | Kitchen | Hair | Points |
 | -------- | -------- | -------- | 
