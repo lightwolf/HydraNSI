@@ -34,6 +34,7 @@
 #include "pxr/imaging/pxOsd/tokens.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/matrix4d.h"
+#include "pxr/usd/usdGeom/tokens.h"
 
 #include <sstream>
 #include <iostream>
@@ -53,6 +54,7 @@ HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
     , _color(0.3f, 0.3f, 0.3f, 1.0f)
+    , _leftHanded(-1)
     , _refined(false)
     , _smoothNormals(false)
     , _doubleSided(false)
@@ -217,8 +219,15 @@ HdNSIMesh::_CreateNSIMesh(NSIContext_t ctx)
 
     // Set clockwisewinding for the mesh.
     const HdNSIConfig &config = HdNSIConfig::GetInstance();
-    if (config.meshClockwisewinding) {
-        nsi.SetAttribute(_masterShapeHandle, NSI::IntegerArg("clockwisewinding", 1));
+
+    if (_leftHanded != -1) {
+        nsi.SetAttribute(_masterShapeHandle,
+            NSI::IntegerArg("clockwisewinding", _leftHanded));
+    }
+
+    if (config.meshClockwisewinding != -1) {
+        nsi.SetAttribute(_masterShapeHandle,
+            NSI::IntegerArg("clockwisewinding", config.meshClockwisewinding));
     }
 
     // Create the master transform node.
@@ -287,18 +296,50 @@ HdNSIMesh::_SetNSIMeshAttributes(NSIContext_t ctx, bool asSubdiv)
     NSI::ArgumentList attrs;
 
     // Set if this mesh is subdivision.
+    const TfToken &scheme = _topology.GetScheme();
+    asSubdiv |= (scheme == UsdGeomTokens->catmullClark);
+
     if (asSubdiv) {
         nsi.SetAttribute(_masterShapeHandle,
             NSI::CStringPArg("subdivision.scheme", "catmull-clark"));
     }
 
     // Subdivision-related attributes.
+    VtIntArray cornerIndices;
+    VtFloatArray cornerSharpness;
+
+    VtIntArray creaseIndices;
+    VtFloatArray creaseSharpness;
+
     if (asSubdiv) {
         const PxOsdSubdivTags &subdivTags = _topology.GetSubdivTags();
 
-        const VtIntArray &creaseIndices = subdivTags.GetCreaseIndices();
-        const VtFloatArray &creaseWeights = subdivTags.GetCreaseWeights();
-        if (creaseIndices.size() && creaseWeights.size()) {
+        cornerIndices = subdivTags.GetCornerIndices();
+        cornerSharpness = subdivTags.GetCornerWeights();
+        if (cornerIndices.size() && cornerSharpness.size()) {
+            attrs.push(NSI::Argument::New("subdivision.cornervertices")
+                ->SetType(NSITypeInteger)
+                ->SetCount(cornerIndices.size())
+                ->SetValuePointer(cornerIndices.data()));
+
+            attrs.push(NSI::Argument::New("subdivision.cornersharpness")
+                ->SetType(NSITypeFloat)
+                ->SetCount(cornerSharpness.size())
+                ->SetValuePointer(cornerSharpness.data()));
+        }
+
+        creaseIndices = subdivTags.GetCreaseIndices();
+        creaseSharpness = subdivTags.GetCreaseWeights();
+        if (creaseIndices.size() && creaseSharpness.size()) {
+            attrs.push(NSI::Argument::New("subdivision.creasevertices")
+                ->SetType(NSITypeInteger)
+                ->SetCount(creaseIndices.size())
+                ->SetValuePointer(creaseIndices.data()));
+
+            attrs.push(NSI::Argument::New("subdivision.creasesharpness")
+                ->SetType(NSITypeFloat)
+                ->SetCount(creaseSharpness.size())
+                ->SetValuePointer(creaseSharpness.data()));
         }
     }
 
@@ -415,6 +456,10 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
         _adjacency.BuildAdjacencyTable(&_topology);
         _normals = _adjacency.ComputeSmoothNormals(_points.size(), _points.data());
+
+        if (_topology.GetOrientation() == HdTokens->leftHanded) {
+            _leftHanded = 1;
+        }
     }
     if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id)) {
         _topology.SetSubdivTags(sceneDelegate->GetSubdivTags(id));

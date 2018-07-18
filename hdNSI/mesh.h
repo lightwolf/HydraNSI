@@ -190,6 +190,8 @@ private:
     Hd_VertexAdjacency _adjacency;
     VtVec3fArray _normals;
 
+    int _leftHanded;
+
     // NSI handles.
     std::string _masterShapeHandle;
 
