@@ -186,6 +186,7 @@ private:
     VtVec3fArray _normals;
     VtIntArray _pointsIds;
     VtFloatArray _widths;
+    VtVec3fArray _colors;
 
     // NSI handles.
     std::string _masterShapeHandle;

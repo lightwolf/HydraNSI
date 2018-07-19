@@ -186,22 +186,35 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
 
     _nsiPointCloudXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the default shader.
+    // Create the default shader, we render the all particles with single shader.
     if (_nsiPointCloudDefaultGeoAttrHandle.empty()) {
         _nsiPointCloudDefaultGeoAttrHandle = "nsiPointCloudDefaultGeoAttr1";
         nsi.Create(_nsiPointCloudDefaultGeoAttrHandle, "attributes");
 
+        // Create the lambert shader.
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
-        const std::string &defaultShaderPath =
-            config.delight + "/maya/osl/dl3DelightMaterial";
+        std::string lambertShaderPath =
+            config.delight + "/maya/osl/lambert";
 
-        const std::string defaultShaderHandle("nsiPointCloudDefaultShader1");
-        nsi.Create(defaultShaderHandle, "shader");
-        nsi.SetAttribute(defaultShaderHandle,
-            (NSI::StringArg("shaderfilename", defaultShaderPath),
-                NSI::FloatArg("i_color", 0.6)));
+        const std::string lambertShaderHandle("nsiPointCloudLambertShader1");
+        nsi.Create(lambertShaderHandle, "shader");
+        nsi.SetAttribute(lambertShaderHandle, (NSI::StringArg("shaderfilename", lambertShaderPath),
+            NSI::FloatArg("i_diffuse", 0.8f)));
 
-        nsi.Connect(defaultShaderHandle, "",
+        // Create the dlPrimitiveAttribute shader for DisplayColor.
+        std::string primvarShaderPath =
+            config.delight + "/maya/osl/dlPrimitiveAttribute";
+
+        const std::string displayColorShaderHandle("nsiPointCloudDisplayColorShader1");
+        nsi.Create(displayColorShaderHandle, "shader");
+        nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", primvarShaderPath),
+            NSI::StringArg("attribute_name", "DisplayColor"),
+            NSI::IntegerArg("attribute_type", 1)));
+
+        nsi.Connect(displayColorShaderHandle, "o_color",
+            lambertShaderHandle, "i_color");
+
+        nsi.Connect(lambertShaderHandle, "",
             _nsiPointCloudDefaultGeoAttrHandle, "surfaceshader");
     }
 
@@ -239,6 +252,14 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(NSIContext_t ctx)
             ->SetType(NSITypeNormal)
             ->SetCount(_normals.size())
             ->SetValuePointer(_normals.cdata()));
+    }
+
+    // "DisplayColor"
+    if (_colors.size()) {
+        attrs.push(NSI::Argument::New("DisplayColor")
+            ->SetType(NSITypeColor)
+            ->SetCount(_colors.size())
+            ->SetValuePointer(_colors.cdata()));
     }
 
     nsi.SetAttribute(_masterShapeHandle, attrs);
@@ -279,9 +300,9 @@ HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
-                              NSIContext_t           ctx,
-                              HdDirtyBits*     dirtyBits,
-                              HdPointsReprDesc const &desc)
+    NSIContext_t           ctx,
+    HdDirtyBits*     dirtyBits,
+    HdPointsReprDesc const &desc)
 {
     HD_TRACE_FUNCTION();
     HF_MALLOC_TAG_FUNCTION();
@@ -293,24 +314,56 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
 
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
+        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
+        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
+        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
+    }
+
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         VtValue value = sceneDelegate->Get(id, HdTokens->points);
         _points = value.Get<VtVec3fArray>();
 
-        // XXX TODO: get widths from scene data (now are all set to same value: 1.0)
+        // Set point id sequence.
         _pointsIds.clear();
+        for (size_t i = 0; i < _points.size(); ++i) {
+            _pointsIds.push_back(i);
+        }
+
+        // Get widths from scene data (now are all set to same value: 1.0).
         _widths.clear();
-        int pId = 0;
-        for (const auto& pt : _points) {
-            (void)pt;
-            _pointsIds.push_back(pId++);
-            _widths.push_back(1.0f);
+
+        const VtValue &widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
+        if (!widthsVal.IsEmpty()) {
+            _widths = widthsVal.Get<VtFloatArray>();
+        }
+
+        if (_widths.empty()) {
+            _widths.resize(_points.size());
+            std::fill(_widths.begin(), _widths.end(), 0.1f);
+        }
+
+        // Get the color.
+        _colors.clear();
+
+        if (_primvarSourceMap.count(HdTokens->color)) {
+            const VtValue &_colorsVal = _primvarSourceMap[HdTokens->color].data;
+            const VtVec4fArray &colors = _colorsVal.Get<VtVec4fArray>();
+
+            _colors.resize(colors.size());
+            for (size_t i = 0; i < colors.size(); ++i) {
+                const GfVec4f &color = colors[i];
+                _colors[i] = GfVec3f(color[0], color[1], color[2]);
+            }
+        }
+
+        if (_colors.empty()) {
+            _colors.resize(_points.size());
+            std::fill(_colors.begin(), _colors.end(), GfVec3f(0.5f, 0.5f, 0.5f));
         }
 
         newPointCloud = true;
     }
-
-    // XXX TODO: normals (for discs) ?
 
     if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
         _transform = sceneDelegate->GetTransform(id);
@@ -318,29 +371,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
         _UpdateVisibility(sceneDelegate, dirtyBits);
-    }
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
-        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
-    }
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        (_primvarSourceMap.count(HdTokens->widths) > 0)) {
-        // auto v_widths = sceneDelegate->Get(id, HdTokens->widths);
-        auto v_widths = _primvarSourceMap[HdTokens->widths].data;
-        // std::cout << "### POINTCLOUD " << id << " WIDTHS (VtValue):" << v_widths << std::endl;
-        if (! v_widths.IsEmpty()) {
-            auto widths = v_widths.Get<VtArray<float>>();
-            // std::cout << "### POINTCLOUD " << id << " WIDTHS (VtArray):" << widths << std::endl;
-
-            if (widths.size() > 0) {
-                _widths.clear();
-                _widths = widths;
-            }
-        }
-        // std::cout << "### POINTCLOUD " << id << " FINAL WIDTHS:" << _widths << std::endl;
     }
 
     ////////////////////////////////////////////////////////////////////////
