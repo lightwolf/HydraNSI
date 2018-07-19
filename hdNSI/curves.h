@@ -196,7 +196,7 @@ private:
     std::string _attrsHandle;
 
     // From the unique color to the attribute and shader node handles.
-    static std::multimap<size_t, std::string> _nsiCurvesAttrShaderHandles;
+    static std::multimap<size_t, std::string> _nsiCurvesShaderHandles;
 
     // From USD id to the NSI curves node handles.
     static std::map<SdfPath, std::string> _nsiCurvesShapeHandles;

@@ -43,7 +43,7 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::multimap<size_t, std::string> HdNSICurves::_nsiCurvesAttrShaderHandles; // static
+std::multimap<size_t, std::string> HdNSICurves::_nsiCurvesShaderHandles; // static
 std::map<SdfPath, std::string> HdNSICurves::_nsiCurvesShapeHandles; // static
 std::multimap<SdfPath, std::string> HdNSICurves::_nsiCurvesXformHandles; // static
 
@@ -74,19 +74,25 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
     }
     _nsiCurvesXformHandles.erase(id);
 
-    // Delete shader and attributes node.
+    // Delete shader.
     const size_t colorsKey =
         boost::hash_range(_colors.begin(), _colors.end());
 
-    if (_nsiCurvesAttrShaderHandles.count(colorsKey)) {
-        auto range = _nsiCurvesAttrShaderHandles.equal_range(colorsKey);
+    if (_nsiCurvesShaderHandles.count(colorsKey)) {
+        auto range = _nsiCurvesShaderHandles.equal_range(colorsKey);
         for (auto itr = range.first; itr != range.second; ++ itr) {
             const std::string &handle = itr->second;
             nsi.Delete(handle);
         }
+        _nsiCurvesShaderHandles.erase(colorsKey);
     }
 
-    _nsiCurvesAttrShaderHandles.erase(colorsKey);
+    _shaderHandle.clear();
+
+    // Delete the attribute.
+    nsi.Delete(_attrsHandle);
+
+    _attrsHandle.clear();
 
     // Delete the geometry.
     if (_nsiCurvesShapeHandles.count(id)) {
@@ -213,11 +219,10 @@ HdNSICurves::_CreateNSICurves(NSIContext_t ctx)
 
     // Create the hair shader based on the hashed color array.
     _shaderHandle = id.GetString() + "|shader1";
-    _attrsHandle = id.GetString() + "|attributes1";
 
     const size_t colorsKey = boost::hash_range(_colors.begin(), _colors.end());
 
-    if (!_nsiCurvesAttrShaderHandles.count(colorsKey)) {
+    if (!_nsiCurvesShaderHandles.count(colorsKey)) {
         // Create the dlHairAndFur shader.
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
         std::string shaderPath = config.delight + "/maya/osl/dlHairAndFur";
@@ -226,7 +231,7 @@ HdNSICurves::_CreateNSICurves(NSIContext_t ctx)
         nsi.SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
         nsi.SetAttribute(_shaderHandle, NSI::FloatArg("dye_weight", 0.8f));
 
-        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
+        _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
 
         // Create the dlPrimitiveAttribute shader.
         shaderPath = config.delight + "/maya/osl/dlPrimitiveAttribute";
@@ -237,14 +242,14 @@ HdNSICurves::_CreateNSICurves(NSIContext_t ctx)
             NSI::IntegerArg("attribute_type", 1)));
         nsi.Connect(displayColorShaderHandle, "o_color", _shaderHandle, "i_color");
 
-        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, displayColorShaderHandle));
-
-        // Create the attribute node and connect shader to this.
-        nsi.Create(_attrsHandle, "attributes");
-        nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
-
-        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, _attrsHandle));
+        _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, displayColorShaderHandle));
     }
+
+    // Create the attribute node and connect shader to this.
+    _attrsHandle = id.GetString() + "|attributes1";
+
+    nsi.Create(_attrsHandle, "attributes");
+    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
 
     nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
