@@ -43,7 +43,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::string HdNSIPointCloud::_nsiPointCloudDefaultGeoAttrHandle; // static
+std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudAttrShaderHandles; // static
+std::map<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudShapeHandles; // static
 std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudXformHandles; // static
 
 HdNSIPointCloud::HdNSIPointCloud(SdfPath const& id,
@@ -62,19 +63,37 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
     const SdfPath &id = GetId();
 
     // Delete any instances of this pointcloud in the top-level NSI scene.
-    auto range = _nsiPointCloudXformHandles.equal_range(id);
-    for (auto itr = range.first; itr != range.second; ++itr) {
-        const std::string &instanceXformHandle = itr->second;
-        nsi.Delete(instanceXformHandle);
+    if (_nsiPointCloudXformHandles.count(id)) {
+        auto range = _nsiPointCloudXformHandles.equal_range(id);
+        for (auto itr = range.first; itr != range.second; ++itr) {
+            const std::string &instanceXformHandle = itr->second;
+            nsi.Delete(instanceXformHandle);
+        }
+        _nsiPointCloudXformHandles.erase(id);
     }
-    _nsiPointCloudXformHandles.erase(id);
 
-    // Delete the prototype geometry.
-    nsi.Delete(_masterShapeHandle);
+    // Delete the all shaders and attributes.
+    if (_nsiPointCloudAttrShaderHandles.count(id)) {
+        auto range = _nsiPointCloudAttrShaderHandles.equal_range(id);
+        for (auto itr = range.first; itr != range.second; ++itr) {
+            const std::string &handle = itr->second;
+            nsi.Delete(handle);
+        }
+        _nsiPointCloudAttrShaderHandles.erase(id);
+    }
+
+    _shadersHandle.clear();
+    _attrsHandle.clear();
+
+    // Delete the geometry.
+    if (_nsiPointCloudShapeHandles.count(id)) {
+        _nsiPointCloudShapeHandles.erase(id);
+
+        nsi.Delete(_masterShapeHandle);
+
+    }
+
     _masterShapeHandle.clear();
-
-    //
-    _nsiPointCloudDefaultGeoAttrHandle.clear();
 }
 
 HdDirtyBits
@@ -186,39 +205,48 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
 
     _nsiPointCloudXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the default shader, we render the all particles with single shader.
-    if (_nsiPointCloudDefaultGeoAttrHandle.empty()) {
-        _nsiPointCloudDefaultGeoAttrHandle = "nsiPointCloudDefaultGeoAttr1";
-        nsi.Create(_nsiPointCloudDefaultGeoAttrHandle, "attributes");
+    // Create the shader and attributes node if needed.
+    _shadersHandle = id.GetString() + "|shader1";
 
-        // Create the lambert shader.
+    _attrsHandle = id.GetString() + "|attributes1";
+
+    if (!_nsiPointCloudAttrShaderHandles.count(id)) {
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
-        std::string lambertShaderPath =
-            config.delight + "/maya/osl/lambert";
 
-        const std::string lambertShaderHandle("nsiPointCloudLambertShader1");
-        nsi.Create(lambertShaderHandle, "shader");
-        nsi.SetAttribute(lambertShaderHandle, (NSI::StringArg("shaderfilename", lambertShaderPath),
-            NSI::FloatArg("i_diffuse", 0.8f)));
+        // Create the dl3DelightMaterial shader.
+        std::string dlMaterialShaderPath =
+            config.delight + "/maya/osl/dl3DelightMaterial";
+
+        nsi.Create(_shadersHandle, "shader");
+        nsi.SetAttribute(_shadersHandle, (NSI::StringArg("shaderfilename", dlMaterialShaderPath),
+            NSI::FloatArg("i_color", 0.6f),
+            NSI::FloatArg("reflect_roughness", 0.5f)));
+
+        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, _shadersHandle));
 
         // Create the dlPrimitiveAttribute shader for DisplayColor.
         std::string primvarShaderPath =
             config.delight + "/maya/osl/dlPrimitiveAttribute";
 
-        const std::string displayColorShaderHandle("nsiPointCloudDisplayColorShader1");
+        std::string displayColorShaderHandle = id.GetString() + "|shader2";
         nsi.Create(displayColorShaderHandle, "shader");
         nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", primvarShaderPath),
             NSI::StringArg("attribute_name", "DisplayColor"),
             NSI::IntegerArg("attribute_type", 1)));
 
         nsi.Connect(displayColorShaderHandle, "o_color",
-            lambertShaderHandle, "i_color");
+            _shadersHandle, "i_color");
 
-        nsi.Connect(lambertShaderHandle, "",
-            _nsiPointCloudDefaultGeoAttrHandle, "surfaceshader");
+        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, displayColorShaderHandle));
+
+        // Create tha attributes node.
+        nsi.Create(_attrsHandle, "attributes");
+        nsi.Connect(_shadersHandle, "", _attrsHandle, "surfaceshader");
+
+        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, _attrsHandle));
     }
 
-    nsi.Connect(_nsiPointCloudDefaultGeoAttrHandle, "", masterXformHandle, "geometryattributes");
+    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
 
 void
@@ -311,6 +339,8 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     bool newPointCloud = false;
 
+    NSI::Context nsi(ctx);
+
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
 
@@ -397,6 +427,12 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         _SetNSIPointCloudAttributes(ctx);
     }
 
+    // Update visibility.
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
+        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+            NSI::IntegerArg("visibility.priority", 1)));
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // 4. Populate NSI instance objects.
 
@@ -433,8 +469,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
                 nsi.Create(instanceXformHandle, "transform");
                 nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
                 nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi.Connect(_nsiPointCloudDefaultGeoAttrHandle, "",
-                    instanceXformHandle, "geometryattributes");
+                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
             }
 
             nsi.SetAttributeAtTime(instanceXformHandle, 0,

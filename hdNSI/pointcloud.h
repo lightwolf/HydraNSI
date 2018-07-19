@@ -191,8 +191,14 @@ private:
     // NSI handles.
     std::string _masterShapeHandle;
 
-    // Default shader attribute set.
-    static std::string _nsiPointCloudDefaultGeoAttrHandle;
+    std::string _shadersHandle;
+    std::string _attrsHandle;
+
+    // From the unique color to the attribute and shader node handles.
+    static std::multimap<SdfPath, std::string> _nsiPointCloudAttrShaderHandles;
+
+    // From USD id to the NSI particles node handles.
+    static std::map<SdfPath, std::string> _nsiPointCloudShapeHandles;
 
     // From USD id to the NSI transforms node handles.
     static std::multimap<SdfPath, std::string> _nsiPointCloudXformHandles;
