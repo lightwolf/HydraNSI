@@ -199,7 +199,7 @@ private:
     std::string _attrsHandle;
 
     // From the unique color to the attribute and default shader node handles.
-    static std::multimap<std::string, std::string> _nsiMeshAttrShaderHandles;
+    static std::map<std::string, std::string> _nsiMeshShaderHandles;
 
     // From USD id to the NSI mesh node handles.
     static std::map<SdfPath, std::string> _nsiMeshShapeHandles;

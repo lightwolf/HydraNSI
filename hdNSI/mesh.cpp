@@ -44,7 +44,7 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::multimap<std::string, std::string> HdNSIMesh::_nsiMeshAttrShaderHandles; // static
+std::map<std::string, std::string> HdNSIMesh::_nsiMeshShaderHandles; // static
 
 std::map<SdfPath, std::string> HdNSIMesh::_nsiMeshShapeHandles; // static
 
@@ -87,27 +87,25 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
 
     _masterShapeHandle.clear();
 
-    // Delete the shader and attributes.
+    // Delete the shader.
     char colorKey[256];
     sprintf(colorKey, "%.3f %.3f %.3f", _color[0], _color[1], _color[2]);
 
-    if (_nsiMeshAttrShaderHandles.count(colorKey)) {
-        auto range = _nsiMeshAttrShaderHandles.equal_range(colorKey);
+    if (_nsiMeshShaderHandles.count(colorKey)) {
+        auto range = _nsiMeshShaderHandles.equal_range(colorKey);
         for (auto itr = range.first; itr != range.second; ++ itr) {
             const std::string &handle = itr->second;
             nsi.Delete(handle);
         }
-        _nsiMeshAttrShaderHandles.erase(colorKey);
+        _nsiMeshShaderHandles.erase(colorKey);
     }
 
     _shaderHandle.clear();
-    _attrsHandle.clear();
 
-    // //
-    // _nsiMeshGeoAttrHandle.clear();
-    // XXX TODO: remove the shader
-    // nsi.Delete(_nsiDefaultShaderHandle);
-    // nsi.Delete(_nsiMeshGeoAttrHandle);
+    // Delete the attributes node.
+    nsi.Delete(_attrsHandle);
+
+    _attrsHandle.clear();
 }
 
 HdDirtyBits
@@ -239,29 +237,14 @@ HdNSIMesh::_CreateNSIMesh(NSIContext_t ctx)
 
     _nsiMeshXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the shader.
-    // XXX TODO: probably shader attribute setting should be moved to
-    // _SetNSIMeshAttributes() to handle changes in color/...
-
     // Create the shader based on the color.
     char colorKey[256];
     sprintf(colorKey, "%.3f %.3f %.3f", _color[0], _color[1], _color[2]);
 
-    if (_nsiMeshAttrShaderHandles.count(colorKey)) {
-        // Find the shader and attribute node.
-        auto range = _nsiMeshAttrShaderHandles.equal_range(colorKey);
-        for (auto itr = range.first; itr != range.second; ++ itr) {
-            const std::string &handle = itr->second;
-            if (handle.find("|default") != std::string::npos) {
-                _shaderHandle = handle;
-            } else if (handle.find("|attribute") != std::string::npos) {
-                _attrsHandle = handle;
-            }
-        }
-    } else {
-        // Create the default shader node.
-        _shaderHandle = std::string(colorKey) + "|default1";
+    _shaderHandle = std::string(colorKey) + "|shader1";
 
+    if (!_nsiMeshShaderHandles.count(colorKey)) {
+        // Create the default shader node.
         const std::string &shaderPath =
             config.delight + "/maya/osl/dl3DelightMaterial";
 
@@ -270,18 +253,15 @@ HdNSIMesh::_CreateNSIMesh(NSIContext_t ctx)
             (NSI::StringArg("shaderfilename", shaderPath),
                 NSI::ColorArg("i_color", _color.data())));
 
-        _nsiMeshAttrShaderHandles.insert(
+        _nsiMeshShaderHandles.insert(
             std::make_pair(colorKey, _shaderHandle));
-
-        // Create the attribute node.
-        _attrsHandle = std::string(colorKey) + "|attributes1";
-
-        nsi.Create(_attrsHandle, "attributes");
-        nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
-
-        _nsiMeshAttrShaderHandles.insert(
-            std::make_pair(colorKey, _attrsHandle));
     }
+
+    // Create the attribute node.
+    _attrsHandle = id.GetString() + "|attributes1";
+
+    nsi.Create(_attrsHandle, "attributes");
+    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
 
     nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 
@@ -555,6 +535,12 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (newMesh || 
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         _SetNSIMeshAttributes(ctx, doRefine);
+    }
+
+    // Update visibility.
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
+        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+            NSI::IntegerArg("visibility.priority", 1)));
     }
 
     ////////////////////////////////////////////////////////////////////////
