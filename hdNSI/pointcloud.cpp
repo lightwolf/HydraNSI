@@ -43,7 +43,7 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudAttrShaderHandles; // static
+std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudShaderHandles; // static
 std::map<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudShapeHandles; // static
 std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudXformHandles; // static
 
@@ -73,16 +73,20 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
     }
 
     // Delete the all shaders and attributes.
-    if (_nsiPointCloudAttrShaderHandles.count(id)) {
-        auto range = _nsiPointCloudAttrShaderHandles.equal_range(id);
+    if (_nsiPointCloudShaderHandles.count(id)) {
+        auto range = _nsiPointCloudShaderHandles.equal_range(id);
         for (auto itr = range.first; itr != range.second; ++itr) {
             const std::string &handle = itr->second;
             nsi.Delete(handle);
         }
-        _nsiPointCloudAttrShaderHandles.erase(id);
+        _nsiPointCloudShaderHandles.erase(id);
     }
 
     _shadersHandle.clear();
+
+    // Ddele the attributes node.
+    nsi.Delete(_attrsHandle);
+
     _attrsHandle.clear();
 
     // Delete the geometry.
@@ -208,9 +212,7 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
     // Create the shader and attributes node if needed.
     _shadersHandle = id.GetString() + "|shader1";
 
-    _attrsHandle = id.GetString() + "|attributes1";
-
-    if (!_nsiPointCloudAttrShaderHandles.count(id)) {
+    if (!_nsiPointCloudShaderHandles.count(id)) {
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
 
         // Create the dl3DelightMaterial shader.
@@ -222,7 +224,7 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
             NSI::FloatArg("i_color", 0.6f),
             NSI::FloatArg("reflect_roughness", 0.5f)));
 
-        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, _shadersHandle));
+        _nsiPointCloudShaderHandles.insert(std::make_pair(id, _shadersHandle));
 
         // Create the dlPrimitiveAttribute shader for DisplayColor.
         std::string primvarShaderPath =
@@ -237,14 +239,14 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
         nsi.Connect(displayColorShaderHandle, "o_color",
             _shadersHandle, "i_color");
 
-        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, displayColorShaderHandle));
-
-        // Create tha attributes node.
-        nsi.Create(_attrsHandle, "attributes");
-        nsi.Connect(_shadersHandle, "", _attrsHandle, "surfaceshader");
-
-        _nsiPointCloudAttrShaderHandles.insert(std::make_pair(id, _attrsHandle));
+        _nsiPointCloudShaderHandles.insert(std::make_pair(id, displayColorShaderHandle));
     }
+
+    // Create tha attributes node.
+    _attrsHandle = id.GetString() + "|attributes1";
+
+    nsi.Create(_attrsHandle, "attributes");
+    nsi.Connect(_shadersHandle, "", _attrsHandle, "surfaceshader");
 
     nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
