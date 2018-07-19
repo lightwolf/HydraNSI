@@ -186,13 +186,20 @@ private:
     VtIntArray _curveVertexCounts;
     VtIntArray _curveVertexIndices;
     VtFloatArray _widths;
+    VtVec3fArray _colors;
     TfToken _basis;
 
     // NSI handles.
     std::string _masterShapeHandle;
 
-    // Default shader attribute set.
-    static std::string _nsiCurvesDefaultGeoAttrHandle;
+    std::string _shaderHandle;
+    std::string _attrsHandle;
+
+    // From the unique color to the attribute and shader node handles.
+    static std::multimap<size_t, std::string> _nsiCurvesAttrShaderHandles;
+
+    // From USD id to the NSI curves node handles.
+    static std::map<SdfPath, std::string> _nsiCurvesShapeHandles;
 
     // From USD id to the NSI transforms node handles.
     static std::multimap<SdfPath, std::string> _nsiCurvesXformHandles;

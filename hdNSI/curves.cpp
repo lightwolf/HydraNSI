@@ -43,7 +43,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::string HdNSICurves::_nsiCurvesDefaultGeoAttrHandle; // static
+std::multimap<size_t, std::string> HdNSICurves::_nsiCurvesAttrShaderHandles; // static
+std::map<SdfPath, std::string> HdNSICurves::_nsiCurvesShapeHandles; // static
 std::multimap<SdfPath, std::string> HdNSICurves::_nsiCurvesXformHandles; // static
 
 HdNSICurves::HdNSICurves(SdfPath const& id,
@@ -64,19 +65,36 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
     const SdfPath &id = GetId();
 
     // Delete any instances of this curves in the top-level NSI scene.
-    auto range = _nsiCurvesXformHandles.equal_range(id);
-    for (auto itr = range.first; itr != range.second; ++itr) {
-        const std::string &instanceXformHandle = itr->second;
-        nsi.Delete(instanceXformHandle);
+    if (_nsiCurvesXformHandles.count(id)) {
+        auto range = _nsiCurvesXformHandles.equal_range(id);
+        for (auto itr = range.first; itr != range.second; ++ itr) {
+            const std::string &handle = itr->second;
+            nsi.Delete(handle);
+        }
     }
     _nsiCurvesXformHandles.erase(id);
 
-    // Delete the prototype geometry.
-    nsi.Delete(_masterShapeHandle);
-    _masterShapeHandle.clear();
+    // Delete shader and attributes node.
+    const size_t colorsKey =
+        boost::hash_range(_colors.begin(), _colors.end());
 
-    //
-    _nsiCurvesDefaultGeoAttrHandle.clear();
+    if (_nsiCurvesAttrShaderHandles.count(colorsKey)) {
+        auto range = _nsiCurvesAttrShaderHandles.equal_range(colorsKey);
+        for (auto itr = range.first; itr != range.second; ++ itr) {
+            const std::string &handle = itr->second;
+            nsi.Delete(handle);
+        }
+    }
+
+    _nsiCurvesAttrShaderHandles.erase(colorsKey);
+
+    // Delete the geometry.
+    if (_nsiCurvesShapeHandles.count(id)) {
+        _nsiCurvesShapeHandles.erase(id);
+        nsi.Delete(_masterShapeHandle);
+    }
+
+    _masterShapeHandle.clear();
 }
 
 HdDirtyBits
@@ -188,26 +206,42 @@ HdNSICurves::_CreateNSICurves(NSIContext_t ctx)
 
     _nsiCurvesXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the default shader.
-    if (_nsiCurvesDefaultGeoAttrHandle.empty()) {
-        _nsiCurvesDefaultGeoAttrHandle = "nsiCurvesDefaultGeoAttr1";
-        nsi.Create(_nsiCurvesDefaultGeoAttrHandle, "attributes");
+    // Create the hair shader based on the hashed color array.
+    _shaderHandle = id.GetString() + "|shader1";
+    _attrsHandle = id.GetString() + "|attributes1";
 
+    const size_t colorsKey = boost::hash_range(_colors.begin(), _colors.end());
+
+    if (!_nsiCurvesAttrShaderHandles.count(colorsKey)) {
+        // Create the dlHairAndFur shader.
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
-        const std::string &defaultShaderPath =
-            config.delight + "/maya/osl/dlHairAndFur";
+        std::string shaderPath = config.delight + "/maya/osl/dlHairAndFur";
 
-        const std::string defaultShaderHandle("nsiCurvesDefaultShader1");
-        nsi.Create(defaultShaderHandle, "shader");
-        nsi.SetAttribute(defaultShaderHandle,
-            (NSI::StringArg("shaderfilename", defaultShaderPath),
-                NSI::FloatArg("i_color", 0.6)));
+        nsi.Create(_shaderHandle, "shader");
+        nsi.SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
+        nsi.SetAttribute(_shaderHandle, NSI::FloatArg("dye_weight", 0.8f));
 
-        nsi.Connect(defaultShaderHandle, "",
-            _nsiCurvesDefaultGeoAttrHandle, "surfaceshader");
+        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
+
+        // Create the dlPrimitiveAttribute shader.
+        shaderPath = config.delight + "/maya/osl/dlPrimitiveAttribute";
+        std::string displayColorShaderHandle = id.GetString() + "|shader2";
+        nsi.Create(displayColorShaderHandle, "shader");
+        nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
+            NSI::StringArg("attribute_name", "DisplayColor"),
+            NSI::IntegerArg("attribute_type", 1)));
+        nsi.Connect(displayColorShaderHandle, "o_color", _shaderHandle, "i_color");
+
+        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, displayColorShaderHandle));
+
+        // Create the attribute node and connect shader to this.
+        nsi.Create(_attrsHandle, "attributes");
+        nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
+
+        _nsiCurvesAttrShaderHandles.insert(std::make_pair(colorsKey, _attrsHandle));
     }
 
-    nsi.Connect(_nsiCurvesDefaultGeoAttrHandle, "", masterXformHandle, "geometryattributes");
+    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
 
 void
@@ -245,6 +279,12 @@ HdNSICurves::_SetNSICurvesAttributes(NSIContext_t ctx)
         // use a spline as a fallback
         attrs.push(new NSI::StringArg("basis", "b-spline"));
     }
+
+    // "DisplayColor" for the shader.
+    attrs.push(NSI::Argument::New("DisplayColor")
+        ->SetType(NSITypeColor)
+        ->SetCount(_colors.size())
+        ->SetValuePointer(_colors.data()));
 
     nsi.SetAttribute(_masterShapeHandle, attrs);
 }
@@ -298,37 +338,63 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
 
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
+        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
+        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
+        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
+    }
+
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        VtValue value = sceneDelegate->Get(id, HdTokens->points);
-        _points = value.Get<VtVec3fArray>();
+        // Get the all points.
+        VtValue pointsVal = sceneDelegate->Get(id, HdTokens->points);
+        _points = pointsVal.Get<VtVec3fArray>();
+
+        // Get the widths.
+        _widths.clear();
+
+        VtValue widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
+        if (widthsVal.IsEmpty()) {
+            _widths.resize(_points.size());
+            std::fill(_widths.begin(), _widths.end(), 0.1f);
+        } else {
+            _widths = widthsVal.Get<VtFloatArray>();
+        }
+
+        // Get the colors.
+        _colors.clear();
+
+        if (_primvarSourceMap.count(HdTokens->color)) {
+            const VtValue &_colorsVal = _primvarSourceMap[HdTokens->color].data;
+            const VtVec4fArray &colors = _colorsVal.Get<VtVec4fArray>();
+
+            _colors.resize(colors.size());
+            for (size_t i = 0; i < colors.size(); ++ i) {
+                const GfVec4f &color = colors[i];
+                _colors[i] = GfVec3f(color[0], color[1], color[2]);
+            }
+        }
+
+        if (_colors.empty()) {
+            _colors.resize(_points.size());
+            std::fill(_colors.begin(), _colors.end(), GfVec3f(0.5f, 0, 0.5f));
+        }
 
         newCurves = true;
     }
 
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {
-        const HdBasisCurvesTopology &srcTopology =
-                                          GetBasisCurvesTopology(sceneDelegate);
+        const HdBasisCurvesTopology &srcTopology = GetBasisCurvesTopology(sceneDelegate);
         _topology = HdBasisCurvesTopology(srcTopology.GetCurveType(),
                           srcTopology.GetCurveBasis(),
                           srcTopology.GetCurveWrap(),
                           srcTopology.GetCurveVertexCounts(),
                           srcTopology.GetCurveIndices());
-        // _topology = HdBasisCurvesTopology(GetBasisCurvesTopology(sceneDelegate), refineLevel);
 
         _curveVertexCounts = _topology.GetCurveVertexCounts();
         _curveVertexIndices = _topology.GetCurveIndices();
         _basis = _topology.GetCurveBasis();
 
         newCurves = true;
-    }
-
-
-    // int nCurves = _curveVertexCounts.size();
-    // XXX TODO: get widths from scene data (now are all set to same value: 0.01)
-    _widths.clear();
-    for (const auto& cvc : _curveVertexCounts) {
-        (void)cvc;
-        _widths.push_back(0.01f);
     }
 
     if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
@@ -339,18 +405,9 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         _UpdateVisibility(sceneDelegate, dirtyBits);
     }
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
-        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
-    // XXX TODO: check this refine logic
-    // NOTE: refineLevel will probably be moved to HdBasisCurvesTopology
-    // int refineLevel = _topology.GetRefineLevel();
     int refineLevel = GetRefineLevel(sceneDelegate);
     bool doRefine = (refineLevel > 0);
 
@@ -411,8 +468,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
                 nsi.Create(instanceXformHandle, "transform");
                 nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
                 nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi.Connect(_nsiCurvesDefaultGeoAttrHandle, "",
-                    instanceXformHandle, "geometryattributes");
+                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
             }
 
             nsi.SetAttributeAtTime(instanceXformHandle, 0,
