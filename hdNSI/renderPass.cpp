@@ -43,8 +43,7 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::mutex HdNSIRenderPass::_imageLock;
-HdNSIRenderPass::DspyImageHandle *HdNSIRenderPass::_imageHandle = NULL;
+std::map<HdNSIRenderPass *, HdNSIRenderPass::DspyImageHandle *> HdNSIRenderPass::_imageHandles;
 
 HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
                                  HdRprimCollection const &collection,
@@ -59,10 +58,20 @@ HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
     , _renderParam(renderParam)
     , _sceneVersion(0)
 {
+    DspyImageHandle *imageHandle = new DspyImageHandle;
+    _imageHandles[this] = imageHandle;
 }
 
 HdNSIRenderPass::~HdNSIRenderPass()
 {
+    // Stop the render.
+    NSI::Context nsi(_ctx);
+    nsi.RenderControl(NSI::CStringPArg("action", "stop"));
+    nsi.RenderControl(NSI::CStringPArg("action", "wait"));
+
+    // Delete the image handle.
+    delete _imageHandles[this];
+    _imageHandles.erase(this);
 }
 
 bool
@@ -247,8 +256,9 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     }
 
     // Blit!
-    if (_imageHandle) {
-        glDrawPixels(_width, _height, GL_RGBA, GL_UNSIGNED_BYTE, _imageHandle->_buffer.data());
+    DspyImageHandle *imageHandle = _imageHandles[this];
+    if (imageHandle->_buffer.size()) {
+        glDrawPixels(_width, _height, GL_RGBA, GL_UNSIGNED_BYTE, imageHandle->_buffer.data());
     }
 }
 
@@ -306,6 +316,9 @@ void HdNSIRenderPass::_CreateNSICamera()
 
     nsi.Create(_outputLayerHandle, "outputlayer");
     {
+        char thiz[256];
+        sprintf(thiz, "%p", this);
+
         nsi.SetAttribute(_outputLayerHandle, (NSI::StringArg("variablename", "Ci"),
             NSI::StringArg("layertype", "color"),
             NSI::StringArg("scalarformat", "uint8"),
@@ -313,7 +326,8 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::StringArg("filter", "gaussian"),
             NSI::DoubleArg("filterwidth", 2.0),
             NSI::IntegerArg("sortkey", 0),
-            NSI::StringArg("variablesource", "shader")));
+            NSI::StringArg("variablesource", "shader"),
+            NSI::StringArg("renderpass", thiz)));
     }
     nsi.Connect(_outputLayerHandle, "", _screenHandle, "outputlayers");
 
@@ -536,11 +550,32 @@ PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
         formats[i].type = PkDspyUnsigned8;
     }
 
-    std::lock_guard<std::mutex> lock(_imageLock);
-    _imageHandle = new DspyImageHandle;
+    // Find the pointer to HdNSIRenderPass.
+    HdNSIRenderPass *renderPass = NULL;
 
-    _imageHandle->_width = width;
-    _imageHandle->_height = height;
+    for (int i = 0; i < paramCount; ++i)
+    {
+        const UserParameter *parameter = parameters + i;
+
+        const std::string &param_name = parameter->name;
+        if (param_name == "renderpass") {
+            const char **value = (const char **)parameter->value;
+            const char *str = *value;
+            sscanf(str, "%p", reinterpret_cast<HdNSIRenderPass **>(&renderPass));
+
+            break;
+        }
+    }
+
+    if (renderPass == NULL) {
+        return PkDspyErrorBadParams;
+    }
+
+    // Initialize the image handle.
+    DspyImageHandle *imageHandle = _imageHandles[renderPass];
+
+    imageHandle->_width = width;
+    imageHandle->_height = height;
 
     for(int i = 0;i < paramCount; ++ i)
     {
@@ -550,22 +585,22 @@ PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
         if (param_name == "OriginalSize")
         {
             const int *originalSize = static_cast<const int *>(parameter->value);
-            _imageHandle->_originalSizeX = originalSize[0];
-            _imageHandle->_originalSizeY = originalSize[1];
+            imageHandle->_originalSizeX = originalSize[0];
+            imageHandle->_originalSizeY = originalSize[1];
         }
         else if (param_name == "origin")
         {
             const int *origin = static_cast<const int *>(parameter->value);
-            _imageHandle->_originX = origin[0];
-            _imageHandle->_originY = origin[1];
+            imageHandle->_originX = origin[0];
+            imageHandle->_originY = origin[1];
         }
     }
 
-    _imageHandle->_numFormats = numFormats;
+    imageHandle->_numFormats = numFormats;
 
-    _imageHandle->_buffer.resize(width * height * numFormats, 0);
+    imageHandle->_buffer.resize(width * height * numFormats, 0);
 
-    *phImage = _imageHandle;
+    *phImage = imageHandle;
 
     return PkDspyErrorNone;
 }
@@ -655,7 +690,10 @@ PtDspyError HdNSIRenderPass::_DspyImageData(PtDspyImageHandle hImage,
         return PkDspyErrorStop;
     }
 
-    if (!_imageHandle) {
+    DspyImageHandle *imageHandle =
+        reinterpret_cast<DspyImageHandle *>(hImage);
+
+    if (!imageHandle) {
         return PkDspyErrorStop;
     }
 
@@ -663,13 +701,13 @@ PtDspyError HdNSIRenderPass::_DspyImageData(PtDspyImageHandle hImage,
 
     for (int y = yMin; y < yMaxPlusOne; ++ y) {
         for (int x = xMin; x < xMaxPlusOne; ++ x) {
-            size_t p = x + (_imageHandle->_height - y - 1) * _imageHandle->_width;
-            size_t dstOffset = p * _imageHandle->_numFormats;
+            size_t p = x + (imageHandle->_height - y - 1) * imageHandle->_width;
+            size_t dstOffset = p * imageHandle->_numFormats;
 
-            _imageHandle->_buffer[dstOffset + 0] = cdata[i * entrySize + 0];
-            _imageHandle->_buffer[dstOffset + 1] = cdata[i * entrySize + 1];
-            _imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
-            _imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
+            imageHandle->_buffer[dstOffset + 0] = cdata[i * entrySize + 0];
+            imageHandle->_buffer[dstOffset + 1] = cdata[i * entrySize + 1];
+            imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
+            imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
 
             ++ i;
         }
@@ -680,9 +718,6 @@ PtDspyError HdNSIRenderPass::_DspyImageData(PtDspyImageHandle hImage,
 
 PtDspyError HdNSIRenderPass::_DspyImageClose(PtDspyImageHandle hImage)
 {
-    std::lock_guard<std::mutex> lock(_imageLock);
-    delete _imageHandle, _imageHandle = NULL;
-
     return PkDspyErrorNone;
 }
 

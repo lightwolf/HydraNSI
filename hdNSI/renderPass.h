@@ -104,9 +104,7 @@ private:
         std::vector<uint8_t> _buffer;
     };
 
-    static std::mutex _imageLock;
-
-    static DspyImageHandle *_imageHandle;
+    static std::map<HdNSIRenderPass *, DspyImageHandle *> _imageHandles;
 
     // Display Driver - Open callback function.
     static PtDspyError _DspyImageOpen(PtDspyImageHandle *phImage,
