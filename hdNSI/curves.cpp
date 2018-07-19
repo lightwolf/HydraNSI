@@ -195,7 +195,12 @@ HdNSICurves::_CreateNSICurves(NSIContext_t ctx)
     _masterShapeHandle = id.GetString() + "|curves1";
 
     // Create the new curves.
-    nsi.Create(_masterShapeHandle, "cubiccurves");
+    // Scan the all CVC to decice the degree.
+    int minCvc = 999;
+    for (int cvc : _curveVertexCounts) {
+        minCvc = std::min(minCvc, cvc);
+    }
+    nsi.Create(_masterShapeHandle, minCvc >= 4 ? "cubiccurves" : "linearcurves");
 
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
