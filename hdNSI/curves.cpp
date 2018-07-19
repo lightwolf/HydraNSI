@@ -335,6 +335,8 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
 
     bool newCurves = false;
 
+    NSI::Context nsi(ctx);
+
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
 
@@ -430,6 +432,13 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
     if (newCurves || 
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         _SetNSICurvesAttributes(ctx);
+    }
+
+    // Update visibility.
+    //
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
+        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+            NSI::IntegerArg("visibility.priority", 1)));
     }
 
     ////////////////////////////////////////////////////////////////////////
