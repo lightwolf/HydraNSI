@@ -78,7 +78,7 @@ Currently HydraNSI supports the following:
   - Points also use a *dl3DelightMaterial* material, with a higher reflection roughness. 
   - Curves are shaded with the *dlHairAndFur* material (Marschner-Chiang-d'Eon model).
 
-  > Note that all materials have a *dlPrimitiveVariable* injected in the shading network so to read USD "displayColor" attribute.
+  > Note that the shading network for points and curves have a *dlPrimitiveVariable* so to read per-point and per-curve-vertex color.
 
 - Lighting:
   - Head light: a directional light that uses a *directionalLight* emitter which shines from the camera pov. It is always active. Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations. 
