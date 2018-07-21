@@ -163,7 +163,7 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtPointCloud(HdSceneDelegate *sceneDelegate,
-                               NSI::Context &nsi,
+                               std::shared_ptr<NSI::Context> nsi,
                                HdDirtyBits *dirtyBits,
                                HdPointsReprDesc const &desc);
 
@@ -174,8 +174,8 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle pointcloud and populate topology.
-    void _CreateNSIPointCloud(NSI::Context &nsi);
-    void _SetNSIPointCloudAttributes(NSI::Context &nsi);
+    void _CreateNSIPointCloud(std::shared_ptr<NSI::Context> nsi);
+    void _SetNSIPointCloudAttributes(std::shared_ptr<NSI::Context> nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we

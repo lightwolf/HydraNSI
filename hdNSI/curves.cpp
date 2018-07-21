@@ -38,9 +38,6 @@
 #include <sstream>
 #include <iostream>
 
-#include <nsi.h>
-#include <nsi.hpp>
-
 PXR_NAMESPACE_OPEN_SCOPE
 
 std::multimap<size_t, std::string> HdNSICurves::_nsiCurvesShaderHandles; // static
@@ -58,8 +55,8 @@ HdNSICurves::HdNSICurves(SdfPath const& id,
 void
 HdNSICurves::Finalize(HdRenderParam *renderParam)
 {
-    NSI::Context &nsi =
-        (*static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit());
+    std::shared_ptr<NSI::Context> nsi =
+        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
 
     const SdfPath &id = GetId();
 
@@ -68,7 +65,7 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
         auto range = _nsiCurvesXformHandles.equal_range(id);
         for (auto itr = range.first; itr != range.second; ++ itr) {
             const std::string &handle = itr->second;
-            nsi.Delete(handle);
+            nsi->Delete(handle);
         }
     }
     _nsiCurvesXformHandles.erase(id);
@@ -81,7 +78,7 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
         auto range = _nsiCurvesShaderHandles.equal_range(colorsKey);
         for (auto itr = range.first; itr != range.second; ++ itr) {
             const std::string &handle = itr->second;
-            nsi.Delete(handle);
+            nsi->Delete(handle);
         }
         _nsiCurvesShaderHandles.erase(colorsKey);
     }
@@ -89,14 +86,14 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
     _shaderHandle.clear();
 
     // Delete the attribute.
-    nsi.Delete(_attrsHandle);
+    nsi->Delete(_attrsHandle);
 
     _attrsHandle.clear();
 
     // Delete the geometry.
     if (_nsiCurvesShapeHandles.count(id)) {
         _nsiCurvesShapeHandles.erase(id);
-        nsi.Delete(_masterShapeHandle);
+        nsi->Delete(_masterShapeHandle);
     }
 
     _masterShapeHandle.clear();
@@ -186,11 +183,11 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
         static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
-    _PopulateRtCurves(sceneDelegate, *nsi, dirtyBits, desc);
+    _PopulateRtCurves(sceneDelegate, nsi, dirtyBits, desc);
 }
 
 void
-HdNSICurves::_CreateNSICurves(NSI::Context &nsi)
+HdNSICurves::_CreateNSICurves(std::shared_ptr<NSI::Context> nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|curves1";
@@ -201,14 +198,14 @@ HdNSICurves::_CreateNSICurves(NSI::Context &nsi)
     for (int cvc : _curveVertexCounts) {
         minCvc = std::min(minCvc, cvc);
     }
-    nsi.Create(_masterShapeHandle, minCvc >= 4 ? "cubiccurves" : "linearcurves");
+    nsi->Create(_masterShapeHandle, minCvc >= 4 ? "cubiccurves" : "linearcurves");
 
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
 
-    nsi.Create(masterXformHandle, "transform");
-    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+    nsi->Create(masterXformHandle, "transform");
+    nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
 
     _nsiCurvesXformHandles.insert(std::make_pair(id, masterXformHandle));
 
@@ -222,20 +219,20 @@ HdNSICurves::_CreateNSICurves(NSI::Context &nsi)
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
         std::string shaderPath = config.delight + "/maya/osl/dlHairAndFur";
 
-        nsi.Create(_shaderHandle, "shader");
-        nsi.SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
-        nsi.SetAttribute(_shaderHandle, NSI::FloatArg("dye_weight", 0.8f));
+        nsi->Create(_shaderHandle, "shader");
+        nsi->SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
+        nsi->SetAttribute(_shaderHandle, NSI::FloatArg("dye_weight", 0.8f));
 
         _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
 
         // Create the dlPrimitiveAttribute shader.
         shaderPath = config.delight + "/maya/osl/dlPrimitiveAttribute";
         std::string displayColorShaderHandle = id.GetString() + "|shader2";
-        nsi.Create(displayColorShaderHandle, "shader");
-        nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
+        nsi->Create(displayColorShaderHandle, "shader");
+        nsi->SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
             NSI::StringArg("attribute_name", "DisplayColor"),
             NSI::IntegerArg("attribute_type", 1)));
-        nsi.Connect(displayColorShaderHandle, "o_color", _shaderHandle, "i_color");
+        nsi->Connect(displayColorShaderHandle, "o_color", _shaderHandle, "i_color");
 
         _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, displayColorShaderHandle));
     }
@@ -243,14 +240,14 @@ HdNSICurves::_CreateNSICurves(NSI::Context &nsi)
     // Create the attribute node and connect shader to this.
     _attrsHandle = id.GetString() + "|attributes1";
 
-    nsi.Create(_attrsHandle, "attributes");
-    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
+    nsi->Create(_attrsHandle, "attributes");
+    nsi->Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
 
-    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
+    nsi->Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
 
 void
-HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
+HdNSICurves::_SetNSICurvesAttributes(std::shared_ptr<NSI::Context> nsi)
 {
     NSI::ArgumentList attrs;
 
@@ -289,7 +286,7 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
         ->SetCount(_colors.size())
         ->SetValuePointer(_colors.data()));
 
-    nsi.SetAttribute(_masterShapeHandle, attrs);
+    nsi->SetAttribute(_masterShapeHandle, attrs);
 }
 
 void
@@ -327,7 +324,7 @@ HdNSICurves::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
-                               NSI::Context &nsi,
+                               std::shared_ptr<NSI::Context> nsi,
                                HdDirtyBits* dirtyBits,
                                HdBasisCurvesReprDesc const &desc)
 {
@@ -438,7 +435,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
     // Update visibility.
     //
     if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+        nsi->SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
             NSI::IntegerArg("visibility.priority", 1)));
     }
 
@@ -473,13 +470,13 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
                 instanceXformHandleStream.str();
 
             if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi.Create(instanceXformHandle, "transform");
-                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
+                nsi->Create(instanceXformHandle, "transform");
+                nsi->Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
+                nsi->Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
+                nsi->Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
             }
 
-            nsi.SetAttributeAtTime(instanceXformHandle, 0,
+            nsi->SetAttributeAtTime(instanceXformHandle, 0,
                 NSI::DoubleMatrixArg("transformationmatrix", transforms[i].GetArray()));
         }
     }
@@ -492,16 +489,16 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
             // Create the master transform.
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi.Create(masterXformHandle, "transform");
-            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+            nsi->Create(masterXformHandle, "transform");
+            nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+            nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
         }
 
         if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
             // Update the transform.
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
+            nsi->SetAttributeAtTime(masterXformHandle, 0.0,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
     }
