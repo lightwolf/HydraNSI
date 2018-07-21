@@ -33,7 +33,7 @@
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
 
-#include <nsi.h>
+#include <nsi.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -162,9 +162,9 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtCurves(HdSceneDelegate *sceneDelegate,
-                         NSIContext_t ctx,
-                         HdDirtyBits *dirtyBits,
-                         HdBasisCurvesReprDesc const &desc);
+                           NSI::Context &nsi,
+                           HdDirtyBits *dirtyBits,
+                           HdBasisCurvesReprDesc const &desc);
 
     // Populate _primvarSourceMap (our local cache of primvar data) based on
     // scene data. Primvars will be turned into samplers in _PopulateRtCurves,
@@ -173,8 +173,8 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle curves and populate topology.
-    void _CreateNSICurves(NSIContext_t ctx);
-    void _SetNSICurvesAttributes(NSIContext_t ctx);
+    void _CreateNSICurves(NSI::Context &nsi);
+    void _SetNSICurvesAttributes(NSI::Context &nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we

@@ -48,7 +48,7 @@ std::map<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudShapeHandles; // s
 std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudXformHandles; // static
 
 HdNSIPointCloud::HdNSIPointCloud(SdfPath const& id,
-                     SdfPath const& instancerId)
+                                 SdfPath const& instancerId)
     : HdPoints(id, instancerId)
 {
 }
@@ -56,9 +56,8 @@ HdNSIPointCloud::HdNSIPointCloud(SdfPath const& id,
 void
 HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
 {
-    NSIContext_t ctx = static_cast<HdNSIRenderParam*>(renderParam)
-        ->AcquireSceneForEdit();
-    NSI::Context nsi(ctx);
+    NSI::Context &nsi =
+        (*static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit());
 
     const SdfPath &id = GetId();
 
@@ -157,10 +156,10 @@ HdNSIPointCloud::_UpdateRepr(HdSceneDelegate *sceneDelegate,
 
 void
 HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
-                   HdRenderParam*   renderParam,
-                   HdDirtyBits*     dirtyBits,
-                   TfToken const&   reprName,
-                   bool             forcedRepr)
+                      HdRenderParam*   renderParam,
+                      HdDirtyBits*     dirtyBits,
+                      TfToken const&   reprName,
+                      bool             forcedRepr)
 {
     HD_TRACE_FUNCTION();
     HF_MALLOC_TAG_FUNCTION();
@@ -180,20 +179,16 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
     const HdPointsReprDesc &desc = descs[0];
 
     // Pull top-level NSI state out of the render param.
-    HdNSIRenderParam *NSIRenderParam =
-        static_cast<HdNSIRenderParam*>(renderParam);
-    NSIContext_t ctx = NSIRenderParam->AcquireSceneForEdit();
-    // NSIContext_t device = NSIRenderParam->GetNSIContext();
+    NSI::Context &nsi =
+        (*static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit());
 
     // Create NSI geometry objects.
-    _PopulateRtPointCloud(sceneDelegate, ctx, dirtyBits, desc);
+    _PopulateRtPointCloud(sceneDelegate, nsi, dirtyBits, desc);
 }
 
 void
-HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
+HdNSIPointCloud::_CreateNSIPointCloud(NSI::Context &nsi)
 {
-    NSI::Context nsi(ctx);
-
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|pointcloud1";
 
@@ -252,10 +247,8 @@ HdNSIPointCloud::_CreateNSIPointCloud(NSIContext_t ctx)
 }
 
 void
-HdNSIPointCloud::_SetNSIPointCloudAttributes(NSIContext_t ctx)
+HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
 {
-    NSI::Context nsi(ctx);
-
     NSI::ArgumentList attrs;
 
     // "P"
@@ -297,7 +290,7 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(NSIContext_t ctx)
 
 void
 HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                                    HdDirtyBits dirtyBits)
+                                       HdDirtyBits dirtyBits)
 {
     HD_TRACE_FUNCTION();
     SdfPath const& id = GetId();
@@ -330,9 +323,9 @@ HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
-    NSIContext_t           ctx,
-    HdDirtyBits*     dirtyBits,
-    HdPointsReprDesc const &desc)
+                                       NSI::Context &nsi,
+                                       HdDirtyBits* dirtyBits,
+                                       HdPointsReprDesc const &desc)
 {
     HD_TRACE_FUNCTION();
     HF_MALLOC_TAG_FUNCTION();
@@ -340,8 +333,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     SdfPath const& id = GetId();
 
     bool newPointCloud = false;
-
-    NSI::Context nsi(ctx);
 
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
@@ -416,7 +407,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     if (newPointCloud) {
         // Create the new pointcloud node.
-        _CreateNSIPointCloud(ctx);
+        _CreateNSIPointCloud(nsi);
 
         // attributes will be (re-)populated below.
     }
@@ -426,7 +417,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points) ||
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
         (_primvarSourceMap.count(HdTokens->widths) > 0)) {
-        _SetNSIPointCloudAttributes(ctx);
+        _SetNSIPointCloudAttributes(nsi);
     }
 
     // Update visibility.
@@ -443,8 +434,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     // HdNSI to tell whether transforms will be dirty, so this code
     // pulls them every frame.
     if (!GetInstancerId().IsEmpty()) {
-        NSI::Context nsi(ctx);
-
         // Retrieve instance transforms from the instancer.
         HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
         HdInstancer *instancer =
@@ -486,15 +475,12 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         if (!hasXform) {
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            NSI::Context nsi(ctx);
             nsi.Create(masterXformHandle, "transform");
             nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
             nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
         }
 
         if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-            NSI::Context nsi(ctx);
-
             // Update the transform.
             std::string masterXformHandle = id.GetString() + "|transform1";
 

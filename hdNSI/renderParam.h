@@ -30,7 +30,8 @@
 #include "pxr/imaging/hd/renderDelegate.h"
 
 #include <atomic>
-#include <nsi.h>
+
+#include <nsi_dynamic.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -43,18 +44,20 @@ PXR_NAMESPACE_OPEN_SCOPE
 /// 
 class HdNSIRenderParam final : public HdRenderParam {
 public:
-    HdNSIRenderParam(NSIContext_t ctx)
-        : _ctx(ctx), _sceneVersion(0)
+    HdNSIRenderParam(const std::shared_ptr<NSI::Context> &nsi)
+        : _nsi(nsi)
+        , _sceneVersion(0)
         {}
+
     virtual ~HdNSIRenderParam() = default;
 
     /// Accessor for the top-level NSI scene.
-    NSIContext_t AcquireSceneForEdit() {
+    std::shared_ptr<NSI::Context> AcquireSceneForEdit() {
         _sceneVersion++;
-        return _ctx;
+        return _nsi;
     }
-    /// Accessor for the top-level NSI device (library handle).
-    NSIContext_t GetNSIContext() { return _ctx; }
+    /// Accessor for the global shared NSI context.
+    std::shared_ptr<NSI::Context> GetNSIContext() { return _nsi; }
 
     /// Return the scene "version", a counter indicating how many edits have
     /// been made to the scene.  Render passes can use this to determine whether
@@ -62,8 +65,9 @@ public:
     int GetSceneVersion() { return _sceneVersion; }
 
 private:
-    /// A handle to the top-level NSI context/scene.
-    NSIContext_t _ctx;
+    /// A smart pointer to the NSI API.
+    std::shared_ptr<NSI::Context> _nsi;
+
     /// A numerical "version" of the scene: how many edits have been made.
     std::atomic<int> _sceneVersion;
 };

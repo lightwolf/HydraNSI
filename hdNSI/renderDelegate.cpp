@@ -99,30 +99,24 @@ HdNSIRenderDelegate::HandleNSIError(int level, int code, const char* msg)
 
 HdNSIRenderDelegate::HdNSIRenderDelegate()
 {
-    // Initialize the NSI context handle (_nsi_ctx).
-    NSIParam_t errorHandler = { "errorhandler", (void *)nsi_error_handler, NSITypePointer, 0, 1, 0 };
-    NSIParam_t errorHandlerData = { "errorhandlerdata", (void *)this, NSITypePointer, 0, 1, 0 };
-    NSIParam_t beginParams[] = {
-        errorHandler, errorHandlerData,
-    };
+    // Initialize the NSI context with dynamic API.
+    _capi.reset(new NSI::DynamicAPI);
 
-    _nsi_ctx = NSIBegin(2, beginParams);
-    assert(_nsi_ctx != NSI_BAD_CONTEXT);
+    _nsi = std::make_shared<NSI::Context>(*_capi);
+    _nsi->Begin();
 
     // Set global parameters.
     const HdNSIConfig &config = HdNSIConfig::GetInstance();
 
-    NSI::Context nsi(_nsi_ctx);
-    nsi.SetAttribute(NSI_SCENE_GLOBAL,
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::IntegerArg("quality.shadingsamples", config.shadingSamples));
 
-    nsi.SetAttribute(NSI_SCENE_GLOBAL,
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::StringArg("bucketorder", "spiral"));
 
     // Store top-level NSI objects inside a render param that can be
     // passed to prims during Sync().
-    _renderParam =
-        std::make_shared<HdNSIRenderParam>(_nsi_ctx);
+    _renderParam = std::make_shared<HdNSIRenderParam>(_nsi);
 
     // Initialize one resource registry for all NSI plugins
     std::lock_guard<std::mutex> guard(_mutexResourceRegistry);
@@ -143,8 +137,6 @@ HdNSIRenderDelegate::~HdNSIRenderDelegate()
 
     // Destroy NSI context.
     _renderParam.reset();
-    NSIEnd(_nsi_ctx);
-    _nsi_ctx = NSI_BAD_CONTEXT;
 }
 
 HdRenderParam*
@@ -194,10 +186,10 @@ HdNSIRenderDelegate::GetResourceRegistry() const
 
 HdRenderPassSharedPtr
 HdNSIRenderDelegate::CreateRenderPass(HdRenderIndex *index,
-                            HdRprimCollection const& collection)
+                                      HdRprimCollection const& collection)
 {
     return HdRenderPassSharedPtr(new HdNSIRenderPass(
-        index, collection, _nsi_ctx, _renderParam.get()));
+        index, collection, _renderParam.get()));
 }
 
 HdInstancer *

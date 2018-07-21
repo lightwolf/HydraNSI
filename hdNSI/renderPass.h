@@ -35,7 +35,7 @@
 #include "pxr/base/gf/matrix3d.h"
 #include "pxr/base/gf/matrix4d.h"
 
-#include <nsi.h>
+#include <nsi.hpp>
 #include <ndspy.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
@@ -55,9 +55,8 @@ public:
     ///   \param collection The initial rprim collection for this renderpass.
     ///   \param scene The NSI scene to raycast into.
     HdNSIRenderPass(HdRenderIndex *index,
-                       HdRprimCollection const &collection,
-                       NSIContext_t ctx,
-                       HdNSIRenderParam *renderParam);
+                    HdRprimCollection const &collection,
+                    HdNSIRenderParam *renderParam);
 
     /// Renderpass destructor.
     virtual ~HdNSIRenderPass();
@@ -67,7 +66,7 @@ public:
 
     /// Determine whether the sample buffer has enough samples.
     ///   \return True if the image has enough samples to be considered final.
-    virtual bool IsConverged() const override;
+    virtual bool IsConverged() const override { return false; };
 
 protected:
 
@@ -138,8 +137,8 @@ private:
     // The height of the viewport we're rendering into.
     unsigned int _height;
 
-    // Our handle to the NSI context.
-    NSIContext_t _ctx;
+    // A handle to the render param.
+    HdNSIRenderParam *_renderParam;
 
     // Our camera-related handles.
     void _CreateNSICamera();
@@ -169,6 +168,9 @@ private:
     std::string _envlightFileShaderHandle;
     std::string _envlightCoordShaderHandle;
 
+    // Update the perspective camera parameters.
+    void _UpdateNSICamera();
+
     // Status of the 3Delight renderer.
     enum RenderStatus {
         Stopped,
@@ -179,12 +181,6 @@ private:
     // The view matrix
     GfMatrix4d _viewMatrix;
     GfMatrix4d _projMatrix;
-
-    // A handle to the render param.
-    HdNSIRenderParam *_renderParam;
-
-    // The version of the scene that _sampleBuffer was rendered with.
-    int _sceneVersion;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

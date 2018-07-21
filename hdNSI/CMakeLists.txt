@@ -17,8 +17,8 @@ pxr_plugin(hdNSI
         hf
         hd
         hdx
+        usdGeom
         ${TBB_LIBRARIES}
-        ${NSI_LIBRARY}
 
     INCLUDE_DIRS
         ${TBB_INCLUDE_DIRS}

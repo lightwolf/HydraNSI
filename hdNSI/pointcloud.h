@@ -34,7 +34,7 @@
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
 
-#include <nsi.h>
+#include <nsi_dynamic.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -163,9 +163,9 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtPointCloud(HdSceneDelegate *sceneDelegate,
-                         NSIContext_t ctx,
-                         HdDirtyBits *dirtyBits,
-                         HdPointsReprDesc const &desc);
+                               NSI::Context &nsi,
+                               HdDirtyBits *dirtyBits,
+                               HdPointsReprDesc const &desc);
 
     // Populate _primvarSourceMap (our local cache of primvar data) based on
     // scene data. Primvars will be turned into samplers in _PopulateRtPointCloud,
@@ -174,8 +174,8 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle pointcloud and populate topology.
-    void _CreateNSIPointCloud(NSIContext_t ctx);
-    void _SetNSIPointCloudAttributes(NSIContext_t ctx);
+    void _CreateNSIPointCloud(NSI::Context &nsi);
+    void _SetNSIPointCloudAttributes(NSI::Context &nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we

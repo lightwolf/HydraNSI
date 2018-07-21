@@ -30,8 +30,7 @@
 #include "pxr/imaging/hd/renderDelegate.h"
 
 #include <mutex>
-#include <nsi.h>
-#include <nsi.hpp>
+#include <nsi_dynamic.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -206,9 +205,10 @@ private:
     HdNSIRenderDelegate(const HdNSIRenderDelegate &)             = delete;
     HdNSIRenderDelegate &operator =(const HdNSIRenderDelegate &) = delete;
 
-    // Handle for an NSI "context", or library/scene state (this also
-    // mirrors the Hydra scene).
-    NSIContext_t _nsi_ctx;
+    // A shared NSI CAPI and context.
+    std::unique_ptr<NSI::DynamicAPI> _capi;
+
+    std::shared_ptr<NSI::Context> _nsi;
 
     // A shared HdNSIRenderParam object that stores top-level NSI state;
     // passed to prims during Sync().

@@ -33,7 +33,7 @@
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
 
-#include <nsi.h>
+#include <nsi.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -162,7 +162,7 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtMesh(HdSceneDelegate *sceneDelegate,
-                         NSIContext_t ctx,
+                         std::shared_ptr<NSI::Context> nsi,
                          HdDirtyBits *dirtyBits,
                          HdMeshReprDesc const &desc);
 
@@ -173,8 +173,8 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle mesh and populate topology.
-    bool _CreateNSIMesh(NSIContext_t ctx);
-    void _SetNSIMeshAttributes(NSIContext_t ctx, bool asSubdiv);
+    bool _CreateNSIMesh(std::shared_ptr<NSI::Context> nsi);
+    void _SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdiv);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we
