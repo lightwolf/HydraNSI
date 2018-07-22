@@ -1,23 +1,28 @@
 # HydraNSI Change Log
 
+## v0.3 — July 22, 2018
+
+- Lifted minimum 3Delight NSI version needed for HydraNSI to v13.4.15 which is using the new (and first) dynamic rendering API.
+- Now using the new NSI::DynamicAPI: everything in HydraNSI is now updated to use the shared NSI::Context. This will facilitate building 3rd-party apps that use the HydraNSI delegate simply by including the NSI header file (1 file, nsi.h) and linking dynamically to the NSI library. As a corollary, this would allow to write other Hydra "heads" in NSI. 
+
 
 ## v0.2 — July 19, 2018
 
 - Support for orientation (winding order): now most USD and ABC files  will have correct orientation when rendering.
 - Complete support for subdivision surfaces (catmull-clark) and related attributes (corner/crease vertices & sharpness).
-- Refactored code for curves and shader assigned to curves.
+- Re-factored code for curves and shader assigned to curves.
 - Added support for displayColor on points.
 - Added support for displayColor on curves.
 - Added support for point widths.
 - Added support for curve points  widths.
 - Points now are shaded with a higher reflect roughness.
 - Added support for visibility changes from usdview gui.
-- Hierarchical visibility works aswell as selective visibility at the same level.
+- Hierarchical visibility works as well as selective visibility at the same level.
 - Removed some useless code and comments (which came from copy & paste of hdEmree).
-- Handle curves with less than four control points as linearcurves in NSI. Otherwise they are cubic.
+- Handle curves with less than four control points as "linearcurves" in NSI. Otherwise they are cubic.
 - Fixed a coding error in HdNSIRendePass.
 - Improved shader construction.
-- Refactored hdNSIRenderPass so that each instance has its display handle.
+- Re-factored hdNSIRenderPass so that each instance has its display handle.
 - Added CHANGELOG.md
 
 

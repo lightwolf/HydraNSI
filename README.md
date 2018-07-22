@@ -27,7 +27,7 @@ NSI (Nodal Scene Interface) is a simple and flexible scene description API which
 
 HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility **usdview**.
 
-## Demo Video 
+## Demo Videos
 
 ![Demo Video](https://gitlab.com/3DelightOpenSource/HydraNSI/uploads/683abdd0535432b4483ff9135833ebcf/out.mp4)
 
@@ -35,10 +35,12 @@ And other 8 videos here:
 
 https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos
 
-## Building
-> This code was tested with Pixar USD version 0.8.5a and 3Delight NSI v13.4.11
 
-Once you are able to build Pixar USD, building HydraNSI is very easy:
+## Building
+> This code was tested with Pixar USD version 0.8.5a.
+> The minimum 3Delight NSI version needed is **v13.4.15**.
+
+Once  you are able to build Pixar USD, building HydraNSI is very easy:
 
 
 1. Add the hdNSI folder to your USD distribution, the injection point being:
@@ -83,8 +85,8 @@ Currently HydraNSI supports the following:
 - Lighting:
   - Head light: a directional light that uses a *directionalLight* emitter which shines from the camera pov. It is always active. Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations. 
   - Omni environment: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is *not* set to be used for environment in the configuration (see below). As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the follwing command: *tdlmake -envlatl filename.exr filename.tdl.tif*
-  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedual) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to. For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp.
+  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
+  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to. For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp.
 
 ## Testing
 
@@ -109,7 +111,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 
 ## A note about Alembic files and primitive variables
 
-When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini Cd, width and pscale are standard names and if present they could be converted on-the-fly to the USE respective ones). Feel free to push Pixar in improving their Alembic plug-in.  
+When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in.  
 
 
 ## Future
@@ -117,7 +119,7 @@ When reading Alembic files in usdview some variables that control the color and 
 We are looking for community contributions to implement the following:
 
 - add **usdShade** schema support for 3Delight OSL materials: [Issue #1](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/1)
-- add **usdLux** schema support for 3delight OSL lights: [Issue #2](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/2)
+- add **usdLux** schema support for 3Delight OSL lights: [Issue #2](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/2)
 - add upcoming **usdVolume** schema support for 3Delight OpenVDB volumes: [Issue #3](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/3)
 - add OSL matching shaders for **UsdPreviewSurface**: [issue #4](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/4)
 
