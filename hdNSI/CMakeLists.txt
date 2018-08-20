@@ -1,11 +1,6 @@
 set(PXR_PREFIX pxr/imaging)
 set(PXR_PACKAGE hdNSI)
 
-if(NOT NSI_FOUND)
-    message(WARNING "Not building ${PXR_PACKAGE} because of missing dependency: 3delight NSI")
-    return()
-endif()
-
 pxr_plugin(hdNSI
    LIBRARIES
         arch
@@ -17,7 +12,6 @@ pxr_plugin(hdNSI
         hf
         hd
         hdx
-        usdGeom
         ${TBB_LIBRARIES}
 
     INCLUDE_DIRS

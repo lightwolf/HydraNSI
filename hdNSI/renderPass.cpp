@@ -128,7 +128,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
             if (lib) {
 #if defined(_WIN32)
                 PDspyRegisterDriverTable =
-                    reinterpret_cast<PFNDspyRegisterDriverTable>(GetProcAddress(lib,
+                    reinterpret_cast<PFNDspyRegisterDriverTable>(GetProcAddress((HMODULE)lib,
                         "DspyRegisterDriverTable"));
 #else
                 PDspyRegisterDriverTable =

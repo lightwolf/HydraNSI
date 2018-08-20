@@ -97,7 +97,7 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
 }
 
 HdDirtyBits
-HdNSIPointCloud::_GetInitialDirtyBits() const
+HdNSIPointCloud::GetInitialDirtyBitsMask() const
 {
     // The initial dirty bits control what data is available on the first
     // run through _PopulateRtPointCloud(), so it should list every data item
@@ -110,7 +110,7 @@ HdNSIPointCloud::_GetInitialDirtyBits() const
         | HdChangeTracker::DirtyVisibility
         | HdChangeTracker::DirtyCullStyle
         | HdChangeTracker::DirtyDoubleSided
-        | HdChangeTracker::DirtyRefineLevel
+        | HdChangeTracker::DirtyDisplayStyle
         | HdChangeTracker::DirtySubdivTags
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
