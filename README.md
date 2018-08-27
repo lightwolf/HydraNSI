@@ -37,7 +37,7 @@ https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos
 
 
 ## Building
-> This code was tested with Pixar USD version 0.8.5a.
+> This code was tested with Pixar USD version **18.09**.
 > The minimum 3Delight NSI version needed is **v13.4.15**.
 
 Once  you are able to build Pixar USD, building HydraNSI is very easy:
@@ -111,7 +111,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 
 ## A note about Alembic files and primitive variables
 
-When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in.  
+When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in (see [USD issue 569](https://github.com/PixarAnimationStudios/USD/issues/569)).  
 
 
 ## Future
@@ -138,6 +138,12 @@ This work was authored by:
 **J Cube Inc.** — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
 
 Copyright © 2018 Illumination Research Ptv Ltd.
+
+### Contributors
+
+We wish to thank the following contributors:
+
+- Mark Tucker (Side Effects Inc)
 
 
 ## License

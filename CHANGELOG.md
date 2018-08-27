@@ -1,5 +1,12 @@
 # HydraNSI Change Log
 
+## v0.4 — Aug 27, 2018
+
+- Updated: now works with latest USD version: v18.09
+- Implemented IsSupported method to gracefully handle deployment of hdNSI in DCC Apps. 
+- Fixed: camera FOV is now matching 1:1 with other delegates.
+- Fixed: clicking in the usdview view does not crash anymore.
+
 ## v0.3 — July 22, 2018
 
 - Lifted minimum 3Delight NSI version needed for HydraNSI to v13.4.15 which is using the new (and first) dynamic rendering API.
