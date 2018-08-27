@@ -25,15 +25,13 @@ This repository contains a render delegate for Hydra using the NSI technology.
 
 **HydraNSI** — Production-quality preview rendering of USD assets, in a viewer such as Hydra, is an appealing idea that allows for a centralised and standardised rendering application. HydraNSI is a Hydra plug-in that converts USD to NSI commands and allows to use 3Delight NSI as a rendering back-end with its rich feature and extensible platform.
 
-HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility **usdview**.
+HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility *usdview*.
 
 ## Demo Videos
 
 ![Demo Video](https://gitlab.com/3DelightOpenSource/HydraNSI/uploads/683abdd0535432b4483ff9135833ebcf/out.mp4)
 
-And other 8 videos here:
-
-https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos
+→ [more videos](https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos)
 
 
 ## Building
@@ -70,7 +68,7 @@ Currently HydraNSI supports the following:
 
 - Geometric primitives:
   - Polygon mesh
-  - Subdivision surfaces
+  - Subdivision surfaces (analytic evaluation at rendertime, no pre-tesselation).
   - Points (particles/pointclouds)
   - Curves (hair/fur)
 - Instancing of primitives
@@ -85,8 +83,8 @@ Currently HydraNSI supports the following:
 - Lighting:
   - Head light: a directional light that uses a *directionalLight* emitter which shines from the camera pov. It is always active. Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations. 
   - Omni environment: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is *not* set to be used for environment in the configuration (see below). As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp. HDRI environment can be created by using data from http://gl.ict.usc.edu/Data/HighResProbes and then process them as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
-  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to. For more info see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp.
+  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see the [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp). HDRI environments can be created using data such as [high res probes](http://gl.ict.usc.edu/Data/HighResProbes) and then processed as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
+  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to. For more info see the [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp).
 
 ## Testing
 
@@ -102,8 +100,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
   - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
   - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
   - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
-- In `usdview` you can set "View> Complexity: Medium" to enable subdivision surfaces. 
-- Optionally configure HydraNSI settings via (see: https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp).
+- Optionally configure HydraNSI [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp)
 - Further explore the source code and issues in this repository & contribute.
 
 > Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
@@ -111,7 +108,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 
 ## A note about Alembic files and primitive variables
 
-When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in (see [USD issue 569](https://github.com/PixarAnimationStudios/USD/issues/569)).  
+When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in: [USD issue #569](https://github.com/PixarAnimationStudios/USD/issues/569).  
 
 
 ## Future
@@ -135,17 +132,17 @@ If you need to get in touch with us e-mail [support@3delight.com](mailto:support
 
 This work was authored by:
 
-**J Cube Inc.** — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
+[J Cube Inc](http://j-cube.jp) — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
 
 Copyright © 2018 Illumination Research Ptv Ltd.
 
 ### Contributors
 
-We wish to thank the following contributors:
+We wish to thank the following external contributors:
 
 - Mark Tucker (Side Effects Inc)
 
 
 ## License
 
-Apache 2.0
+Apache 2.0 License
