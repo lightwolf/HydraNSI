@@ -116,6 +116,11 @@ public:
                       TfToken const&   reprName,
                       bool             forcedRepr) override;
 
+    // Inform the scene graph which state needs to be downloaded in the
+    // first Sync() call: in this case, topology and points data to build
+    // the geometry object in the NSI scene graph.
+    virtual HdDirtyBits GetInitialDirtyBitsMask() const override;
+
 protected:
     // Update the named repr object for this Rprim. Repr objects are
     // created to support specific reprName tokens, and contain a list of
@@ -126,11 +131,6 @@ protected:
     virtual void _UpdateRepr(HdSceneDelegate *sceneDelegate,
                              TfToken const &reprName,
                              HdDirtyBits *dirtyBits) override;
-
-    // Inform the scene graph which state needs to be downloaded in the
-    // first Sync() call: in this case, topology and points data to build
-    // the geometry object in the NSI scene graph.
-    virtual HdDirtyBits _GetInitialDirtyBits() const override;
 
     // This callback from Rprim gives the prim an opportunity to set
     // additional dirty bits based on those already set.  This is done

@@ -100,7 +100,7 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
 }
 
 HdDirtyBits
-HdNSICurves::_GetInitialDirtyBits() const
+HdNSICurves::GetInitialDirtyBitsMask() const
 {
     // The initial dirty bits control what data is available on the first
     // run through _PopulateRtCurves(), so it should list every data item
@@ -113,7 +113,7 @@ HdNSICurves::_GetInitialDirtyBits() const
         | HdChangeTracker::DirtyVisibility
         | HdChangeTracker::DirtyCullStyle
         | HdChangeTracker::DirtyDoubleSided
-        | HdChangeTracker::DirtyRefineLevel
+        | HdChangeTracker::DirtyDisplayStyle
         | HdChangeTracker::DirtySubdivTags
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
@@ -408,7 +408,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
-    int refineLevel = GetRefineLevel(sceneDelegate);
+    int refineLevel = GetDisplayStyle(sceneDelegate).refineLevel;
     bool doRefine = (refineLevel > 0);
 
     ////////////////////////////////////////////////////////////////////////

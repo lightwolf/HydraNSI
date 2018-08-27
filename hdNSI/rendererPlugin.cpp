@@ -51,9 +51,24 @@ HdNSIRendererPlugin::DeleteRenderDelegate(HdRenderDelegate *renderDelegate)
 bool 
 HdNSIRendererPlugin::IsSupported() const
 {
-    // Nothing more to check for now, we assume if the plugin loads correctly
-    // it is supported.
-    return true;
+    static bool		 theSupportedFlag = false;
+    static bool		 theSupportTestedFlag = false;
+
+    if (!theSupportTestedFlag)
+    {
+	NSI::DynamicAPI	 nsi_api;
+	NSIContext_t	 nsi_ctx;
+
+	nsi_ctx = nsi_api.NSIBegin(0, nullptr);
+	if (nsi_ctx != NSI_BAD_CONTEXT)
+	{
+	    nsi_api.NSIEnd(nsi_ctx);
+	    theSupportedFlag = true;
+	}
+	theSupportTestedFlag = true;
+    }
+
+    return theSupportedFlag;
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

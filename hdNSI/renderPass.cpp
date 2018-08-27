@@ -128,7 +128,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
             if (lib) {
 #if defined(_WIN32)
                 PDspyRegisterDriverTable =
-                    reinterpret_cast<PFNDspyRegisterDriverTable>(GetProcAddress(lib,
+                    reinterpret_cast<PFNDspyRegisterDriverTable>(GetProcAddress((HMODULE)lib,
                         "DspyRegisterDriverTable"));
 #else
                 PDspyRegisterDriverTable =
@@ -344,7 +344,7 @@ void HdNSIRenderPass::_CreateNSICamera()
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
     nsi->Connect(_outputDriverHandle, "", _outputLayerHandle, "outputdrivers");
-#ifdef _DEBUG
+#ifdef NSI_DEBUG
     std::string debugDriverHandle = prefix + "|debugDriver1";
     {
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "idisplay"));

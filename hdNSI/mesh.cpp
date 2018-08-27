@@ -31,10 +31,10 @@
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
 #include "pxr/imaging/hd/meshUtil.h"
+#include "pxr/imaging/hd/smoothNormals.h"
 #include "pxr/imaging/pxOsd/tokens.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/matrix4d.h"
-#include "pxr/usd/usdGeom/tokens.h"
 
 #include <sstream>
 #include <iostream>
@@ -107,7 +107,7 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
 }
 
 HdDirtyBits
-HdNSIMesh::_GetInitialDirtyBits() const
+HdNSIMesh::GetInitialDirtyBitsMask() const
 {
     // The initial dirty bits control what data is available on the first
     // run through _PopulateRtMesh(), so it should list every data item
@@ -120,7 +120,7 @@ HdNSIMesh::_GetInitialDirtyBits() const
         | HdChangeTracker::DirtyVisibility
         | HdChangeTracker::DirtyCullStyle
         | HdChangeTracker::DirtyDoubleSided
-        | HdChangeTracker::DirtyRefineLevel
+        | HdChangeTracker::DirtyDisplayStyle
         | HdChangeTracker::DirtySubdivTags
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
@@ -269,7 +269,7 @@ HdNSIMesh::_SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdi
 
     // Set if this mesh is subdivision.
     const TfToken &scheme = _topology.GetScheme();
-    asSubdiv |= (scheme == UsdGeomTokens->catmullClark);
+    asSubdiv |= (scheme == PxOsdOpenSubdivTokens->catmullClark);
 
     if (asSubdiv) {
         nsi->SetAttribute(_masterShapeHandle,
@@ -425,7 +425,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _faceVertexIndices = _topology.GetFaceVertexIndices();
 
         _adjacency.BuildAdjacencyTable(&_topology);
-        _normals = _adjacency.ComputeSmoothNormals(_points.size(), _points.data());
+	_normals = Hd_SmoothNormals::ComputeSmoothNormals(&_adjacency, _points.size(), _points.data());
 
         if (_topology.GetOrientation() == HdTokens->leftHanded) {
             _leftHanded = 1;
@@ -434,9 +434,9 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id)) {
         _topology.SetSubdivTags(sceneDelegate->GetSubdivTags(id));
     }
-    if (HdChangeTracker::IsRefineLevelDirty(*dirtyBits, id)) {
+    if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         _topology = HdMeshTopology(_topology,
-            sceneDelegate->GetRefineLevel(id));
+            sceneDelegate->GetDisplayStyle(id).refineLevel);
     }
 
     if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
@@ -477,7 +477,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     // The repr defines whether we should compute smooth normals for this mesh:
     // per-vertex normals taken as an average of adjacent faces, and
     // interpolated smoothly across faces.
-    _smoothNormals = desc.smoothNormals;
+    _smoothNormals = !desc.flatShadingEnabled;
 
     // If the subdivision scheme is "none" or "bilinear", force us not to use
     // smooth normals.
@@ -513,7 +513,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // If the refine level changed or the mesh was recreated, we need to pass
     // the refine level into the NSI subdiv object.
-    if (newMesh || HdChangeTracker::IsRefineLevelDirty(*dirtyBits, id)) {
+    if (newMesh || HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         const int refineLevel = _topology.GetRefineLevel();
 
         nsi->SetAttribute(_masterShapeHandle,
