@@ -38,7 +38,7 @@ HdNSIBufferSampler::Sample(int index, void* value,
     // TODO: as of USD commit 2fe10266254105431a4434b94a2c507fa13bdb17
     //       GetNumElements returns a size_t instead of int:
     //       if (_buffer.GetNumElements() <= (size_t)index ||
-    if (_buffer.GetNumElements() <= index ||
+    if (_buffer.GetNumElements() <= static_cast<size_t>(index) ||
         _buffer.GetTupleType() != dataType) {
         return false;
     }
