@@ -112,8 +112,7 @@ public:
     virtual void Sync(HdSceneDelegate* sceneDelegate,
                       HdRenderParam*   renderParam,
                       HdDirtyBits*     dirtyBits,
-                      TfToken const&   reprName,
-                      bool             forcedRepr) override;
+                      TfToken const&   reprName) override;
 
     // Inform the scene graph which state needs to be downloaded in the
     // first Sync() call: in this case, topology and points data to build
@@ -121,16 +120,6 @@ public:
     virtual HdDirtyBits GetInitialDirtyBitsMask() const override;
 
 protected:
-    // Update the named repr object for this Rprim. Repr objects are
-    // created to support specific reprName tokens, and contain a list of
-    // HdDrawItems to be passed to the renderpass (via the renderpass calling
-    // HdRenderIndex::GetDrawItems()). Draw items contain prim data to be
-    // rendered, but HdNSIMesh bypasses them for now, so this function is
-    // a no-op.
-    virtual void _UpdateRepr(HdSceneDelegate *sceneDelegate,
-                             TfToken const &reprName,
-                             HdDirtyBits *dirtyBits) override;
-
     // This callback from Rprim gives the prim an opportunity to set
     // additional dirty bits based on those already set.  This is done
     // before the dirty bits are passed to the scene delegate, so can be

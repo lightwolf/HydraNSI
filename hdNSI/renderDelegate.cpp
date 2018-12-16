@@ -67,11 +67,11 @@ std::mutex HdNSIRenderDelegate::_mutexResourceRegistry;
 std::atomic_int HdNSIRenderDelegate::_counterResourceRegistry;
 HdResourceRegistrySharedPtr HdNSIRenderDelegate::_resourceRegistry;
 
-static void nsi_error_handler(void *userdata, int level, int code, const char *message)
+/*static void nsi_error_handler(void *userdata, int level, int code, const char *message)
 {
     HdNSIRenderDelegate *rDel = static_cast<HdNSIRenderDelegate *>(userdata);
     rDel->HandleNSIError(level, code, message);
-}
+}*/
 
 /* static */
 void

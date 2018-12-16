@@ -151,38 +151,20 @@ HdNSIMesh::_InitRepr(TfToken const &reprName,
 }
 
 void
-HdNSIMesh::_UpdateRepr(HdSceneDelegate *sceneDelegate,
-                          TfToken const &reprName,
-                          HdDirtyBits *dirtyBits)
-{
-    TF_UNUSED(sceneDelegate);
-    TF_UNUSED(reprName);
-    TF_UNUSED(dirtyBits);
-    // NSI doesn't use the HdRepr structure.
-}
-
-void
 HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
-                   HdRenderParam*   renderParam,
-                   HdDirtyBits*     dirtyBits,
-                   TfToken const&   reprName,
-                   bool             forcedRepr)
+                 HdRenderParam*   renderParam,
+                 HdDirtyBits*     dirtyBits,
+                 TfToken const&   reprName)
 {
     HD_TRACE_FUNCTION();
     HF_MALLOC_TAG_FUNCTION();
-
-    // The repr token is used to look up an HdMeshReprDesc struct, which
-    // has drawing settings for this prim to use. Repr opinions can come
-    // from the render pass's rprim collection or the scene delegate;
-    // _GetReprName resolves these multiple opinions.
-    TfToken calculatedReprName = _GetReprName(reprName, forcedRepr);
 
     // XXX: Meshes can have multiple reprs; this is done, for example, when
     // the drawstyle specifies different rasterizing modes between front faces
     // and back faces. With raytracing, this concept makes less sense, but
     // combining semantics of two HdMeshReprDesc is tricky in the general case.
     // For now, HdNSIMesh only respects the first desc; this should be fixed.
-    _MeshReprConfig::DescArray descs = _GetReprDesc(calculatedReprName);
+    _MeshReprConfig::DescArray descs = _GetReprDesc(reprName);
     const HdMeshReprDesc &desc = descs[0];
 
     // Pull top-level NSI state out of the render param.
