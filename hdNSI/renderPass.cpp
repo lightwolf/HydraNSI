@@ -169,8 +169,11 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
 
     // Reset the sample buffer if it's been requested.
     if (resetImage) {
-        // Stop the current render.
-        nsi->RenderControl(NSI::CStringPArg("action", "stop"));
+        if (_renderStatus == Running)
+        {
+            // Stop the current render.
+            nsi->RenderControl(NSI::CStringPArg("action", "stop"));
+        }
 
         // Update the resolution.
         NSI::ArgumentList args;
@@ -209,10 +212,13 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
 
         nsi->SetAttribute(_screenHandle, args);
 
-        // Restart the render.
-        nsi->RenderControl((NSI::CStringPArg("action", "start"),
-            NSI::IntegerArg("interactive", 1),
-            NSI::IntegerArg("progressive", 1)));
+        if (_renderStatus == Running)
+        {
+            // Restart the render.
+            nsi->RenderControl((NSI::CStringPArg("action", "start"),
+                NSI::IntegerArg("interactive", 1),
+                NSI::IntegerArg("progressive", 1)));
+        }
     }
 
     // Update the view matrix of camera.
