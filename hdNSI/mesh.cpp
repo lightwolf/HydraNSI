@@ -586,3 +586,4 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
+// vim: set softtabstop=4 expandtab shiftwidth=4:

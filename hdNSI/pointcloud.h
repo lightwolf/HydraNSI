@@ -212,3 +212,4 @@ private:
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #endif // HDNSI_POINTCLOUD_H
+// vim: set softtabstop=4 expandtab shiftwidth=4:

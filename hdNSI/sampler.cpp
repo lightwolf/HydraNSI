@@ -125,3 +125,4 @@ HdNSIPrimvarSampler::_Interpolate(void* out, void** samples, float* weights,
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
+// vim: set softtabstop=4 expandtab shiftwidth=4:
