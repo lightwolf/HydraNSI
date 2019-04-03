@@ -199,11 +199,11 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
             ->SetValuePointer(crop_data));
 
         // Update the window.
-        double aspect = static_cast<double>(_height) / static_cast<double>(_width);
+        double aspect = static_cast<double>(_width) / static_cast<double>(_height);
         double window_data[2][2] =
         {
-            {-1, -aspect},
-            { 1,  aspect}
+            {-aspect, -1},
+            { aspect,  1}
         };
         args.Add(NSI::Argument::New("screenwindow")
             ->SetArrayType(NSITypeDouble, 2)
