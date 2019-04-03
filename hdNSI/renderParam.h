@@ -46,30 +46,28 @@ class HdNSIRenderParam final : public HdRenderParam {
 public:
     HdNSIRenderParam(const std::shared_ptr<NSI::Context> &nsi)
         : _nsi(nsi)
-        , _sceneVersion(0)
+        , _sceneEdited(false)
         {}
 
     virtual ~HdNSIRenderParam() = default;
 
     /// Accessor for the top-level NSI scene.
     std::shared_ptr<NSI::Context> AcquireSceneForEdit() {
-        _sceneVersion++;
+        _sceneEdited.store(true, std::memory_order_relaxed);
         return _nsi;
     }
     /// Accessor for the global shared NSI context.
     std::shared_ptr<NSI::Context> GetNSIContext() { return _nsi; }
 
-    /// Return the scene "version", a counter indicating how many edits have
-    /// been made to the scene.  Render passes can use this to determine whether
-    /// they have stale sample data.
-    int GetSceneVersion() { return _sceneVersion; }
+    bool SceneEdited() const { return _sceneEdited; }
+    void ResetSceneEdited() { _sceneEdited = false; }
 
 private:
     /// A smart pointer to the NSI API.
     std::shared_ptr<NSI::Context> _nsi;
 
-    /// A numerical "version" of the scene: how many edits have been made.
-    std::atomic<int> _sceneVersion;
+    /// A flag to know if the scene has been edited.
+    std::atomic<bool> _sceneEdited;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

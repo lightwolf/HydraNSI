@@ -75,7 +75,7 @@ void
 HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
                           TfTokenVector const &renderTags)
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    std::shared_ptr<NSI::Context> nsi = _renderParam->GetNSIContext();
 
     // If the viewport has changed, resize and reset the sample buffer.
     bool resetImage = false;
@@ -258,11 +258,15 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         // Change the render status.
         _renderStatus = Running;
     }
-    else if (resetImage || resetCameraXform || resetCameraPersp)
+    else if (resetImage || resetCameraXform || resetCameraPersp ||
+        _renderParam->SceneEdited())
     {
         // Tell 3Delight to update.
         nsi->RenderControl(NSI::CStringPArg("action", "synchronize"));
     }
+
+    /* The renderer is now up to date on all changes. */
+    _renderParam->ResetSceneEdited();
 
     // Blit!
     DspyImageHandle *imageHandle = _imageHandles[this];
