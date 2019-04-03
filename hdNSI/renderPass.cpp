@@ -271,7 +271,10 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     // Blit!
     DspyImageHandle *imageHandle = _imageHandles[this];
     if (imageHandle->_buffer.size()) {
-        glDrawPixels(_width, _height, GL_RGBA, GL_UNSIGNED_BYTE, imageHandle->_buffer.data());
+        _compositor.UpdateColor(_width, _height, imageHandle->_buffer.data());
+        _compositor.UpdateDepth(_width, _height,
+            (uint8_t*)imageHandle->_depth_buffer.data());
+        _compositor.Draw();
     }
 }
 
@@ -343,6 +346,21 @@ void HdNSIRenderPass::_CreateNSICamera()
     }
     nsi->Connect(layer1Handle, "", _screenHandle, "outputlayers");
 
+    // A second layer for depth.
+    std::string layer2Handle = prefix + "|outputLayer2";
+    nsi->Create(layer2Handle, "outputlayer");
+    {
+        nsi->SetAttribute(layer2Handle, (
+            NSI::StringArg("variablename", "z"),
+            NSI::StringArg("layertype", "scalar"),
+            NSI::StringArg("scalarformat", "float"),
+            NSI::StringArg("filter", "min"),
+            NSI::DoubleArg("filterwidth", 1.0),
+            NSI::IntegerArg("sortkey", 1),
+            NSI::PointerArg("renderpass", this)));
+    }
+    nsi->Connect(layer2Handle, "", _screenHandle, "outputlayers");
+
     // Create a displaydriver, the receiver of the computed pixels.
     _outputDriverHandle = prefix + "|outputDriver1";
     nsi->Create(_outputDriverHandle, "outputdriver");
@@ -351,6 +369,7 @@ void HdNSIRenderPass::_CreateNSICamera()
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
     nsi->Connect(_outputDriverHandle, "", layer1Handle, "outputdrivers");
+    nsi->Connect(_outputDriverHandle, "", layer2Handle, "outputdrivers");
 #ifdef NSI_DEBUG
     std::string debugDriverHandle = prefix + "|debugDriver1";
     {
@@ -571,10 +590,6 @@ PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
         return PkDspyErrorBadParams;
     }
 
-    for(int i = 0; i < numFormats; ++ i) {
-        formats[i].type = PkDspyUnsigned8;
-    }
-
     // Find the pointer to HdNSIRenderPass.
     HdNSIRenderPass *renderPass = NULL;
 
@@ -618,9 +633,9 @@ PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
         }
     }
 
-    imageHandle->_numFormats = numFormats;
-
-    imageHandle->_buffer.resize(width * height * numFormats, 0);
+    imageHandle->_depth_buffer.resize(width * height,
+        std::numeric_limits<float>::max());
+    imageHandle->_buffer.resize(width * height * 4, 0);
 
     *phImage = imageHandle;
 
@@ -719,17 +734,24 @@ PtDspyError HdNSIRenderPass::_DspyImageData(PtDspyImageHandle hImage,
         return PkDspyErrorStop;
     }
 
+    assert(entrySize == 8);
     int i = 0;
 
     for (int y = yMin; y < yMaxPlusOne; ++ y) {
         for (int x = xMin; x < xMaxPlusOne; ++ x) {
             size_t p = x + (imageHandle->_height - y - 1) * imageHandle->_width;
-            size_t dstOffset = p * imageHandle->_numFormats;
+            size_t dstOffset = p * 4;
 
             imageHandle->_buffer[dstOffset + 0] = cdata[i * entrySize + 0];
             imageHandle->_buffer[dstOffset + 1] = cdata[i * entrySize + 1];
             imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
             imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
+
+            float depth = *(float*)(cdata + i * entrySize + 4);
+            // HdxCompositor wants depth in [-1, 1]
+            float nd =
+                (depth / std::numeric_limits<float>::max()) * 2.0f - 1.0f;
+            imageHandle->_depth_buffer[p] = nd;
 
             ++ i;
         }

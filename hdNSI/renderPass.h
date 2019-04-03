@@ -31,6 +31,7 @@
 #include "pxr/imaging/hd/renderPass.h"
 #include "pxr/imaging/hd/sprim.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
+#include "pxr/imaging/hdx/compositor.h"
 
 #include "pxr/base/gf/matrix3d.h"
 #include "pxr/base/gf/matrix4d.h"
@@ -98,9 +99,10 @@ private:
 
         int _originX, _originY;
 
-        int _numFormats;
-
+        // Buffer for RGBA.
         std::vector<uint8_t> _buffer;
+        // Buffer for Z.
+        std::vector<float> _depth_buffer;
     };
 
     static std::map<HdNSIRenderPass *, DspyImageHandle *> _imageHandles;
@@ -180,6 +182,9 @@ private:
     // The view matrix
     GfMatrix4d _viewMatrix;
     GfMatrix4d _projMatrix;
+
+    // Compositor to copy pixels to viewport.
+    HdxCompositor _compositor;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE
