@@ -147,7 +147,6 @@ private:
     std::string _cameraShapeHandle;
 
     std::string _screenHandle;
-    std::string _outputLayerHandle;
     std::string _outputDriverHandle;
 
     // Our headlight handle.

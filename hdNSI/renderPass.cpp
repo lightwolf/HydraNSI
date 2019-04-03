@@ -327,14 +327,11 @@ void HdNSIRenderPass::_CreateNSICamera()
     nsi->Connect(_screenHandle, "", _cameraShapeHandle, "screens");
 
     // Create a outputlayer, the format of a color variable.
-    _outputLayerHandle = prefix + "|outputLayer1";
-
-    nsi->Create(_outputLayerHandle, "outputlayer");
+    std::string layer1Handle = prefix + "|outputLayer1";
+    nsi->Create(layer1Handle, "outputlayer");
     {
-        char thiz[256];
-        sprintf(thiz, "%p", this);
-
-        nsi->SetAttribute(_outputLayerHandle, (NSI::StringArg("variablename", "Ci"),
+        nsi->SetAttribute(layer1Handle, (
+            NSI::StringArg("variablename", "Ci"),
             NSI::StringArg("layertype", "color"),
             NSI::StringArg("scalarformat", "uint8"),
             NSI::IntegerArg("withalpha", 1),
@@ -342,9 +339,9 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::DoubleArg("filterwidth", 2.0),
             NSI::IntegerArg("sortkey", 0),
             NSI::StringArg("variablesource", "shader"),
-            NSI::StringArg("renderpass", thiz)));
+            NSI::PointerArg("renderpass", this)));
     }
-    nsi->Connect(_outputLayerHandle, "", _screenHandle, "outputlayers");
+    nsi->Connect(layer1Handle, "", _screenHandle, "outputlayers");
 
     // Create a displaydriver, the receiver of the computed pixels.
     _outputDriverHandle = prefix + "|outputDriver1";
@@ -353,14 +350,14 @@ void HdNSIRenderPass::_CreateNSICamera()
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "HdNSI"));
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
-    nsi->Connect(_outputDriverHandle, "", _outputLayerHandle, "outputdrivers");
+    nsi->Connect(_outputDriverHandle, "", layer1Handle, "outputdrivers");
 #ifdef NSI_DEBUG
     std::string debugDriverHandle = prefix + "|debugDriver1";
     {
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "idisplay"));
         nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
-    nsi->Connect(debugDriverHandle, "", _outputLayerHandle, "outputdrivers");
+    nsi->Connect(debugDriverHandle, "", layer1Handle, "outputdrivers");
 #endif
 }
 
@@ -585,12 +582,9 @@ PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
     {
         const UserParameter *parameter = parameters + i;
 
-        const std::string &param_name = parameter->name;
+        const std::string param_name = parameter->name;
         if (param_name == "renderpass") {
-            const char **value = (const char **)parameter->value;
-            const char *str = *value;
-            sscanf(str, "%p", reinterpret_cast<HdNSIRenderPass **>(&renderPass));
-
+            renderPass = ((HdNSIRenderPass**)parameter->value)[0];
             break;
         }
     }
