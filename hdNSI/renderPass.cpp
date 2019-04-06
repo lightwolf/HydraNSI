@@ -29,7 +29,9 @@
 
 #include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/mesh.h"
+#include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
+#include "pxr/imaging/hdNSI/tokens.h"
 
 #include "pxr/imaging/hd/perfLog.h"
 #include "pxr/imaging/hd/renderPassState.h"
@@ -45,10 +47,12 @@ std::map<HdNSIRenderPass *, HdNSIRenderPass::DspyImageHandle *> HdNSIRenderPass:
 
 HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
                                  HdRprimCollection const &collection,
+                                 HdNSIRenderDelegate *renderDelegate,
                                  HdNSIRenderParam *renderParam)
     : HdRenderPass(index, collection)
     , _width(0)
     , _height(0)
+    , _renderDelegate(renderDelegate)
     , _renderParam(renderParam)
     , _renderStatus(Stopped)
     , _viewMatrix(1.0)
@@ -63,12 +67,32 @@ HdNSIRenderPass::~HdNSIRenderPass()
     // Stop the render.
     std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
 
-    nsi->RenderControl(NSI::CStringPArg("action", "stop"));
+    StopRender();
     nsi->RenderControl(NSI::CStringPArg("action", "wait"));
 
     // Delete the image handle.
     delete _imageHandles[this];
     _imageHandles.erase(this);
+}
+
+void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
+{
+    if (key == HdNSIRenderSettingsTokens->pixelSamples)
+    {
+        SetOversampling();
+    }
+    if (key == HdNSIRenderSettingsTokens->cameraLightIntensity)
+    {
+        ExportNSIHeadLightShader();
+    }
+    if (key == HdNSIRenderSettingsTokens->envLightPath ||
+        key == HdNSIRenderSettingsTokens->envLightMapping ||
+        key == HdNSIRenderSettingsTokens->envLightIntensity ||
+        key == HdNSIRenderSettingsTokens->envAsBackground ||
+        key == HdNSIRenderSettingsTokens->envUseSky)
+    {
+        _CreateNSIEnvironmentLight();
+    }
 }
 
 void
@@ -171,8 +195,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     if (resetImage) {
         if (_renderStatus == Running)
         {
-            // Stop the current render.
-            nsi->RenderControl(NSI::CStringPArg("action", "stop"));
+            StopRender();
         }
 
         // Update the resolution.
@@ -210,14 +233,12 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
             ->SetCount(2)
             ->CopyValue(window_data, sizeof(window_data)));
 
-        nsi->SetAttribute(_screenHandle, args);
+        nsi->SetAttribute(ScreenHandle(), args);
 
         if (_renderStatus == Running)
         {
             // Restart the render.
-            nsi->RenderControl((NSI::CStringPArg("action", "start"),
-                NSI::IntegerArg("interactive", 1),
-                NSI::IntegerArg("progressive", 1)));
+            StartRender();
         }
     }
 
@@ -248,13 +269,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     // Launch rendering or synchronize the all changes.
     if (_renderStatus == Stopped)
     {
-        NSI::ArgumentList args;
-        args.Add(new NSI::CStringPArg("action", "start"));
-        args.Add(new NSI::IntegerArg("interactive", 1));
-        args.Add(new NSI::IntegerArg("progressive", 1));
-
-        nsi->RenderControl(args);
-
+        StartRender();
         // Change the render status.
         _renderStatus = Running;
     }
@@ -275,6 +290,46 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         _compositor.UpdateDepth(_width, _height,
             (uint8_t*)imageHandle->_depth_buffer.data());
         _compositor.Draw();
+    }
+}
+
+void HdNSIRenderPass::StopRender() const
+{
+    _renderParam->GetNSIContext()->RenderControl(
+        NSI::CStringPArg("action", "stop"));
+}
+
+void HdNSIRenderPass::StartRender() const
+{
+    _renderParam->GetNSIContext()->RenderControl((
+        NSI::CStringPArg("action", "start"),
+        NSI::IntegerArg("interactive", 1),
+        NSI::IntegerArg("progressive", 1)));
+}
+
+std::string HdNSIRenderPass::ScreenHandle() const
+{
+    return boost::lexical_cast<std::string>(this) + "|screen1";
+}
+
+void HdNSIRenderPass::SetOversampling() const
+{
+    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+
+    VtValue s = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->pixelSamples);
+
+    if (_renderStatus == Running)
+    {
+        StopRender();
+    }
+
+    nsi->SetAttribute(ScreenHandle(),
+        NSI::IntegerArg("oversampling", s.Get<int>()));
+
+    if (_renderStatus == Running)
+    {
+        StartRender();
     }
 }
 
@@ -319,15 +374,10 @@ void HdNSIRenderPass::_CreateNSICamera()
     _UpdateNSICamera();
 
     // Create a screen, the output of camera.
-    _screenHandle = prefix + "|screen1";
-    nsi->Create(_screenHandle, "screen");
-    {
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
-
-        nsi->SetAttribute(_screenHandle, (NSI::IntegerArg("oversampling", config.pixelSamples),
-            NSI::FloatArg("pixelaspectratio", 1)));
-    }
-    nsi->Connect(_screenHandle, "", _cameraShapeHandle, "screens");
+    const std::string screenHandle = ScreenHandle();
+    nsi->Create(screenHandle, "screen");
+    SetOversampling();
+    nsi->Connect(screenHandle, "", _cameraShapeHandle, "screens");
 
     // Create a outputlayer, the format of a color variable.
     std::string layer1Handle = prefix + "|outputLayer1";
@@ -342,7 +392,7 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::StringArg("variablesource", "shader"),
             NSI::PointerArg("renderpass", this)));
     }
-    nsi->Connect(layer1Handle, "", _screenHandle, "outputlayers");
+    nsi->Connect(layer1Handle, "", screenHandle, "outputlayers");
 
     // A second layer for depth.
     std::string layer2Handle = prefix + "|outputLayer2";
@@ -357,7 +407,7 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::IntegerArg("sortkey", 1),
             NSI::PointerArg("renderpass", this)));
     }
-    nsi->Connect(layer2Handle, "", _screenHandle, "outputlayers");
+    nsi->Connect(layer2Handle, "", screenHandle, "outputlayers");
 
     // Create a displaydriver, the receiver of the computed pixels.
     _outputDriverHandle = prefix + "|outputDriver1";
@@ -376,6 +426,44 @@ void HdNSIRenderPass::_CreateNSICamera()
     }
     nsi->Connect(debugDriverHandle, "", layer1Handle, "outputdrivers");
 #endif
+}
+
+std::string HdNSIRenderPass::ExportNSIHeadLightShader()
+{
+    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    const std::string prefix = boost::lexical_cast<std::string>(this);
+    std::string handle = + "|headlightShader1";
+
+    nsi->Create(handle, "shader");
+
+    NSI::ArgumentList args;
+
+    const HdNSIConfig &config = HdNSIConfig::GetInstance();
+    const std::string &directionalLightShaderPath =
+        config.delight + "/maya/osl/directionalLight";
+
+    args.Add(new NSI::StringArg("shaderfilename",
+        directionalLightShaderPath));
+
+    float light_shader_color_data[3] = { 1, 1, 1 };
+    args.Add(new NSI::ColorArg("i_color", light_shader_color_data));
+
+    VtValue intensity = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->cameraLightIntensity);
+    /*
+        This ugly mess is because we need the initial value to be a float or
+        the UI won't build itself. But said UI then sets any new value as a
+        double.
+    */
+    float intensity_value = intensity.IsHolding<float>()
+        ? intensity.Get<float>() : intensity.Get<double>();
+    args.Add(new NSI::FloatArg("intensity", intensity_value));
+
+    args.Add(new NSI::FloatArg("diffuse_contribution", 1));
+    args.Add(new NSI::FloatArg("specular_contribution", 1));
+
+    nsi->SetAttribute(handle, args);
+    return handle;
 }
 
 void HdNSIRenderPass::_CreateNSIHeadLight()
@@ -417,100 +505,103 @@ void HdNSIRenderPass::_CreateNSIHeadLight()
     nsi->Connect(_headlightGeoAttrsHandle, "", _headlightXformHandle, "geometryattributes");
 
     // Attach the light shader to the headlight shape.
-    _headlightShaderHandle = prefix + "|headlightShader1";
-    nsi->Create(_headlightShaderHandle, "shader");
-    {
-        NSI::ArgumentList args;
-
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
-        const std::string &directionalLightShaderPath =
-            config.delight + "/maya/osl/directionalLight";
-
-        args.Add(new NSI::StringArg("shaderfilename",
-            directionalLightShaderPath));
-
-        float light_shader_color_data[3] = { 1, 1, 1 };
-        args.Add(new NSI::ColorArg("i_color", light_shader_color_data));
-
-        args.Add(new NSI::FloatArg("intensity",
-            config.cameraLightIntensity));
-
-        args.Add(new NSI::FloatArg("diffuse_contribution", 1));
-        args.Add(new NSI::FloatArg("specular_contribution", 1));
-
-        nsi->SetAttribute(_headlightShaderHandle, args);
-    }
-    nsi->Connect(_headlightShaderHandle, "", _headlightGeoAttrsHandle, "surfaceshader");
+    std::string headlightShaderHandle = ExportNSIHeadLightShader();
+    nsi->Connect(headlightShaderHandle, "", _headlightGeoAttrsHandle, "surfaceshader");
 }
 
 void HdNSIRenderPass::_CreateNSIEnvironmentLight()
 {
     std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
 
-    // Create the identity transform node.
     const std::string &prefix = boost::lexical_cast<std::string>(this);
 
-    // Create the empty transform.
+    // Handles to all the nodes we might create in here.
     _envlightXformHandle = prefix + "|envlight1";
+    std::string envlightShapeHandle = prefix + "|envlightShape1";
+    std::string envlightGeoAttrsHandle = envlightShapeHandle + "|attributes1";
+    std::string envlightShaderHandle = prefix + "|envlightShader1";
+    std::string envlightFileShaderHandle = prefix + "|envlightFileShader1";
+    std::string envlightCoordShaderHandle = prefix + "|envCoordShader1";
+
+    // Delete any existing nodes (for update from a setting change).
+    nsi->Delete(_envlightXformHandle);
+    nsi->Delete(envlightShapeHandle);
+    nsi->Delete(envlightGeoAttrsHandle);
+    nsi->Delete(envlightShaderHandle);
+    nsi->Delete(envlightFileShaderHandle);
+    nsi->Delete(envlightCoordShaderHandle);
+
+    // Create the empty transform.
     nsi->Create(_envlightXformHandle, "transform");
     nsi->Connect(_envlightXformHandle, "", NSI_SCENE_ROOT, "objects");
 
     // Create the shape node.
-    _envlightShapeHandle = prefix + "|envlightShape1";
-    nsi->Create(_envlightShapeHandle, "environment");
-    nsi->Connect(_envlightShapeHandle, "", _envlightXformHandle, "objects");
+    nsi->Create(envlightShapeHandle, "environment");
+    nsi->Connect(envlightShapeHandle, "", _envlightXformHandle, "objects");
 
     // Create the geometryattributes node for light.
-    _envlightGeoAttrsHandle = _envlightShapeHandle + "|attributes1";
-
-    nsi->Create(_envlightGeoAttrsHandle, "attributes");
-    nsi->Connect(_envlightGeoAttrsHandle, "", _envlightXformHandle, "geometryattributes");
+    nsi->Create(envlightGeoAttrsHandle, "attributes");
+    nsi->Connect(envlightGeoAttrsHandle, "", _envlightXformHandle, "geometryattributes");
 
     // Construct the shader.
-    _envlightShaderHandle = prefix + "|envlightShader1";
-    nsi->Create(_envlightShaderHandle, "shader");
-    nsi->Connect(_envlightShaderHandle, "", _envlightGeoAttrsHandle, "surfaceshader");
+    nsi->Create(envlightShaderHandle, "shader");
+    nsi->Connect(envlightShaderHandle, "", envlightGeoAttrsHandle, "surfaceshader");
 
     // Use user-defined environment image or empty.
     float color[3] = {1, 1, 1};
 
     const HdNSIConfig &config = HdNSIConfig::GetInstance();
-    if (config.envLightPath.size() || config.envUseSky)
+    std::string envLightPath = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->envLightPath).Get<std::string>();
+    int envLightMapping = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->envLightMapping).Get<int>();
+    VtValue eLI_value = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->envLightIntensity);
+    float envLightIntensity = eLI_value.IsHolding<float>()
+        ? eLI_value.Get<float>() : eLI_value.Get<double>();
+    bool envAsBackground = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->envAsBackground).Get<bool>();
+    bool envUseSky = _renderDelegate->GetRenderSetting(
+        HdNSIRenderSettingsTokens->envUseSky).Get<bool>();
+
+    if (envLightPath.size() || envUseSky)
     {
         // Set the environment shader.
         const HdNSIConfig &config = HdNSIConfig::GetInstance();
         const std::string &shaderPath =
             config.delight + "/maya/osl/dlEnvironmentShape";
 
-        nsi->SetAttribute(_envlightShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
-            NSI::IntegerArg("mapping", config.envLightMapping),
+        nsi->SetAttribute(envlightShaderHandle, (
+            NSI::StringArg("shaderfilename", shaderPath),
+            NSI::IntegerArg("mapping", envLightMapping),
             NSI::ColorArg("i_texture", color),
-            NSI::FloatArg("intensity", config.envLightIntensity),
+            NSI::FloatArg("intensity", envLightIntensity),
             NSI::FloatArg("exposure", 0),
             NSI::ColorArg("tint", color)));
 
         // Use the external file.
-        _envlightFileShaderHandle = prefix + "|envlightFileShader1";
-        nsi->Create(_envlightFileShaderHandle, "shader");
+        nsi->Create(envlightFileShaderHandle, "shader");
 
-        if (config.envLightPath.size()) {
+        if (envLightPath.size()) {
             // Set the enviroment image.
             const std::string &shaderPath =
                 config.delight + "/maya/osl/file";
 
-            nsi->SetAttribute(_envlightFileShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
+            nsi->SetAttribute(envlightFileShaderHandle, (
+                NSI::StringArg("shaderfilename", shaderPath),
                 NSI::ColorArg("defaultColor", color),
                 NSI::CStringPArg("fileTextureName.meta.colorspace", "linear")));
 
-            nsi->SetAttribute(_envlightFileShaderHandle,
-                NSI::StringArg("fileTextureName", config.envLightPath));
+            nsi->SetAttribute(envlightFileShaderHandle,
+                NSI::StringArg("fileTextureName", envLightPath));
         } else {
             // Set the sky.
             const std::string &shaderPath =
                 config.delight + "/maya/osl/dlSky";
 
-            nsi->SetAttribute(_envlightFileShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
-                NSI::FloatArg("intensity", config.envLightIntensity),
+            nsi->SetAttribute(envlightFileShaderHandle, (
+                NSI::StringArg("shaderfilename", shaderPath),
+                NSI::FloatArg("intensity", envLightIntensity),
                 NSI::FloatArg("turbidity", 3.0f),
                 NSI::FloatArg("elevation", 45.0f),
                 NSI::FloatArg("azimuth", 90.0f),
@@ -523,28 +614,27 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
                 NSI::FloatArg("wavelengthB", 450)));
         }
 
-        nsi->Connect(_envlightFileShaderHandle, "outColor",
-                _envlightShaderHandle, "i_texture");
+        nsi->Connect(envlightFileShaderHandle, "outColor",
+                envlightShaderHandle, "i_texture");
 
         // Create the coordinate mapping node.
-        _envlightCoordShaderHandle = prefix + "|envCoordShader1";
-        nsi->Create(_envlightCoordShaderHandle, "shader");
+        nsi->Create(envlightCoordShaderHandle, "shader");
         {
             const std::string &shaderPath =
                 config.delight + "/maya/osl/uvCoordEnvironment";
 
-            nsi->SetAttribute(_envlightCoordShaderHandle,
+            nsi->SetAttribute(envlightCoordShaderHandle,
                 NSI::StringArg("shaderfilename", shaderPath));
 
-            nsi->SetAttribute(_envlightCoordShaderHandle,
-                NSI::IntegerArg("mapping", config.envLightMapping));
+            nsi->SetAttribute(envlightCoordShaderHandle,
+                NSI::IntegerArg("mapping", envLightMapping));
         }
-        nsi->Connect(_envlightCoordShaderHandle, "o_outUV",
-            _envlightFileShaderHandle, "uvCoord");
+        nsi->Connect(envlightCoordShaderHandle, "o_outUV",
+            envlightFileShaderHandle, "uvCoord");
 
         // Check if diplay the environment as background.
-        if (config.envAsBackground) {
-            nsi->SetAttribute(_envlightGeoAttrsHandle,
+        if (envAsBackground) {
+            nsi->SetAttribute(envlightGeoAttrsHandle,
                 NSI::IntegerArg("visibility.camera", 1));
         }
     } else {
@@ -552,9 +642,10 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         const std::string &shaderPath =
             config.delight + "/maya/osl/directionalLight";
 
-        nsi->SetAttribute(_envlightShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
+        nsi->SetAttribute(envlightShaderHandle, (
+            NSI::StringArg("shaderfilename", shaderPath),
             NSI::ColorArg("i_color", color),
-            NSI::FloatArg("intensity", config.envLightIntensity),
+            NSI::FloatArg("intensity", envLightIntensity),
             NSI::FloatArg("diffuse_contribution", 1),
             NSI::FloatArg("specular_contribution", 1)));
     }

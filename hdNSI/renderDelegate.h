@@ -35,6 +35,7 @@
 PXR_NAMESPACE_OPEN_SCOPE
 
 class HdNSIRenderParam;
+class HdNSIRenderPass;
 
 ///
 /// \class HdNSIRenderDelegate
@@ -191,6 +192,17 @@ public:
     ///   \param tracker The change tracker passed to prim Sync().
     virtual void CommitResources(HdChangeTracker *tracker) override;
 
+    virtual void SetRenderSetting(
+        TfToken const& key, VtValue const& value) override;
+
+    virtual HdRenderSettingDescriptorList
+        GetRenderSettingDescriptors() const override;
+
+    void RemoveRenderPass(HdNSIRenderPass *renderPass);
+
+private:
+    void SetShadingSamples() const;
+
 private:
     static const TfTokenVector SUPPORTED_RPRIM_TYPES;
     static const TfTokenVector SUPPORTED_SPRIM_TYPES;
@@ -213,6 +225,19 @@ private:
     // A shared HdNSIRenderParam object that stores top-level NSI state;
     // passed to prims during Sync().
     std::shared_ptr<HdNSIRenderParam> _renderParam;
+
+    // Settings description for NSI renderer
+    HdRenderSettingDescriptorList _settingDescriptors;
+
+    /*
+        Settings last communicated to renderer. Used to tell if updates are
+        real updates because the settings dialog causes all settings to be set,
+        even when the value does not change.
+    */
+    HdRenderSettingsMap _exportedSettings;
+
+    /* All render pass objects created by this render delegate. */
+    std::vector<HdNSIRenderPass*> _renderPasses;
 
 public:
     // A callback that interprets NSI error codes and injects them into

@@ -23,6 +23,7 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
+#include "pxr/base/tf/getenv.h"
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 
@@ -30,6 +31,7 @@
 #include "pxr/imaging/hdNSI/instancer.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
+#include "pxr/imaging/hdNSI/tokens.h"
 
 #include "pxr/imaging/hd/resourceRegistry.h"
 
@@ -105,15 +107,6 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     _nsi = std::make_shared<NSI::Context>(*_capi);
     _nsi->Begin();
 
-    // Set global parameters.
-    const HdNSIConfig &config = HdNSIConfig::GetInstance();
-
-    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
-        NSI::IntegerArg("quality.shadingsamples", config.shadingSamples));
-
-    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
-        NSI::StringArg("bucketorder", "spiral"));
-
     // Store top-level NSI objects inside a render param that can be
     // passed to prims during Sync().
     _renderParam = std::make_shared<HdNSIRenderParam>(_nsi);
@@ -124,6 +117,59 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     if (_counterResourceRegistry.fetch_add(1) == 0) {
         _resourceRegistry.reset( new HdResourceRegistry() );
     }
+
+    // Fill in settings.
+    _settingDescriptors.push_back({
+        "Shading Samples",
+        HdNSIRenderSettingsTokens->shadingSamples,
+        VtValue(TfGetenvInt("HDNSI_SHADING_SAMPLES", 64))});
+
+    _settingDescriptors.push_back({
+        "Pixel Samples",
+        HdNSIRenderSettingsTokens->pixelSamples,
+        VtValue(TfGetenvInt("HDNSI_PIXEL_SAMPLES", 8))});
+
+    _settingDescriptors.push_back({
+        "Camera light intensity",
+        HdNSIRenderSettingsTokens->cameraLightIntensity,
+        VtValue(float(TfGetenvDouble("HDNSI_CAMERA_LIGHT_INTENSITY", 1.0)))});
+
+    _settingDescriptors.push_back({
+        "Environment image",
+        HdNSIRenderSettingsTokens->envLightPath,
+        VtValue(TfGetenv("HDNSI_ENV_LIGHT_IMAGE"))});
+
+    _settingDescriptors.push_back({
+        "Format of enviroment image, spherical (0) or angular (1)",
+        HdNSIRenderSettingsTokens->envLightMapping,
+        VtValue(TfGetenvInt("HDNSI_ENV_LIGHT_MAPPING", 0))});
+
+    _settingDescriptors.push_back({
+        "Intensity of enviroment image",
+        HdNSIRenderSettingsTokens->envLightIntensity,
+        VtValue(float(TfGetenvDouble("HDNSI_ENV_LIGHT_INTENSITY", 1.0)))});
+
+    _settingDescriptors.push_back({
+        "Display environment image as background",
+        HdNSIRenderSettingsTokens->envAsBackground,
+        VtValue(TfGetenvBool("HDNSI_ENV_AS_BACKGROUND", true))});
+
+    _settingDescriptors.push_back({
+        "Use 3Delight Sky as environment",
+        HdNSIRenderSettingsTokens->envUseSky,
+        VtValue(TfGetenvBool("HDNSI_ENV_USE_SKY", true))});
+
+    _PopulateDefaultSettings(_settingDescriptors);
+
+    _exportedSettings = _settingsMap;
+
+    // Set global parameters.
+    const HdNSIConfig &config = HdNSIConfig::GetInstance();
+
+    SetShadingSamples();
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::StringArg("bucketorder", "spiral"));
 }
 
 HdNSIRenderDelegate::~HdNSIRenderDelegate()
@@ -160,6 +206,36 @@ HdNSIRenderDelegate::CommitResources(HdChangeTracker *tracker)
     // nsiCommit(_nsi_ctx);
 }
 
+void HdNSIRenderDelegate::SetRenderSetting(
+    TfToken const& key,
+    VtValue const& value)
+{
+    HdRenderDelegate::SetRenderSetting(key, value);
+
+    /* See if something actually changed. */
+    if( _exportedSettings[key] == value )
+        return;
+
+    /* Handle the change. Some are done here, most in the render pass. */
+    if (key == HdNSIRenderSettingsTokens->shadingSamples)
+    {
+        SetShadingSamples();
+    }
+    for (HdNSIRenderPass *pass : _renderPasses)
+    {
+        pass->RenderSettingChanged(key);
+    }
+
+    _exportedSettings[key] = value;
+    _nsi->RenderControl(NSI::CStringPArg("action", "synchronize"));
+}
+
+HdRenderSettingDescriptorList
+HdNSIRenderDelegate::GetRenderSettingDescriptors() const
+{
+    return _settingDescriptors;
+}
+
 TfTokenVector const&
 HdNSIRenderDelegate::GetSupportedRprimTypes() const
 {
@@ -188,8 +264,10 @@ HdRenderPassSharedPtr
 HdNSIRenderDelegate::CreateRenderPass(HdRenderIndex *index,
                                       HdRprimCollection const& collection)
 {
-    return HdRenderPassSharedPtr(new HdNSIRenderPass(
-        index, collection, _renderParam.get()));
+    auto pass = new HdNSIRenderPass(
+        index, collection, this, _renderParam.get());
+    _renderPasses.push_back(pass);
+    return HdRenderPassSharedPtr(pass);
 }
 
 HdInstancer *
@@ -284,6 +362,21 @@ void
 HdNSIRenderDelegate::DestroyBprim(HdBprim *bPrim)
 {
     delete bPrim;
+}
+
+void HdNSIRenderDelegate::RemoveRenderPass(HdNSIRenderPass *renderPass)
+{
+    _renderPasses.erase(
+        std::remove(_renderPasses.begin(), _renderPasses.end(), renderPass),
+        _renderPasses.end());
+}
+
+void HdNSIRenderDelegate::SetShadingSamples() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->shadingSamples);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("quality.shadingsamples", s.Get<int>()));
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

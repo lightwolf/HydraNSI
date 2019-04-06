@@ -83,8 +83,8 @@ Currently HydraNSI supports the following:
 - Lighting:
   - Head light: a directional light that uses a *directionalLight* emitter which shines from the camera pov. It is always active. Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations. 
   - Omni environment: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is *not* set to be used for environment in the configuration (see below). As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). For more info see the [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp). HDRI environments can be created using data such as [high res probes](http://gl.ict.usc.edu/Data/HighResProbes) and then processed as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
-  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to. For more info see the [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp).
+  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). HDRI environments can be created using data such as [high res probes](http://gl.ict.usc.edu/Data/HighResProbes) and then processed as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
+  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to.
 
 ## Testing
 
@@ -100,7 +100,6 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
   - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
   - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
   - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
-- Optionally configure HydraNSI [config settings](https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/hdNSI/config.cpp)
 - Further explore the source code and issues in this repository & contribute.
 
 > Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.

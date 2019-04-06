@@ -35,94 +35,12 @@ PXR_NAMESPACE_OPEN_SCOPE
 // Instantiate the config singleton.
 TF_INSTANTIATE_SINGLETON(HdNSIConfig);
 
-// Each configuration variable has an associated environment variable.
-// The environment variable macro takes the variable name, a default value,
-// and a description...
-TF_DEFINE_ENV_SETTING(HDNSI_SHADING_SAMPLES, 64,
-        "Shading samples (must be >= 1)");
-
-TF_DEFINE_ENV_SETTING(HDNSI_PIXEL_SAMPLES, 8,
-        "Samples per pixel before we stop rendering (must be >= 1)");
-
-TF_DEFINE_ENV_SETTING(HDNSI_CAMERA_LIGHT_INTENSITY, "1",
-        "Intensity of the camera light.");
-
-TF_DEFINE_ENV_SETTING(HDNSI_ENV_LIGHT_IMAGE, "",
-        "File path to the enviroment image.");
-
-TF_DEFINE_ENV_SETTING(HDNSI_ENV_LIGHT_MAPPING, 0,
-        "Format of enviroment image, spherical (0) or angular (1)");
-
-TF_DEFINE_ENV_SETTING(HDNSI_ENV_LIGHT_INTENSITY, "1",
-        "Intensity of enviroment image");
-
-TF_DEFINE_ENV_SETTING(HDNSI_ENV_AS_BACKGROUND, 1,
-        "If display environment image as background");
-
-TF_DEFINE_ENV_SETTING(HDNSI_ENV_USE_SKY, 1,
-        "Create 3Delight Sky as environment");
-
-TF_DEFINE_ENV_SETTING(HDNSI_MESH_CLOCKWISEWINDING, -1,
-        "Set the clockwisewinding for mesh");
-
-TF_DEFINE_ENV_SETTING(HDNSI_PRINT_CONFIGURATION, 1,
-        "Print configuration at startup (values > 0 are true)");
-
 HdNSIConfig::HdNSIConfig()
 {
     // We need DELIGHT environment variable.
     char *env = getenv("DELIGHT");
     if (env) {
         delight = std::string(env);
-    }
-
-    // Read in values from the environment, clamping them to valid ranges.
-    shadingSamples = std::max(1,
-            TfGetEnvSetting(HDNSI_SHADING_SAMPLES));
-
-    pixelSamples = std::max(1,
-            TfGetEnvSetting(HDNSI_PIXEL_SAMPLES));
-
-    std::string cameraLightIntensityVal =
-        TfGetEnvSetting(HDNSI_CAMERA_LIGHT_INTENSITY);
-    cameraLightIntensity = atof(cameraLightIntensityVal.c_str());
-
-    envLightPath = TfGetEnvSetting(HDNSI_ENV_LIGHT_IMAGE);
-
-    envLightMapping = TfGetEnvSetting(HDNSI_ENV_LIGHT_MAPPING);
-
-    std::string envLightIntensityVal =
-        TfGetEnvSetting(HDNSI_ENV_LIGHT_INTENSITY);
-    envLightIntensity = atof(envLightIntensityVal.c_str());
-
-    envAsBackground = TfGetEnvSetting(HDNSI_ENV_AS_BACKGROUND);
-
-    envUseSky = TfGetEnvSetting(HDNSI_ENV_USE_SKY);
-
-    meshClockwisewinding = TfGetEnvSetting(HDNSI_MESH_CLOCKWISEWINDING);
-
-    if (TfGetEnvSetting(HDNSI_PRINT_CONFIGURATION) > 0) {
-        std::cout
-            << "HdNSI Configuration: \n"
-            << "  shadingSamples            = "
-            <<    shadingSamples << "\n"
-            << "  pixelSamples              = "
-            <<    pixelSamples << "\n"
-            << "  cameraLightIntensity      = "
-            <<    cameraLightIntensity << "\n"
-            << "  envLightImage             = "
-            <<    envLightPath << "\n"
-            << "  envLightMapping           = "
-            <<    envLightMapping << "\n"
-            << "  envLightIntensity         = "
-            <<    envLightIntensity << "\n"
-            << "  envAsBackground           = "
-            <<    envAsBackground << "\n"
-            << "  envUseSky                 = "
-            <<    envUseSky << "\n"
-            << "  meshClockwisewinding      = "
-            << meshClockwisewinding << "\n"
-            ;
     }
 }
 

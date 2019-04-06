@@ -56,53 +56,6 @@ public:
     ///
     std::string delight;
 
-    /// How many samples does each pixel get per frame?
-    ///
-    /// Override with *HDNSI_SHADING_SAMPLES*.
-    unsigned int shadingSamples;
-
-    /// How many samples do we need before a pixel is considered
-    /// converged?
-    ///
-    /// Override with *HDNSI_PIXEL_SAMPLES*.
-    unsigned int pixelSamples;
-
-    /// What should the intensity of the camera light be, specified as a
-    /// percent of <1, 1, 1>.  For example, 300 would be <3, 3, 3>.
-    ///
-    /// Override with *HDNSI_CAMERA_LIGHT_INTENSITY*.
-    float cameraLightIntensity;
-
-    /// Path to the environment light file.
-    ///
-    /// Override with *HDNSI_ENV_LIGHT_IMAGE*.
-    std::string envLightPath;
-
-    /// Format of the enviroment image
-    ///
-    /// Override with *HDNSI_ENV_LIGHT_MAPPING*.
-    int envLightMapping;
-
-    /// Intensity of the enviroment image
-    ///
-    /// Override with *HDNSI_ENV_LIGHT_INTENSITY*
-    float envLightIntensity;
-
-    /// If we render the environment as background.
-    ///
-    /// Override with *HDNSI_ENV_AS_BACKGROUND*
-    int envAsBackground;
-
-    /// If we render the environment as background.
-    ///
-    /// Override with *HDNSI_ENV_USE_SKY*
-    int envUseSky;
-
-    /// Set the clockwise to mesh.
-    ///
-    /// Override with *HDNSI_MESH_CLOCKWISEWINDING*
-    int meshClockwisewinding;
-
 private:
     // The constructor initializes the config variables with their
     // default or environment-provided override, and optionally prints

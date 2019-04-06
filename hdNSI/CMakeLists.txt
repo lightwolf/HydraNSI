@@ -28,6 +28,7 @@ pxr_plugin(hdNSI
         renderDelegate
         renderPass
         sampler
+        tokens
 
     PUBLIC_HEADERS
         renderParam.h

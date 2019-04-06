@@ -41,6 +41,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderDelegate;
+
 /// \class HdNSIRenderPass
 ///
 /// HdRenderPass represents a single render iteration, rendering a view of the
@@ -54,9 +56,9 @@ public:
     /// Renderpass constructor.
     ///   \param index The render index containing scene data to render.
     ///   \param collection The initial rprim collection for this renderpass.
-    ///   \param scene The NSI scene to raycast into.
     HdNSIRenderPass(HdRenderIndex *index,
                     HdRprimCollection const &collection,
+                    HdNSIRenderDelegate *renderDelegate,
                     HdNSIRenderParam *renderParam);
 
     /// Renderpass destructor.
@@ -68,6 +70,8 @@ public:
     /// Determine whether the sample buffer has enough samples.
     ///   \return True if the image has enough samples to be considered final.
     virtual bool IsConverged() const override { return false; };
+
+    void RenderSettingChanged(const TfToken &key);
 
 protected:
 
@@ -139,8 +143,17 @@ private:
     // The height of the viewport we're rendering into.
     unsigned int _height;
 
+    // A handle to the render delegate.
+    HdNSIRenderDelegate *_renderDelegate;
+
     // A handle to the render param.
     HdNSIRenderParam *_renderParam;
+
+    void StopRender() const;
+    void StartRender() const;
+
+    std::string ScreenHandle() const;
+    void SetOversampling() const;
 
     // Our camera-related handles.
     void _CreateNSICamera();
@@ -148,26 +161,20 @@ private:
     std::string _cameraXformHandle;
     std::string _cameraShapeHandle;
 
-    std::string _screenHandle;
     std::string _outputDriverHandle;
 
     // Our headlight handle.
+    std::string ExportNSIHeadLightShader();
     void _CreateNSIHeadLight();
 
     std::string _headlightXformHandle;
     std::string _headlightShapeHandle;
     std::string _headlightGeoAttrsHandle;
-    std::string _headlightShaderHandle;
 
     // Our environment light handles.
     void _CreateNSIEnvironmentLight();
 
     std::string _envlightXformHandle;
-    std::string _envlightShapeHandle;
-    std::string _envlightGeoAttrsHandle;
-    std::string _envlightShaderHandle;
-    std::string _envlightFileShaderHandle;
-    std::string _envlightCoordShaderHandle;
 
     // Update the perspective camera parameters.
     void _UpdateNSICamera();

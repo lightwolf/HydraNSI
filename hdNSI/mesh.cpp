@@ -199,11 +199,6 @@ HdNSIMesh::_CreateNSIMesh(std::shared_ptr<NSI::Context> nsi)
             NSI::IntegerArg("clockwisewinding", _leftHanded));
     }
 
-    if (config.meshClockwisewinding != -1) {
-        nsi->SetAttribute(_masterShapeHandle,
-            NSI::IntegerArg("clockwisewinding", config.meshClockwisewinding));
-    }
-
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
 
