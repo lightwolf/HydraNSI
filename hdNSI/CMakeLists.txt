@@ -35,6 +35,9 @@ pxr_plugin(hdNSI
 
     RESOURCE_FILES
         plugInfo.json
+
+	PRIVATE_CLASSES
+		outputDriver
 )
 
 # if (X11_FOUND OR APPLE)

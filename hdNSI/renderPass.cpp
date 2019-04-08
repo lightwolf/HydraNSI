@@ -43,13 +43,12 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::map<HdNSIRenderPass *, HdNSIRenderPass::DspyImageHandle *> HdNSIRenderPass::_imageHandles;
-
 HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
                                  HdRprimCollection const &collection,
                                  HdNSIRenderDelegate *renderDelegate,
                                  HdNSIRenderParam *renderParam)
     : HdRenderPass(index, collection)
+    , _imageHandle{new HdNSIOutputDriver::Handle}
     , _width(0)
     , _height(0)
     , _renderDelegate(renderDelegate)
@@ -58,8 +57,6 @@ HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
     , _viewMatrix(1.0)
     , _projMatrix(1.0)
 {
-    DspyImageHandle *imageHandle = new DspyImageHandle;
-    _imageHandles[this] = imageHandle;
 }
 
 HdNSIRenderPass::~HdNSIRenderPass()
@@ -70,9 +67,7 @@ HdNSIRenderPass::~HdNSIRenderPass()
     StopRender();
     nsi->RenderControl(NSI::CStringPArg("action", "wait"));
 
-    // Delete the image handle.
-    delete _imageHandles[this];
-    _imageHandles.erase(this);
+    delete _imageHandle;
 }
 
 void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
@@ -131,52 +126,6 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     // Create the camera's transform and the all NSI objects.
     if (_cameraXformHandle.empty())
     {
-        // Retrieve the function pointer to register display driver.
-        typedef PtDspyError (*PFNDspyRegisterDriverTable)(const char *,
-            const PtDspyDriverFunctionTable *);
-
-        static PFNDspyRegisterDriverTable PDspyRegisterDriverTable = NULL;
-
-        // Load the 3Delight library again.
-        if (!PDspyRegisterDriverTable) {
-
-            static void* lib = NULL;
-#if defined(__linux__)
-            lib = dlopen("lib3delight.so", RTLD_NOW);
-#elif defined(__APPLE__)
-            lib = dlopen("lib3delight.dylib", RTLD_NOW);
-#elif defined(_WIN32)
-            lib = LoadLibrary("3Delight.dll");
-#endif
-
-            if (lib) {
-#if defined(_WIN32)
-                PDspyRegisterDriverTable =
-                    reinterpret_cast<PFNDspyRegisterDriverTable>(GetProcAddress((HMODULE)lib,
-                        "DspyRegisterDriverTable"));
-#else
-                PDspyRegisterDriverTable =
-                    reinterpret_cast<PFNDspyRegisterDriverTable>(dlsym(lib,
-                        "DspyRegisterDriverTable"));
-#endif
-            }
-        }
-
-        // Register the display driver.
-        //
-        if (PDspyRegisterDriverTable) {
-            PtDspyDriverFunctionTable table;
-            memset(&table, 0, sizeof(table));
-
-            table.Version = k_PtDriverCurrentVersion;
-            table.pOpen = &_DspyImageOpen;
-            table.pQuery = &_DspyImageQuery;
-            table.pWrite = &_DspyImageData;
-            table.pClose = &_DspyImageClose;
-
-            PDspyRegisterDriverTable("HdNSI", &table);
-        }
-
         // Create the camera node and the others.
         _CreateNSICamera();
     }
@@ -284,11 +233,10 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     _renderParam->ResetSceneEdited();
 
     // Blit!
-    DspyImageHandle *imageHandle = _imageHandles[this];
-    if (imageHandle->_buffer.size()) {
-        _compositor.UpdateColor(_width, _height, imageHandle->_buffer.data());
+    if (_imageHandle->_buffer.size()) {
+        _compositor.UpdateColor(_width, _height, _imageHandle->_buffer.data());
         _compositor.UpdateDepth(_width, _height,
-            (uint8_t*)imageHandle->_depth_buffer.data());
+            (uint8_t*)_imageHandle->_depth_buffer.data());
         _compositor.Draw();
     }
 }
@@ -390,7 +338,7 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::IntegerArg("withalpha", 1),
             NSI::IntegerArg("sortkey", 0),
             NSI::StringArg("variablesource", "shader"),
-            NSI::PointerArg("renderpass", this)));
+            NSI::PointerArg("outputhandle", _imageHandle)));
     }
     nsi->Connect(layer1Handle, "", screenHandle, "outputlayers");
 
@@ -405,7 +353,7 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::StringArg("filter", "min"),
             NSI::DoubleArg("filterwidth", 1.0),
             NSI::IntegerArg("sortkey", 1),
-            NSI::PointerArg("renderpass", this)));
+            NSI::PointerArg("outputhandle", _imageHandle)));
     }
     nsi->Connect(layer2Handle, "", screenHandle, "outputlayers");
 
@@ -663,195 +611,6 @@ void HdNSIRenderPass::_UpdateNSICamera()
 
     nsi->SetAttribute(_cameraShapeHandle,
         NSI::FloatArg("fov", fov));
-}
-
-PtDspyError HdNSIRenderPass::_DspyImageOpen(PtDspyImageHandle *phImage,
-                                            const char *driverName,
-                                            const char *fileName,
-                                            int width, int height,
-                                            int paramCount,
-                                            const UserParameter *parameters,
-                                            int numFormats,
-                                            PtDspyDevFormat formats[],
-                                            PtFlagStuff *flagStuff)
-{
-    if(!phImage) {
-        return PkDspyErrorBadParams;
-    }
-
-    // Find the pointer to HdNSIRenderPass.
-    HdNSIRenderPass *renderPass = NULL;
-
-    for (int i = 0; i < paramCount; ++i)
-    {
-        const UserParameter *parameter = parameters + i;
-
-        const std::string param_name = parameter->name;
-        if (param_name == "renderpass") {
-            renderPass = ((HdNSIRenderPass**)parameter->value)[0];
-            break;
-        }
-    }
-
-    if (renderPass == NULL) {
-        return PkDspyErrorBadParams;
-    }
-
-    // Initialize the image handle.
-    DspyImageHandle *imageHandle = _imageHandles[renderPass];
-
-    imageHandle->_width = width;
-    imageHandle->_height = height;
-
-    for(int i = 0;i < paramCount; ++ i)
-    {
-        const UserParameter *parameter = parameters + i;
-
-        const std::string &param_name = parameter->name;
-        if (param_name == "OriginalSize")
-        {
-            const int *originalSize = static_cast<const int *>(parameter->value);
-            imageHandle->_originalSizeX = originalSize[0];
-            imageHandle->_originalSizeY = originalSize[1];
-        }
-        else if (param_name == "origin")
-        {
-            const int *origin = static_cast<const int *>(parameter->value);
-            imageHandle->_originX = origin[0];
-            imageHandle->_originY = origin[1];
-        }
-    }
-
-    imageHandle->_depth_buffer.resize(width * height,
-        std::numeric_limits<float>::max());
-    imageHandle->_buffer.resize(width * height * 4, 0);
-
-    *phImage = imageHandle;
-
-    return PkDspyErrorNone;
-}
-
-PtDspyError HdNSIRenderPass::_DspyImageQuery(PtDspyImageHandle hImage,
-                                             PtDspyQueryType type,
-                                             int dataLen,
-                                             void *data)
-{
-    if(!data && type != PkStopQuery)
-    {
-        return PkDspyErrorBadParams;
-    }
-
-    switch(type)
-    {
-        case PkSizeQuery:
-        {
-            PtDspySizeInfo size_info;
-            size_info.width = 256;
-            size_info.height = 256;
-            size_info.aspectRatio = 1;
-            memcpy(data, &size_info, sizeof(size_info));
-
-            break;
-        }
-        case PkOverwriteQuery:
-        {
-            PtDspyOverwriteInfo info;
-            info.overwrite = 1;
-            memcpy(data, &info, dataLen > (int)sizeof(info) ? sizeof(info) : (size_t)dataLen);
-
-            break;
-        }
-        case PkProgressiveQuery:
-        {
-            if(dataLen < (int)sizeof(PtDspyProgressiveInfo))
-            {
-                return PkDspyErrorBadParams;
-            }
-            reinterpret_cast<PtDspyProgressiveInfo *>(data)->acceptProgressive = 1;
-
-            break;
-        }
-        case PkCookedQuery:
-        {
-            PtDspyCookedInfo info;
-            info.cooked = 1;
-
-            memcpy(data, &info, dataLen > (int)sizeof(info) ? sizeof(info) : (size_t)dataLen);
-
-            break;
-        }
-        case PkStopQuery:
-        {
-            return PkDspyErrorNone;
-
-            break;
-        }
-        case PkThreadQuery:
-        {
-            PtDspyThreadInfo info;
-            info.multithread = 1;
-
-            assert(dataLen >= sizeof(info));
-            memcpy(data, &info, sizeof(info));
-
-            break;
-        }
-
-        default:
-        {
-            return PkDspyErrorUnsupported;
-        }
-    }
-
-    return PkDspyErrorNone;
-}
-
-PtDspyError HdNSIRenderPass::_DspyImageData(PtDspyImageHandle hImage,
-                                            int xMin, int xMaxPlusOne,
-                                            int yMin, int yMaxPlusOne,
-                                            int entrySize,
-                                            const unsigned char *cdata)
-{
-    if (!entrySize || !cdata) {
-        return PkDspyErrorStop;
-    }
-
-    DspyImageHandle *imageHandle =
-        reinterpret_cast<DspyImageHandle *>(hImage);
-
-    if (!imageHandle) {
-        return PkDspyErrorStop;
-    }
-
-    assert(entrySize == 8);
-    int i = 0;
-
-    for (int y = yMin; y < yMaxPlusOne; ++ y) {
-        for (int x = xMin; x < xMaxPlusOne; ++ x) {
-            size_t p = x + (imageHandle->_height - y - 1) * imageHandle->_width;
-            size_t dstOffset = p * 4;
-
-            imageHandle->_buffer[dstOffset + 0] = cdata[i * entrySize + 0];
-            imageHandle->_buffer[dstOffset + 1] = cdata[i * entrySize + 1];
-            imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
-            imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
-
-            float depth = *(float*)(cdata + i * entrySize + 4);
-            // HdxCompositor wants depth in [-1, 1]
-            float nd =
-                (depth / std::numeric_limits<float>::max()) * 2.0f - 1.0f;
-            imageHandle->_depth_buffer[p] = nd;
-
-            ++ i;
-        }
-    }
-
-    return PkDspyErrorNone;
-}
-
-PtDspyError HdNSIRenderPass::_DspyImageClose(PtDspyImageHandle hImage)
-{
-    return PkDspyErrorNone;
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

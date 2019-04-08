@@ -30,6 +30,7 @@
 
 #include "pxr/imaging/hd/renderPass.h"
 #include "pxr/imaging/hd/sprim.h"
+#include "pxr/imaging/hdNSI/outputDriver.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdx/compositor.h"
 
@@ -37,7 +38,6 @@
 #include "pxr/base/gf/matrix4d.h"
 
 #include <nsi.hpp>
-#include <ndspy.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -93,50 +93,8 @@ private:
     // -----------------------------------------------------------------------
     // Internal API
 
-    // Class used to retrieve the pixel from renderer.
-    class DspyImageHandle {
-    public:
 
-        int _width, _height;
-
-        int _originalSizeX, _originalSizeY;
-
-        int _originX, _originY;
-
-        // Buffer for RGBA.
-        std::vector<uint8_t> _buffer;
-        // Buffer for Z.
-        std::vector<float> _depth_buffer;
-    };
-
-    static std::map<HdNSIRenderPass *, DspyImageHandle *> _imageHandles;
-
-    // Display Driver - Open callback function.
-    static PtDspyError _DspyImageOpen(PtDspyImageHandle *phImage,
-                                      const char *driverName,
-                                      const char *fileName,
-                                      int width, int height,
-                                      int paramCount,
-                                      const UserParameter *parameters,
-                                      int numFormats,
-                                      PtDspyDevFormat formats[],
-                                      PtFlagStuff *flagStuff);
-
-    // Display Driver - Query callback function.
-    static PtDspyError _DspyImageQuery(PtDspyImageHandle hImage,
-                                       PtDspyQueryType type,
-                                       int dataLen,
-                                       void *data);
-
-    // Display Driver - Data callback function.
-    static PtDspyError _DspyImageData(PtDspyImageHandle hImage,
-                                      int xMin, int xMaxPlusOne,
-                                      int yMin, int yMaxPlusOne,
-                                      int entrySize,
-                                      const unsigned char *cdata);
-
-    // Display Driver - Close callback function.
-    static PtDspyError _DspyImageClose(PtDspyImageHandle hImage);
+    HdNSIOutputDriver::Handle *_imageHandle;
 
     // The width of the viewport we're rendering into.
     unsigned int _width;

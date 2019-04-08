@@ -104,6 +104,9 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     // Initialize the NSI context with dynamic API.
     _capi.reset(new NSI::DynamicAPI);
 
+    /* Init output driver too. */
+    HdNSIOutputDriver::Register(*_capi);
+
     _nsi = std::make_shared<NSI::Context>(*_capi);
     _nsi->Begin();
 
