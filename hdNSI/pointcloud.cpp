@@ -26,8 +26,8 @@
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/pointcloud.h"
 
-#include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/instancer.h"
+#include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
 #include "pxr/imaging/hd/points.h"
@@ -158,15 +158,17 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
     const HdPointsReprDesc &desc = descs[0];
 
     // Pull top-level NSI state out of the render param.
-    std::shared_ptr<NSI::Context> nsi =
-        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
+    auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+    std::shared_ptr<NSI::Context> nsi = nsiRenderParam->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
-    _PopulateRtPointCloud(sceneDelegate, nsi, dirtyBits, desc);
+    _PopulateRtPointCloud(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
 void
-HdNSIPointCloud::_CreateNSIPointCloud(std::shared_ptr<NSI::Context> nsi)
+HdNSIPointCloud::_CreateNSIPointCloud(
+    HdNSIRenderParam *renderParam,
+    std::shared_ptr<NSI::Context> nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|pointcloud1";
@@ -187,11 +189,11 @@ HdNSIPointCloud::_CreateNSIPointCloud(std::shared_ptr<NSI::Context> nsi)
     _shadersHandle = id.GetString() + "|shader1";
 
     if (!_nsiPointCloudShaderHandles.count(id)) {
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
 
         // Create the dl3DelightMaterial shader.
         std::string dlMaterialShaderPath =
-            config.delight + "/maya/osl/dl3DelightMaterial";
+            renderParam->GetRenderDelegate()->GetDelight()
+            + "/maya/osl/dl3DelightMaterial";
 
         nsi->Create(_shadersHandle, "shader");
         nsi->SetAttribute(_shadersHandle, (NSI::StringArg("shaderfilename", dlMaterialShaderPath),
@@ -202,7 +204,8 @@ HdNSIPointCloud::_CreateNSIPointCloud(std::shared_ptr<NSI::Context> nsi)
 
         // Create the dlPrimitiveAttribute shader for DisplayColor.
         std::string primvarShaderPath =
-            config.delight + "/maya/osl/dlPrimitiveAttribute";
+            renderParam->GetRenderDelegate()->GetDelight()
+            + "/maya/osl/dlPrimitiveAttribute";
 
         std::string displayColorShaderHandle = id.GetString() + "|shader2";
         nsi->Create(displayColorShaderHandle, "shader");
@@ -302,6 +305,7 @@ HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
+                                       HdNSIRenderParam *renderParam,
                                        std::shared_ptr<NSI::Context> nsi,
                                        HdDirtyBits* dirtyBits,
                                        HdPointsReprDesc const &desc)
@@ -386,7 +390,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     if (newPointCloud) {
         // Create the new pointcloud node.
-        _CreateNSIPointCloud(nsi);
+        _CreateNSIPointCloud(renderParam, nsi);
 
         // attributes will be (re-)populated below.
     }

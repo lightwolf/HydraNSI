@@ -35,6 +35,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderDelegate;
+
 ///
 /// \class HdNSIRenderParam
 ///
@@ -44,12 +46,17 @@ PXR_NAMESPACE_OPEN_SCOPE
 /// 
 class HdNSIRenderParam final : public HdRenderParam {
 public:
-    HdNSIRenderParam(const std::shared_ptr<NSI::Context> &nsi)
-        : _nsi(nsi)
-        , _sceneEdited(false)
-        {}
+    HdNSIRenderParam(
+        HdNSIRenderDelegate *renderDelegate,
+        const std::shared_ptr<NSI::Context> &nsi)
+    : _renderDelegate(renderDelegate)
+    , _nsi(nsi)
+    , _sceneEdited(false)
+    {}
 
     virtual ~HdNSIRenderParam() = default;
+
+    HdNSIRenderDelegate* GetRenderDelegate() const { return _renderDelegate; }
 
     /// Accessor for the top-level NSI scene.
     std::shared_ptr<NSI::Context> AcquireSceneForEdit() {
@@ -63,6 +70,8 @@ public:
     void ResetSceneEdited() { _sceneEdited = false; }
 
 private:
+    HdNSIRenderDelegate *_renderDelegate;
+
     /// A smart pointer to the NSI API.
     std::shared_ptr<NSI::Context> _nsi;
 

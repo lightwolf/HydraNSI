@@ -26,8 +26,8 @@
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/mesh.h"
 
-#include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/instancer.h"
+#include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
 #include "pxr/imaging/hd/meshUtil.h"
@@ -168,15 +168,17 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
     const HdMeshReprDesc &desc = descs[0];
 
     // Pull top-level NSI state out of the render param.
-    std::shared_ptr<NSI::Context> nsi =
-        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
+    auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+    std::shared_ptr<NSI::Context> nsi = nsiRenderParam->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
-    _PopulateRtMesh(sceneDelegate, nsi, dirtyBits, desc);
+    _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
 bool
-HdNSIMesh::_CreateNSIMesh(std::shared_ptr<NSI::Context> nsi)
+HdNSIMesh::_CreateNSIMesh(
+    HdNSIRenderParam *renderParam,
+    std::shared_ptr<NSI::Context> nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|mesh1";
@@ -192,8 +194,6 @@ HdNSIMesh::_CreateNSIMesh(std::shared_ptr<NSI::Context> nsi)
     }
 
     // Set clockwisewinding for the mesh.
-    const HdNSIConfig &config = HdNSIConfig::GetInstance();
-
     if (_leftHanded != -1) {
         nsi->SetAttribute(_masterShapeHandle,
             NSI::IntegerArg("clockwisewinding", _leftHanded));
@@ -217,7 +217,8 @@ HdNSIMesh::_CreateNSIMesh(std::shared_ptr<NSI::Context> nsi)
     if (!_nsiMeshShaderHandles.count(colorKey)) {
         // Create the default shader node.
         const std::string &shaderPath =
-            config.delight + "/maya/osl/dl3DelightMaterial";
+            renderParam->GetRenderDelegate()->GetDelight()
+            + "/maya/osl/dl3DelightMaterial";
 
         nsi->Create(_shaderHandle, "shader");
         nsi->SetAttribute(_shaderHandle,
@@ -361,6 +362,7 @@ HdNSIMesh::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
+                           HdNSIRenderParam *renderParam,
                            std::shared_ptr<NSI::Context> nsi,
                            HdDirtyBits* dirtyBits,
                            HdMeshReprDesc const &desc)
@@ -482,7 +484,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         doRefine != _refined) {
 
         // Create the new mesh node.
-        newMesh = _CreateNSIMesh(nsi);
+        newMesh = _CreateNSIMesh(renderParam, nsi);
 
         _refined = doRefine;
         // In both cases, the vertices will be (re-)populated below.

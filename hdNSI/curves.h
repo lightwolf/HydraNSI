@@ -37,6 +37,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderParam;
+
 /// \class HdNSICurves
 ///
 /// An HdNSI representation of a basis curves object.
@@ -151,6 +153,7 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtCurves(HdSceneDelegate *sceneDelegate,
+                           HdNSIRenderParam *renderParam,
                            std::shared_ptr<NSI::Context> nsi,
                            HdDirtyBits *dirtyBits,
                            HdBasisCurvesReprDesc const &desc);
@@ -162,7 +165,9 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle curves and populate topology.
-    void _CreateNSICurves(std::shared_ptr<NSI::Context> nsi);
+    void _CreateNSICurves(
+        HdNSIRenderParam *renderParam,
+        std::shared_ptr<NSI::Context> nsi);
     void _SetNSICurvesAttributes(std::shared_ptr<NSI::Context> nsi);
 
 private:

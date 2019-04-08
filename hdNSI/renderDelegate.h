@@ -200,6 +200,8 @@ public:
 
     void RemoveRenderPass(HdNSIRenderPass *renderPass);
 
+    const std::string& GetDelight() const { return _delight; }
+
 private:
     void SetShadingSamples() const;
 
@@ -238,6 +240,9 @@ private:
 
     /* All render pass objects created by this render delegate. */
     std::vector<HdNSIRenderPass*> _renderPasses;
+
+    /* Root of renderer installation. */
+    std::string _delight;
 
 public:
     // A callback that interprets NSI error codes and injects them into

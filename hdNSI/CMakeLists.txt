@@ -19,7 +19,6 @@ pxr_plugin(hdNSI
         ${NSI_INCLUDE_DIR}
 
     PUBLIC_CLASSES
-        config
         instancer
         mesh
         pointcloud

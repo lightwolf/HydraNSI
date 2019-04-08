@@ -27,7 +27,6 @@
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 
-#include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/instancer.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
@@ -43,6 +42,8 @@
 //XXX: Add other Sprim types later
 #include "pxr/imaging/hd/bprim.h"
 //XXX: Add bprim types
+
+#include "delight.h"
 
 #include <iostream>
 #include <cassert>
@@ -107,12 +108,19 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     /* Init output driver too. */
     HdNSIOutputDriver::Register(*_capi);
 
+    /* Init install root path. */
+    decltype(&DlGetInstallRoot) PDlGetInstallRoot;
+    _capi->LoadFunction(PDlGetInstallRoot, "DlGetInstallRoot");
+    if (PDlGetInstallRoot) {
+        _delight = PDlGetInstallRoot();
+    }
+
     _nsi = std::make_shared<NSI::Context>(*_capi);
     _nsi->Begin();
 
     // Store top-level NSI objects inside a render param that can be
     // passed to prims during Sync().
-    _renderParam = std::make_shared<HdNSIRenderParam>(_nsi);
+    _renderParam = std::make_shared<HdNSIRenderParam>(this, _nsi);
 
     // Initialize one resource registry for all NSI plugins
     std::lock_guard<std::mutex> guard(_mutexResourceRegistry);
@@ -167,8 +175,6 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     _exportedSettings = _settingsMap;
 
     // Set global parameters.
-    const HdNSIConfig &config = HdNSIConfig::GetInstance();
-
     SetShadingSamples();
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,

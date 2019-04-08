@@ -37,6 +37,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderParam;
+
 /// \class HdNSIMesh
 ///
 /// An HdNSI representation of a subdivision surface or poly-mesh object.
@@ -151,6 +153,7 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtMesh(HdSceneDelegate *sceneDelegate,
+                         HdNSIRenderParam *renderParam,
                          std::shared_ptr<NSI::Context> nsi,
                          HdDirtyBits *dirtyBits,
                          HdMeshReprDesc const &desc);
@@ -162,7 +165,9 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle mesh and populate topology.
-    bool _CreateNSIMesh(std::shared_ptr<NSI::Context> nsi);
+    bool _CreateNSIMesh(
+        HdNSIRenderParam *renderParam,
+        std::shared_ptr<NSI::Context> nsi);
     void _SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdiv);
 
 private:

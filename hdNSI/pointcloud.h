@@ -38,6 +38,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderParam;
+
 /// \class HdNSIPointCloud
 ///
 /// An HdNSI representation of a pointcloud object.
@@ -152,6 +154,7 @@ protected:
 private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtPointCloud(HdSceneDelegate *sceneDelegate,
+                               HdNSIRenderParam *renderParam,
                                std::shared_ptr<NSI::Context> nsi,
                                HdDirtyBits *dirtyBits,
                                HdPointsReprDesc const &desc);
@@ -163,7 +166,9 @@ private:
                                HdDirtyBits dirtyBits);
 
     // Utility function to create a NSI triangle pointcloud and populate topology.
-    void _CreateNSIPointCloud(std::shared_ptr<NSI::Context> nsi);
+    void _CreateNSIPointCloud(
+        HdNSIRenderParam *renderParam,
+        std::shared_ptr<NSI::Context> nsi);
     void _SetNSIPointCloudAttributes(std::shared_ptr<NSI::Context> nsi);
 
 private:

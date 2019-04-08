@@ -26,8 +26,8 @@
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/curves.h"
 
-#include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/instancer.h"
+#include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
 #include "pxr/imaging/hd/basisCurves.h"
@@ -161,15 +161,17 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
     const HdBasisCurvesReprDesc &desc = descs[0];
 
     // Pull top-level NSI state out of the render param.
-    std::shared_ptr<NSI::Context> nsi =
-        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
+    auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+    std::shared_ptr<NSI::Context> nsi = nsiRenderParam->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
-    _PopulateRtCurves(sceneDelegate, nsi, dirtyBits, desc);
+    _PopulateRtCurves(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
 void
-HdNSICurves::_CreateNSICurves(std::shared_ptr<NSI::Context> nsi)
+HdNSICurves::_CreateNSICurves(
+    HdNSIRenderParam *renderParam,
+    std::shared_ptr<NSI::Context> nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|curves1";
@@ -198,8 +200,8 @@ HdNSICurves::_CreateNSICurves(std::shared_ptr<NSI::Context> nsi)
 
     if (!_nsiCurvesShaderHandles.count(colorsKey)) {
         // Create the dlHairAndFur shader.
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
-        std::string shaderPath = config.delight + "/maya/osl/dlHairAndFur";
+        std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight()
+            + "/maya/osl/dlHairAndFur";
 
         nsi->Create(_shaderHandle, "shader");
         nsi->SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
@@ -208,7 +210,8 @@ HdNSICurves::_CreateNSICurves(std::shared_ptr<NSI::Context> nsi)
         _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
 
         // Create the dlPrimitiveAttribute shader.
-        shaderPath = config.delight + "/maya/osl/dlPrimitiveAttribute";
+        shaderPath = renderParam->GetRenderDelegate()->GetDelight()
+            + "/maya/osl/dlPrimitiveAttribute";
         std::string displayColorShaderHandle = id.GetString() + "|shader2";
         nsi->Create(displayColorShaderHandle, "shader");
         nsi->SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
@@ -306,6 +309,7 @@ HdNSICurves::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 
 void
 HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
+                               HdNSIRenderParam *renderParam,
                                std::shared_ptr<NSI::Context> nsi,
                                HdDirtyBits* dirtyBits,
                                HdBasisCurvesReprDesc const &desc)
@@ -402,7 +406,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         newCurves = true;
 
         // Create the new curves node.
-        _CreateNSICurves(nsi);
+        _CreateNSICurves(renderParam, nsi);
 
         _refined = doRefine;
         // In both cases, vertices/attributes will be (re-)populated below.

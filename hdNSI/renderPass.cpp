@@ -27,7 +27,6 @@
 
 #include "pxr/imaging/hdNSI/renderPass.h"
 
-#include "pxr/imaging/hdNSI/config.h"
 #include "pxr/imaging/hdNSI/mesh.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
@@ -386,9 +385,8 @@ std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 
     NSI::ArgumentList args;
 
-    const HdNSIConfig &config = HdNSIConfig::GetInstance();
     const std::string &directionalLightShaderPath =
-        config.delight + "/maya/osl/directionalLight";
+        _renderDelegate->GetDelight() + "/maya/osl/directionalLight";
 
     args.Add(new NSI::StringArg("shaderfilename",
         directionalLightShaderPath));
@@ -498,7 +496,6 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
     // Use user-defined environment image or empty.
     float color[3] = {1, 1, 1};
 
-    const HdNSIConfig &config = HdNSIConfig::GetInstance();
     std::string envLightPath = _renderDelegate->GetRenderSetting(
         HdNSIRenderSettingsTokens->envLightPath).Get<std::string>();
     int envLightMapping = _renderDelegate->GetRenderSetting(
@@ -515,9 +512,8 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
     if (envLightPath.size() || envUseSky)
     {
         // Set the environment shader.
-        const HdNSIConfig &config = HdNSIConfig::GetInstance();
         const std::string &shaderPath =
-            config.delight + "/maya/osl/dlEnvironmentShape";
+            _renderDelegate->GetDelight() + "/maya/osl/dlEnvironmentShape";
 
         nsi->SetAttribute(envlightShaderHandle, (
             NSI::StringArg("shaderfilename", shaderPath),
@@ -533,7 +529,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         if (envLightPath.size()) {
             // Set the enviroment image.
             const std::string &shaderPath =
-                config.delight + "/maya/osl/file";
+                _renderDelegate->GetDelight() + "/maya/osl/file";
 
             nsi->SetAttribute(envlightFileShaderHandle, (
                 NSI::StringArg("shaderfilename", shaderPath),
@@ -545,7 +541,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         } else {
             // Set the sky.
             const std::string &shaderPath =
-                config.delight + "/maya/osl/dlSky";
+                _renderDelegate->GetDelight() + "/maya/osl/dlSky";
 
             nsi->SetAttribute(envlightFileShaderHandle, (
                 NSI::StringArg("shaderfilename", shaderPath),
@@ -569,7 +565,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         nsi->Create(envlightCoordShaderHandle, "shader");
         {
             const std::string &shaderPath =
-                config.delight + "/maya/osl/uvCoordEnvironment";
+                _renderDelegate->GetDelight() + "/maya/osl/uvCoordEnvironment";
 
             nsi->SetAttribute(envlightCoordShaderHandle,
                 NSI::StringArg("shaderfilename", shaderPath));
@@ -588,7 +584,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
     } else {
         // Change this environment light to omi light.
         const std::string &shaderPath =
-            config.delight + "/maya/osl/directionalLight";
+            _renderDelegate->GetDelight() + "/maya/osl/directionalLight";
 
         nsi->SetAttribute(envlightShaderHandle, (
             NSI::StringArg("shaderfilename", shaderPath),
