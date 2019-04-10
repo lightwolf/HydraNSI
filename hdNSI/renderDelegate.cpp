@@ -115,6 +115,14 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
         _delight = PDlGetInstallRoot();
     }
 
+    decltype(&DlGetLibNameAndVersionString) PDlGetLibNameAndVersionString;
+    _capi->LoadFunction(PDlGetLibNameAndVersionString,
+        "DlGetLibNameAndVersionString");
+    if (PDlGetLibNameAndVersionString) {
+        TF_STATUS("hdNSI is using %s at '%s'",
+            PDlGetLibNameAndVersionString(), _delight.c_str());
+    }
+
     _nsi = std::make_shared<NSI::Context>(*_capi);
     _nsi->Begin();
 
