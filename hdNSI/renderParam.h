@@ -59,12 +59,12 @@ public:
     HdNSIRenderDelegate* GetRenderDelegate() const { return _renderDelegate; }
 
     /// Accessor for the top-level NSI scene.
-    std::shared_ptr<NSI::Context> AcquireSceneForEdit() {
+    NSI::Context& AcquireSceneForEdit() {
         _sceneEdited.store(true, std::memory_order_relaxed);
-        return _nsi;
+        return *_nsi;
     }
     /// Accessor for the global shared NSI context.
-    std::shared_ptr<NSI::Context> GetNSIContext() { return _nsi; }
+    NSI::Context& GetNSIContext() { return *_nsi; }
 
     bool SceneEdited() const { return _sceneEdited; }
     void ResetSceneEdited() { _sceneEdited = false; }

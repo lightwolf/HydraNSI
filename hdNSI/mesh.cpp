@@ -64,7 +64,7 @@ HdNSIMesh::HdNSIMesh(SdfPath const& id,
 void
 HdNSIMesh::Finalize(HdRenderParam *renderParam)
 {
-    std::shared_ptr<NSI::Context> nsi =
+    NSI::Context &nsi =
         static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
 
     const SdfPath &id = GetId();
@@ -73,14 +73,14 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
     auto range = _nsiMeshXformHandles.equal_range(id);
     for (auto itr = range.first; itr != range.second; ++ itr) {
         const std::string &instanceXformHandle = itr->second;
-        nsi->Delete(instanceXformHandle);
+        nsi.Delete(instanceXformHandle);
     }
     _nsiMeshXformHandles.erase(id);
 
     // Delete the prototype geometry.
     if (_nsiMeshShapeHandles.count(id)) {
         _nsiMeshShapeHandles.erase(id);
-        nsi->Delete(_masterShapeHandle);
+        nsi.Delete(_masterShapeHandle);
     }
 
     _masterShapeHandle.clear();
@@ -93,7 +93,7 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
         auto range = _nsiMeshShaderHandles.equal_range(colorKey);
         for (auto itr = range.first; itr != range.second; ++ itr) {
             const std::string &handle = itr->second;
-            nsi->Delete(handle);
+            nsi.Delete(handle);
         }
         _nsiMeshShaderHandles.erase(colorKey);
     }
@@ -101,7 +101,7 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
     _shaderHandle.clear();
 
     // Delete the attributes node.
-    nsi->Delete(_attrsHandle);
+    nsi.Delete(_attrsHandle);
 
     _attrsHandle.clear();
 }
@@ -169,7 +169,7 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
 
     // Pull top-level NSI state out of the render param.
     auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
-    std::shared_ptr<NSI::Context> nsi = nsiRenderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
     _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
@@ -178,7 +178,7 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
 bool
 HdNSIMesh::_CreateNSIMesh(
     HdNSIRenderParam *renderParam,
-    std::shared_ptr<NSI::Context> nsi)
+    NSI::Context &nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|mesh1";
@@ -187,7 +187,7 @@ HdNSIMesh::_CreateNSIMesh(
     bool newShape = false;
 
     if (!_nsiMeshShapeHandles.count(id)) {
-        nsi->Create(_masterShapeHandle, "mesh");
+        nsi.Create(_masterShapeHandle, "mesh");
         _nsiMeshShapeHandles.insert(std::make_pair(id, _masterShapeHandle));
 
         newShape = true;
@@ -195,16 +195,16 @@ HdNSIMesh::_CreateNSIMesh(
 
     // Set clockwisewinding for the mesh.
     if (_leftHanded != -1) {
-        nsi->SetAttribute(_masterShapeHandle,
+        nsi.SetAttribute(_masterShapeHandle,
             NSI::IntegerArg("clockwisewinding", _leftHanded));
     }
 
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
 
-    nsi->Create(masterXformHandle, "transform");
-    nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+    nsi.Create(masterXformHandle, "transform");
+    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
 
     _nsiMeshXformHandles.insert(std::make_pair(id, masterXformHandle));
 
@@ -220,8 +220,8 @@ HdNSIMesh::_CreateNSIMesh(
             renderParam->GetRenderDelegate()->GetDelight()
             + "/maya/osl/dl3DelightMaterial";
 
-        nsi->Create(_shaderHandle, "shader");
-        nsi->SetAttribute(_shaderHandle,
+        nsi.Create(_shaderHandle, "shader");
+        nsi.SetAttribute(_shaderHandle,
             (NSI::StringArg("shaderfilename", shaderPath),
                 NSI::ColorArg("i_color", _color.data())));
 
@@ -232,16 +232,16 @@ HdNSIMesh::_CreateNSIMesh(
     // Create the attribute node.
     _attrsHandle = id.GetString() + "|attributes1";
 
-    nsi->Create(_attrsHandle, "attributes");
-    nsi->Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
+    nsi.Create(_attrsHandle, "attributes");
+    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
 
-    nsi->Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
+    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 
     return newShape;
 }
 
 void
-HdNSIMesh::_SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdiv)
+HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
 {
     NSI::ArgumentList attrs;
 
@@ -250,7 +250,7 @@ HdNSIMesh::_SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdi
     asSubdiv |= (scheme == PxOsdOpenSubdivTokens->catmullClark);
 
     if (asSubdiv) {
-        nsi->SetAttribute(_masterShapeHandle,
+        nsi.SetAttribute(_masterShapeHandle,
             NSI::CStringPArg("subdivision.scheme", "catmull-clark"));
     }
 
@@ -324,7 +324,7 @@ HdNSIMesh::_SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdi
             ->SetValuePointer(_faceVertexIndices.data()));
     }
 
-    nsi->SetAttribute(_masterShapeHandle, attrs);
+    nsi.SetAttribute(_masterShapeHandle, attrs);
 }
 
 void
@@ -363,7 +363,7 @@ HdNSIMesh::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 void
 HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
                            HdNSIRenderParam *renderParam,
-                           std::shared_ptr<NSI::Context> nsi,
+                           NSI::Context &nsi,
                            HdDirtyBits* dirtyBits,
                            HdMeshReprDesc const &desc)
 {
@@ -495,7 +495,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (newMesh || HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         const int refineLevel = _topology.GetRefineLevel();
 
-        nsi->SetAttribute(_masterShapeHandle,
+        nsi.SetAttribute(_masterShapeHandle,
             NSI::CStringPArg("subdivision.scheme",
                 refineLevel ? "catmull-clark" : ""));
     }
@@ -508,7 +508,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // Update visibility.
     if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi->SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
             NSI::IntegerArg("visibility.priority", 1)));
     }
 
@@ -543,15 +543,15 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
                 instanceXformHandleStream.str();
 
             if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi->Create(instanceXformHandle, "transform");
-                nsi->Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi->Connect(_masterShapeHandle, "",
+                nsi.Create(instanceXformHandle, "transform");
+                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
+                nsi.Connect(_masterShapeHandle, "",
                     instanceXformHandle, "objects");
-                nsi->Connect(_attrsHandle, "",
+                nsi.Connect(_attrsHandle, "",
                     instanceXformHandle, "geometryattributes");
             }
 
-            nsi->SetAttributeAtTime(instanceXformHandle, 0,
+            nsi.SetAttributeAtTime(instanceXformHandle, 0,
                 NSI::DoubleMatrixArg("transformationmatrix",
                     transforms[i].GetArray()));
         }
@@ -564,16 +564,16 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         if (!hasXform) {
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi->Create(masterXformHandle, "transform");
-            nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+            nsi.Create(masterXformHandle, "transform");
+            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
         }
 
         if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
             // Update the transform.
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi->SetAttributeAtTime(masterXformHandle, 0.0,
+            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
     }

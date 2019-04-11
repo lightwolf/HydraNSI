@@ -53,7 +53,7 @@ HdNSIPointCloud::HdNSIPointCloud(SdfPath const& id,
 void
 HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
 {
-    std::shared_ptr<NSI::Context> nsi =
+    NSI::Context &nsi =
         (static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit());
 
     const SdfPath &id = GetId();
@@ -63,7 +63,7 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
         auto range = _nsiPointCloudXformHandles.equal_range(id);
         for (auto itr = range.first; itr != range.second; ++itr) {
             const std::string &instanceXformHandle = itr->second;
-            nsi->Delete(instanceXformHandle);
+            nsi.Delete(instanceXformHandle);
         }
         _nsiPointCloudXformHandles.erase(id);
     }
@@ -73,7 +73,7 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
         auto range = _nsiPointCloudShaderHandles.equal_range(id);
         for (auto itr = range.first; itr != range.second; ++itr) {
             const std::string &handle = itr->second;
-            nsi->Delete(handle);
+            nsi.Delete(handle);
         }
         _nsiPointCloudShaderHandles.erase(id);
     }
@@ -81,7 +81,7 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
     _shadersHandle.clear();
 
     // Ddele the attributes node.
-    nsi->Delete(_attrsHandle);
+    nsi.Delete(_attrsHandle);
 
     _attrsHandle.clear();
 
@@ -89,7 +89,7 @@ HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
     if (_nsiPointCloudShapeHandles.count(id)) {
         _nsiPointCloudShapeHandles.erase(id);
 
-        nsi->Delete(_masterShapeHandle);
+        nsi.Delete(_masterShapeHandle);
 
     }
 
@@ -159,7 +159,7 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
 
     // Pull top-level NSI state out of the render param.
     auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
-    std::shared_ptr<NSI::Context> nsi = nsiRenderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
     // Create NSI geometry objects.
     _PopulateRtPointCloud(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
@@ -168,20 +168,20 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
 void
 HdNSIPointCloud::_CreateNSIPointCloud(
     HdNSIRenderParam *renderParam,
-    std::shared_ptr<NSI::Context> nsi)
+    NSI::Context &nsi)
 {
     const SdfPath &id = GetId();
     _masterShapeHandle = id.GetString() + "|pointcloud1";
 
     // Create the new pointcloud.
-    nsi->Create(_masterShapeHandle, "particles");
+    nsi.Create(_masterShapeHandle, "particles");
 
     // Create the master transform node.
     const std::string &masterXformHandle = id.GetString() + "|transform1";
 
-    nsi->Create(masterXformHandle, "transform");
-    nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+    nsi.Create(masterXformHandle, "transform");
+    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
 
     _nsiPointCloudXformHandles.insert(std::make_pair(id, masterXformHandle));
 
@@ -195,8 +195,8 @@ HdNSIPointCloud::_CreateNSIPointCloud(
             renderParam->GetRenderDelegate()->GetDelight()
             + "/maya/osl/dl3DelightMaterial";
 
-        nsi->Create(_shadersHandle, "shader");
-        nsi->SetAttribute(_shadersHandle, (NSI::StringArg("shaderfilename", dlMaterialShaderPath),
+        nsi.Create(_shadersHandle, "shader");
+        nsi.SetAttribute(_shadersHandle, (NSI::StringArg("shaderfilename", dlMaterialShaderPath),
             NSI::FloatArg("i_color", 0.6f),
             NSI::FloatArg("reflect_roughness", 0.5f)));
 
@@ -208,12 +208,12 @@ HdNSIPointCloud::_CreateNSIPointCloud(
             + "/maya/osl/dlPrimitiveAttribute";
 
         std::string displayColorShaderHandle = id.GetString() + "|shader2";
-        nsi->Create(displayColorShaderHandle, "shader");
-        nsi->SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", primvarShaderPath),
+        nsi.Create(displayColorShaderHandle, "shader");
+        nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", primvarShaderPath),
             NSI::StringArg("attribute_name", "DisplayColor"),
             NSI::IntegerArg("attribute_type", 1)));
 
-        nsi->Connect(displayColorShaderHandle, "o_color",
+        nsi.Connect(displayColorShaderHandle, "o_color",
             _shadersHandle, "i_color");
 
         _nsiPointCloudShaderHandles.insert(std::make_pair(id, displayColorShaderHandle));
@@ -222,14 +222,14 @@ HdNSIPointCloud::_CreateNSIPointCloud(
     // Create tha attributes node.
     _attrsHandle = id.GetString() + "|attributes1";
 
-    nsi->Create(_attrsHandle, "attributes");
-    nsi->Connect(_shadersHandle, "", _attrsHandle, "surfaceshader");
+    nsi.Create(_attrsHandle, "attributes");
+    nsi.Connect(_shadersHandle, "", _attrsHandle, "surfaceshader");
 
-    nsi->Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
+    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
 
 void
-HdNSIPointCloud::_SetNSIPointCloudAttributes(std::shared_ptr<NSI::Context> nsi)
+HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
 {
     NSI::ArgumentList attrs;
 
@@ -267,7 +267,7 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(std::shared_ptr<NSI::Context> nsi)
             ->SetValuePointer(_colors.cdata()));
     }
 
-    nsi->SetAttribute(_masterShapeHandle, attrs);
+    nsi.SetAttribute(_masterShapeHandle, attrs);
 }
 
 void
@@ -306,7 +306,7 @@ HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
 void
 HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
                                        HdNSIRenderParam *renderParam,
-                                       std::shared_ptr<NSI::Context> nsi,
+                                       NSI::Context &nsi,
                                        HdDirtyBits* dirtyBits,
                                        HdPointsReprDesc const &desc)
 {
@@ -405,7 +405,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     // Update visibility.
     if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi->SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
+        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
             NSI::IntegerArg("visibility.priority", 1)));
     }
 
@@ -440,13 +440,13 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
                 instanceXformHandleStream.str();
 
             if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi->Create(instanceXformHandle, "transform");
-                nsi->Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi->Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi->Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
+                nsi.Create(instanceXformHandle, "transform");
+                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
+                nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
+                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
             }
 
-            nsi->SetAttributeAtTime(instanceXformHandle, 0,
+            nsi.SetAttributeAtTime(instanceXformHandle, 0,
                 NSI::DoubleMatrixArg("transformationmatrix", transforms[i].GetArray()));
         }
     }
@@ -458,16 +458,16 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         if (!hasXform) {
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi->Create(masterXformHandle, "transform");
-            nsi->Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi->Connect(_masterShapeHandle, "", masterXformHandle, "objects");
+            nsi.Create(masterXformHandle, "transform");
+            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
+            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
         }
 
         if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
             // Update the transform.
             std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi->SetAttributeAtTime(masterXformHandle, 0.0,
+            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
     }

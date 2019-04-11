@@ -154,7 +154,7 @@ private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtCurves(HdSceneDelegate *sceneDelegate,
                            HdNSIRenderParam *renderParam,
-                           std::shared_ptr<NSI::Context> nsi,
+                           NSI::Context &nsi,
                            HdDirtyBits *dirtyBits,
                            HdBasisCurvesReprDesc const &desc);
 
@@ -167,8 +167,8 @@ private:
     // Utility function to create a NSI triangle curves and populate topology.
     void _CreateNSICurves(
         HdNSIRenderParam *renderParam,
-        std::shared_ptr<NSI::Context> nsi);
-    void _SetNSICurvesAttributes(std::shared_ptr<NSI::Context> nsi);
+        NSI::Context &nsi);
+    void _SetNSICurvesAttributes(NSI::Context &nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we

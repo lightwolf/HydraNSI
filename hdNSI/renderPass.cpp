@@ -61,10 +61,10 @@ HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
 HdNSIRenderPass::~HdNSIRenderPass()
 {
     // Stop the render.
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     StopRender();
-    nsi->RenderControl(NSI::CStringPArg("action", "wait"));
+    nsi.RenderControl(NSI::CStringPArg("action", "wait"));
 
     delete _imageHandle;
 }
@@ -93,7 +93,7 @@ void
 HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
                           TfTokenVector const &renderTags)
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->GetNSIContext();
+    NSI::Context &nsi = _renderParam->GetNSIContext();
 
     // If the viewport has changed, resize and reset the sample buffer.
     bool resetImage = false;
@@ -181,7 +181,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
             ->SetCount(2)
             ->CopyValue(window_data, sizeof(window_data)));
 
-        nsi->SetAttribute(ScreenHandle(), args);
+        nsi.SetAttribute(ScreenHandle(), args);
 
         if (_renderStatus == Running)
         {
@@ -194,7 +194,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     if (resetCameraXform) {
         // Update the render camera.
         const GfMatrix4d &viewInvMatrix = _viewMatrix.GetInverse();
-        nsi->SetAttribute(_cameraXformHandle,
+        nsi.SetAttribute(_cameraXformHandle,
             NSI::DoubleMatrixArg("transformationmatrix",
                 viewInvMatrix.GetArray()));
 
@@ -205,7 +205,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         GfMatrix4d headlightMatrix(1.0);
         headlightMatrix.SetLookAt(viewPos, viewRotation);
 
-        nsi->SetAttribute(_headlightXformHandle,
+        nsi.SetAttribute(_headlightXformHandle,
             NSI::DoubleMatrixArg("transformationmatrix", headlightMatrix.GetArray()));
     }
 
@@ -225,7 +225,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         _renderParam->SceneEdited())
     {
         // Tell 3Delight to update.
-        nsi->RenderControl(NSI::CStringPArg("action", "synchronize"));
+        nsi.RenderControl(NSI::CStringPArg("action", "synchronize"));
     }
 
     /* The renderer is now up to date on all changes. */
@@ -242,13 +242,13 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
 
 void HdNSIRenderPass::StopRender() const
 {
-    _renderParam->GetNSIContext()->RenderControl(
+    _renderParam->GetNSIContext().RenderControl(
         NSI::CStringPArg("action", "stop"));
 }
 
 void HdNSIRenderPass::StartRender() const
 {
-    _renderParam->GetNSIContext()->RenderControl((
+    _renderParam->GetNSIContext().RenderControl((
         NSI::CStringPArg("action", "start"),
         NSI::IntegerArg("interactive", 1),
         NSI::IntegerArg("progressive", 1)));
@@ -261,7 +261,7 @@ std::string HdNSIRenderPass::ScreenHandle() const
 
 void HdNSIRenderPass::SetOversampling() const
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     VtValue s = _renderDelegate->GetRenderSetting(
         HdNSIRenderSettingsTokens->pixelSamples);
@@ -271,7 +271,7 @@ void HdNSIRenderPass::SetOversampling() const
         StopRender();
     }
 
-    nsi->SetAttribute(ScreenHandle(),
+    nsi.SetAttribute(ScreenHandle(),
         NSI::IntegerArg("oversampling", s.Get<int>()));
 
     if (_renderStatus == Running)
@@ -282,25 +282,25 @@ void HdNSIRenderPass::SetOversampling() const
 
 void HdNSIRenderPass::_CreateNSICamera()
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     // Create the camera node and the others.
     const std::string &prefix = boost::lexical_cast<std::string>(this);
 
     _cameraXformHandle = prefix + "|camera1";
-    nsi->Create(_cameraXformHandle, "transform");
+    nsi.Create(_cameraXformHandle, "transform");
     {
         const GfMatrix4d &viewInvMatrix = _viewMatrix.GetInverse();
-        nsi->SetAttribute(_cameraXformHandle,
+        nsi.SetAttribute(_cameraXformHandle,
             NSI::DoubleMatrixArg("transformationmatrix",
                 viewInvMatrix.GetArray()));
     }
-    nsi->Connect(_cameraXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi.Connect(_cameraXformHandle, "", NSI_SCENE_ROOT, "objects");
 
     // Create the camera shape.
     // XXX: Support orthographics camera.
     _cameraShapeHandle = prefix + "|cameraShape1";
-    nsi->Create(_cameraShapeHandle, "perspectivecamera");
+    nsi.Create(_cameraShapeHandle, "perspectivecamera");
     {
         NSI::ArgumentList args;
 
@@ -314,23 +314,23 @@ void HdNSIRenderPass::_CreateNSICamera()
             ->SetCount(2)
             ->SetValuePointer(clipping_range_data));
 
-        nsi->SetAttribute(_cameraShapeHandle, args);
+        nsi.SetAttribute(_cameraShapeHandle, args);
     }
-    nsi->Connect(_cameraShapeHandle, "", _cameraXformHandle, "objects");
+    nsi.Connect(_cameraShapeHandle, "", _cameraXformHandle, "objects");
 
     _UpdateNSICamera();
 
     // Create a screen, the output of camera.
     const std::string screenHandle = ScreenHandle();
-    nsi->Create(screenHandle, "screen");
+    nsi.Create(screenHandle, "screen");
     SetOversampling();
-    nsi->Connect(screenHandle, "", _cameraShapeHandle, "screens");
+    nsi.Connect(screenHandle, "", _cameraShapeHandle, "screens");
 
     // Create a outputlayer, the format of a color variable.
     std::string layer1Handle = prefix + "|outputLayer1";
-    nsi->Create(layer1Handle, "outputlayer");
+    nsi.Create(layer1Handle, "outputlayer");
     {
-        nsi->SetAttribute(layer1Handle, (
+        nsi.SetAttribute(layer1Handle, (
             NSI::StringArg("variablename", "Ci"),
             NSI::StringArg("layertype", "color"),
             NSI::StringArg("scalarformat", "uint8"),
@@ -339,13 +339,13 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::StringArg("variablesource", "shader"),
             NSI::PointerArg("outputhandle", _imageHandle)));
     }
-    nsi->Connect(layer1Handle, "", screenHandle, "outputlayers");
+    nsi.Connect(layer1Handle, "", screenHandle, "outputlayers");
 
     // A second layer for depth.
     std::string layer2Handle = prefix + "|outputLayer2";
-    nsi->Create(layer2Handle, "outputlayer");
+    nsi.Create(layer2Handle, "outputlayer");
     {
-        nsi->SetAttribute(layer2Handle, (
+        nsi.SetAttribute(layer2Handle, (
             NSI::StringArg("variablename", "z"),
             NSI::StringArg("layertype", "scalar"),
             NSI::StringArg("scalarformat", "float"),
@@ -354,34 +354,34 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::IntegerArg("sortkey", 1),
             NSI::PointerArg("outputhandle", _imageHandle)));
     }
-    nsi->Connect(layer2Handle, "", screenHandle, "outputlayers");
+    nsi.Connect(layer2Handle, "", screenHandle, "outputlayers");
 
     // Create a displaydriver, the receiver of the computed pixels.
     _outputDriverHandle = prefix + "|outputDriver1";
-    nsi->Create(_outputDriverHandle, "outputdriver");
+    nsi.Create(_outputDriverHandle, "outputdriver");
     {
-        nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "HdNSI"));
-        nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
+        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "HdNSI"));
+        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
-    nsi->Connect(_outputDriverHandle, "", layer1Handle, "outputdrivers");
-    nsi->Connect(_outputDriverHandle, "", layer2Handle, "outputdrivers");
+    nsi.Connect(_outputDriverHandle, "", layer1Handle, "outputdrivers");
+    nsi.Connect(_outputDriverHandle, "", layer2Handle, "outputdrivers");
 #ifdef NSI_DEBUG
     std::string debugDriverHandle = prefix + "|debugDriver1";
     {
-        nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "idisplay"));
-        nsi->SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
+        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "idisplay"));
+        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
     }
-    nsi->Connect(debugDriverHandle, "", layer1Handle, "outputdrivers");
+    nsi.Connect(debugDriverHandle, "", layer1Handle, "outputdrivers");
 #endif
 }
 
 std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
     const std::string prefix = boost::lexical_cast<std::string>(this);
     std::string handle = + "|headlightShader1";
 
-    nsi->Create(handle, "shader");
+    nsi.Create(handle, "shader");
 
     NSI::ArgumentList args;
 
@@ -408,18 +408,18 @@ std::string HdNSIRenderPass::ExportNSIHeadLightShader()
     args.Add(new NSI::FloatArg("diffuse_contribution", 1));
     args.Add(new NSI::FloatArg("specular_contribution", 1));
 
-    nsi->SetAttribute(handle, args);
+    nsi.SetAttribute(handle, args);
     return handle;
 }
 
 void HdNSIRenderPass::_CreateNSIHeadLight()
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     // Create the transform node.
     const std::string &prefix = boost::lexical_cast<std::string>(this);
     _headlightXformHandle = prefix + "|headlight1";
-    nsi->Create(_headlightXformHandle, "transform");
+    nsi.Create(_headlightXformHandle, "transform");
     {
         const GfMatrix4d &viewInvMatrix = _viewMatrix.GetInverse();
 
@@ -430,34 +430,34 @@ void HdNSIRenderPass::_CreateNSIHeadLight()
         GfMatrix4d headlightMatrix(1.0);
         headlightMatrix.SetLookAt(viewPos, viewRotation.GetInverse());
 
-        nsi->SetAttribute(_headlightXformHandle,
+        nsi.SetAttribute(_headlightXformHandle,
             NSI::DoubleMatrixArg("transformationmatrix", headlightMatrix.GetArray()));
     }
-    nsi->Connect(_headlightXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi.Connect(_headlightXformHandle, "", NSI_SCENE_ROOT, "objects");
 
     // Create the headlight shape node.
     _headlightShapeHandle = prefix + "|headlightShape1";
-    nsi->Create(_headlightShapeHandle, "environment");
+    nsi.Create(_headlightShapeHandle, "environment");
     {
-        nsi->SetAttribute(_headlightShapeHandle,
+        nsi.SetAttribute(_headlightShapeHandle,
             NSI::DoubleArg("angle", 0));
     }
-    nsi->Connect(_headlightShapeHandle, "", _headlightXformHandle, "objects");
+    nsi.Connect(_headlightShapeHandle, "", _headlightXformHandle, "objects");
 
     // Create the geometryattributes node for light.
     _headlightGeoAttrsHandle = _headlightShapeHandle + "Attr1";
 
-    nsi->Create(_headlightGeoAttrsHandle, "attributes");
-    nsi->Connect(_headlightGeoAttrsHandle, "", _headlightXformHandle, "geometryattributes");
+    nsi.Create(_headlightGeoAttrsHandle, "attributes");
+    nsi.Connect(_headlightGeoAttrsHandle, "", _headlightXformHandle, "geometryattributes");
 
     // Attach the light shader to the headlight shape.
     std::string headlightShaderHandle = ExportNSIHeadLightShader();
-    nsi->Connect(headlightShaderHandle, "", _headlightGeoAttrsHandle, "surfaceshader");
+    nsi.Connect(headlightShaderHandle, "", _headlightGeoAttrsHandle, "surfaceshader");
 }
 
 void HdNSIRenderPass::_CreateNSIEnvironmentLight()
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     const std::string &prefix = boost::lexical_cast<std::string>(this);
 
@@ -470,28 +470,28 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
     std::string envlightCoordShaderHandle = prefix + "|envCoordShader1";
 
     // Delete any existing nodes (for update from a setting change).
-    nsi->Delete(_envlightXformHandle);
-    nsi->Delete(envlightShapeHandle);
-    nsi->Delete(envlightGeoAttrsHandle);
-    nsi->Delete(envlightShaderHandle);
-    nsi->Delete(envlightFileShaderHandle);
-    nsi->Delete(envlightCoordShaderHandle);
+    nsi.Delete(_envlightXformHandle);
+    nsi.Delete(envlightShapeHandle);
+    nsi.Delete(envlightGeoAttrsHandle);
+    nsi.Delete(envlightShaderHandle);
+    nsi.Delete(envlightFileShaderHandle);
+    nsi.Delete(envlightCoordShaderHandle);
 
     // Create the empty transform.
-    nsi->Create(_envlightXformHandle, "transform");
-    nsi->Connect(_envlightXformHandle, "", NSI_SCENE_ROOT, "objects");
+    nsi.Create(_envlightXformHandle, "transform");
+    nsi.Connect(_envlightXformHandle, "", NSI_SCENE_ROOT, "objects");
 
     // Create the shape node.
-    nsi->Create(envlightShapeHandle, "environment");
-    nsi->Connect(envlightShapeHandle, "", _envlightXformHandle, "objects");
+    nsi.Create(envlightShapeHandle, "environment");
+    nsi.Connect(envlightShapeHandle, "", _envlightXformHandle, "objects");
 
     // Create the geometryattributes node for light.
-    nsi->Create(envlightGeoAttrsHandle, "attributes");
-    nsi->Connect(envlightGeoAttrsHandle, "", _envlightXformHandle, "geometryattributes");
+    nsi.Create(envlightGeoAttrsHandle, "attributes");
+    nsi.Connect(envlightGeoAttrsHandle, "", _envlightXformHandle, "geometryattributes");
 
     // Construct the shader.
-    nsi->Create(envlightShaderHandle, "shader");
-    nsi->Connect(envlightShaderHandle, "", envlightGeoAttrsHandle, "surfaceshader");
+    nsi.Create(envlightShaderHandle, "shader");
+    nsi.Connect(envlightShaderHandle, "", envlightGeoAttrsHandle, "surfaceshader");
 
     // Use user-defined environment image or empty.
     float color[3] = {1, 1, 1};
@@ -515,7 +515,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         const std::string &shaderPath =
             _renderDelegate->GetDelight() + "/maya/osl/dlEnvironmentShape";
 
-        nsi->SetAttribute(envlightShaderHandle, (
+        nsi.SetAttribute(envlightShaderHandle, (
             NSI::StringArg("shaderfilename", shaderPath),
             NSI::IntegerArg("mapping", envLightMapping),
             NSI::ColorArg("i_texture", color),
@@ -524,26 +524,26 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
             NSI::ColorArg("tint", color)));
 
         // Use the external file.
-        nsi->Create(envlightFileShaderHandle, "shader");
+        nsi.Create(envlightFileShaderHandle, "shader");
 
         if (envLightPath.size()) {
             // Set the enviroment image.
             const std::string &shaderPath =
                 _renderDelegate->GetDelight() + "/maya/osl/file";
 
-            nsi->SetAttribute(envlightFileShaderHandle, (
+            nsi.SetAttribute(envlightFileShaderHandle, (
                 NSI::StringArg("shaderfilename", shaderPath),
                 NSI::ColorArg("defaultColor", color),
                 NSI::CStringPArg("fileTextureName.meta.colorspace", "linear")));
 
-            nsi->SetAttribute(envlightFileShaderHandle,
+            nsi.SetAttribute(envlightFileShaderHandle,
                 NSI::StringArg("fileTextureName", envLightPath));
         } else {
             // Set the sky.
             const std::string &shaderPath =
                 _renderDelegate->GetDelight() + "/maya/osl/dlSky";
 
-            nsi->SetAttribute(envlightFileShaderHandle, (
+            nsi.SetAttribute(envlightFileShaderHandle, (
                 NSI::StringArg("shaderfilename", shaderPath),
                 NSI::FloatArg("intensity", envLightIntensity),
                 NSI::FloatArg("turbidity", 3.0f),
@@ -558,27 +558,27 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
                 NSI::FloatArg("wavelengthB", 450)));
         }
 
-        nsi->Connect(envlightFileShaderHandle, "outColor",
+        nsi.Connect(envlightFileShaderHandle, "outColor",
                 envlightShaderHandle, "i_texture");
 
         // Create the coordinate mapping node.
-        nsi->Create(envlightCoordShaderHandle, "shader");
+        nsi.Create(envlightCoordShaderHandle, "shader");
         {
             const std::string &shaderPath =
                 _renderDelegate->GetDelight() + "/maya/osl/uvCoordEnvironment";
 
-            nsi->SetAttribute(envlightCoordShaderHandle,
+            nsi.SetAttribute(envlightCoordShaderHandle,
                 NSI::StringArg("shaderfilename", shaderPath));
 
-            nsi->SetAttribute(envlightCoordShaderHandle,
+            nsi.SetAttribute(envlightCoordShaderHandle,
                 NSI::IntegerArg("mapping", envLightMapping));
         }
-        nsi->Connect(envlightCoordShaderHandle, "o_outUV",
+        nsi.Connect(envlightCoordShaderHandle, "o_outUV",
             envlightFileShaderHandle, "uvCoord");
 
         // Check if diplay the environment as background.
         if (envAsBackground) {
-            nsi->SetAttribute(envlightGeoAttrsHandle,
+            nsi.SetAttribute(envlightGeoAttrsHandle,
                 NSI::IntegerArg("visibility.camera", 1));
         }
     } else {
@@ -586,7 +586,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
         const std::string &shaderPath =
             _renderDelegate->GetDelight() + "/maya/osl/directionalLight";
 
-        nsi->SetAttribute(envlightShaderHandle, (
+        nsi.SetAttribute(envlightShaderHandle, (
             NSI::StringArg("shaderfilename", shaderPath),
             NSI::ColorArg("i_color", color),
             NSI::FloatArg("intensity", envLightIntensity),
@@ -597,7 +597,7 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
 
 void HdNSIRenderPass::_UpdateNSICamera()
 {
-    std::shared_ptr<NSI::Context> nsi = _renderParam->AcquireSceneForEdit();
+    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     // Calculate the FOV from OpenGL matrix.
     double yScale = _projMatrix[1][1];
@@ -605,7 +605,7 @@ void HdNSIRenderPass::_UpdateNSICamera()
     double fov = atan(yScale) * 2.0;
     fov = GfRadiansToDegrees(fov);
 
-    nsi->SetAttribute(_cameraShapeHandle,
+    nsi.SetAttribute(_cameraShapeHandle,
         NSI::FloatArg("fov", fov));
 }
 

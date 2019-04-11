@@ -154,7 +154,7 @@ private:
     // Populate the NSI geometry object based on scene data.
     void _PopulateRtMesh(HdSceneDelegate *sceneDelegate,
                          HdNSIRenderParam *renderParam,
-                         std::shared_ptr<NSI::Context> nsi,
+                         NSI::Context &nsi,
                          HdDirtyBits *dirtyBits,
                          HdMeshReprDesc const &desc);
 
@@ -167,8 +167,8 @@ private:
     // Utility function to create a NSI triangle mesh and populate topology.
     bool _CreateNSIMesh(
         HdNSIRenderParam *renderParam,
-        std::shared_ptr<NSI::Context> nsi);
-    void _SetNSIMeshAttributes(std::shared_ptr<NSI::Context> nsi, bool asSubdiv);
+        NSI::Context &nsi);
+    void _SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we
