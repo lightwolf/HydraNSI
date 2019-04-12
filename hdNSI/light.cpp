@@ -56,7 +56,13 @@ void HdNSILight::Sync(
 	{
 		SetShaderParams(nsi, sceneDelegate);
 
-		if (m_typeId == HdPrimTypeTokens->distantLight)
+		if (m_typeId == HdPrimTypeTokens->diskLight)
+		{
+			float radius = sceneDelegate->GetLightParamValue(
+				GetId(), UsdLuxTokens->radius).Get<float>();
+			nsi.SetAttribute(geo_handle, NSI::FloatArg("width", radius*2));
+		}
+		else if (m_typeId == HdPrimTypeTokens->distantLight)
 		{
 			VtValue angle_v = sceneDelegate->GetLightParamValue(
 				GetId(), UsdLuxTokens->angle);
@@ -80,6 +86,10 @@ HdDirtyBits HdNSILight::GetInitialDirtyBitsMask() const
 	return AllDirty;
 }
 
+/*
+	This creates the static scene structure for a light. Only the parts which
+	don't depend on attributes are done here.
+*/
 void HdNSILight::CreateNodes(
     HdNSIRenderParam *renderParam,
 	NSI::Context &i_nsi)
@@ -92,7 +102,16 @@ void HdNSILight::CreateNodes(
 	i_nsi.Create(xform_handle, "transform");
 	i_nsi.Connect(xform_handle, "", NSI_SCENE_ROOT, "objects");
 
-	if (m_typeId == HdPrimTypeTokens->distantLight)
+	if (m_typeId == HdPrimTypeTokens->diskLight)
+	{
+		i_nsi.Create(geo_handle, "particles");
+		float P[3] = { 0, 0, 0 };
+		float N[3] = { 0, 0, -1 };
+		i_nsi.SetAttribute(geo_handle, (
+			NSI::PointsArg("P", P, 1),
+			NSI::NormalsArg("N", N, 1)));
+	}
+	else if (m_typeId == HdPrimTypeTokens->distantLight)
 	{
 		i_nsi.Create(geo_handle, "environment");
 	}
@@ -105,9 +124,13 @@ void HdNSILight::CreateNodes(
 	i_nsi.Connect(shader_handle, "", attr_handle, "surfaceshader");
 
 	std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight();
-	if (m_typeId == HdPrimTypeTokens->distantLight)
+	/* FIXME: We need our own shaders. */
+	if (m_typeId == HdPrimTypeTokens->diskLight)
 	{
-		/* FIXME: We need our own shaders. */
+		shaderPath += "/maya/osl/areaLight";
+	}
+	else if (m_typeId == HdPrimTypeTokens->distantLight)
+	{
 		shaderPath += "/maya/osl/distantLight";
 	}
 	i_nsi.SetAttribute(shader_handle,
@@ -116,6 +139,9 @@ void HdNSILight::CreateNodes(
 	m_nodes_created = true;
 }
 
+/*
+	Delete all the nodes added to the scene for the light.
+*/
 void HdNSILight::DeleteNodes(
 	NSI::Context &i_nsi)
 {
