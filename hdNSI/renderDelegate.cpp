@@ -41,6 +41,7 @@
 #include "pxr/imaging/hd/camera.h"
 //XXX: Add other Sprim types later
 #include "pxr/imaging/hd/bprim.h"
+#include "pxr/imaging/hdNSI/light.h"
 //XXX: Add bprim types
 
 #include "delight.h"
@@ -60,6 +61,12 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_RPRIM_TYPES =
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
 {
     HdPrimTypeTokens->camera,
+    //HdPrimTypeTokens->cylinderLight,
+    //HdPrimTypeTokens->diskLight,
+    HdPrimTypeTokens->distantLight,
+    //HdPrimTypeTokens->domeLight,
+    //HdPrimTypeTokens->rectLight,
+    //HdPrimTypeTokens->sphereLight
 };
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_BPRIM_TYPES =
@@ -332,6 +339,16 @@ HdNSIRenderDelegate::CreateSprim(TfToken const& typeId,
     if (typeId == HdPrimTypeTokens->camera) {
         return new HdCamera(sprimId);
     }
+    else if (
+        typeId == HdPrimTypeTokens->cylinderLight ||
+        typeId == HdPrimTypeTokens->diskLight ||
+        typeId == HdPrimTypeTokens->distantLight ||
+        typeId == HdPrimTypeTokens->domeLight ||
+        typeId == HdPrimTypeTokens->rectLight ||
+        typeId == HdPrimTypeTokens->sphereLight )
+    {
+        return new HdNSILight(typeId, sprimId);
+    }
     else if (typeId == HdPrimTypeTokens->material) {
     } else {
         TF_CODING_ERROR("Unknown Sprim Type %s", typeId.GetText());
@@ -347,7 +364,20 @@ HdNSIRenderDelegate::CreateFallbackSprim(TfToken const& typeId)
     // They'll use default values and won't be updated by a scene delegate.
     if (typeId == HdPrimTypeTokens->camera) {
         return new HdCamera(SdfPath::EmptyPath());
-    } else {
+    }
+    else if (
+        typeId == HdPrimTypeTokens->cylinderLight ||
+        typeId == HdPrimTypeTokens->diskLight ||
+        typeId == HdPrimTypeTokens->distantLight ||
+        typeId == HdPrimTypeTokens->domeLight ||
+        typeId == HdPrimTypeTokens->rectLight ||
+        typeId == HdPrimTypeTokens->sphereLight )
+    {
+        /* Not sure this is of any use to us so don't create any for now. */
+        return nullptr;
+    }
+    else
+    {
         TF_CODING_ERROR("Unknown Sprim Type %s", typeId.GetText());
     }
 

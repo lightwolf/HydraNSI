@@ -12,6 +12,7 @@ pxr_plugin(hdNSI
         hf
         hd
         hdx
+        usdLux
         ${TBB_LIBRARIES}
 
     INCLUDE_DIRS
@@ -35,8 +36,9 @@ pxr_plugin(hdNSI
     RESOURCE_FILES
         plugInfo.json
 
-	PRIVATE_CLASSES
-		outputDriver
+    PRIVATE_CLASSES
+        light
+        outputDriver
 )
 
 # if (X11_FOUND OR APPLE)
