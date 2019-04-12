@@ -77,7 +77,8 @@ void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
     }
     if (key == HdNSIRenderSettingsTokens->cameraLightIntensity)
     {
-        ExportNSIHeadLightShader();
+        if (!_headlightXformHandle.empty())
+            ExportNSIHeadLightShader();
     }
     if (key == HdNSIRenderSettingsTokens->envLightPath ||
         key == HdNSIRenderSettingsTokens->envLightMapping ||
@@ -85,7 +86,8 @@ void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
         key == HdNSIRenderSettingsTokens->envAsBackground ||
         key == HdNSIRenderSettingsTokens->envUseSky)
     {
-        _CreateNSIEnvironmentLight();
+        if (!_envlightXformHandle.empty())
+            _CreateNSIEnvironmentLight(true);
     }
 }
 
@@ -129,14 +131,27 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         _CreateNSICamera();
     }
 
-    // Create a headlight for the scene.
-    if (_headlightXformHandle.empty()) {
-        _CreateNSIHeadLight();
-    }
+    if (_renderParam->HasLights())
+    {
+        /* The scene has lights. Remove any automatic lights we might have
+           previously created. */
+        if (!_headlightXformHandle.empty())
+            _CreateNSIHeadLight(false);
 
-    // Create the environment light.
-    if (_envlightXformHandle.empty()) {
-        _CreateNSIEnvironmentLight();
+        if (!_envlightXformHandle.empty())
+            _CreateNSIEnvironmentLight(false);
+    }
+    else
+    {
+        // Create a headlight for the scene.
+        if (_headlightXformHandle.empty()) {
+            _CreateNSIHeadLight(true);
+        }
+
+        // Create the environment light.
+        if (_envlightXformHandle.empty()) {
+            _CreateNSIEnvironmentLight(true);
+        }
     }
 
     // Reset the sample buffer if it's been requested.
@@ -205,8 +220,12 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         GfMatrix4d headlightMatrix(1.0);
         headlightMatrix.SetLookAt(viewPos, viewRotation);
 
-        nsi.SetAttribute(_headlightXformHandle,
-            NSI::DoubleMatrixArg("transformationmatrix", headlightMatrix.GetArray()));
+        if (!_headlightXformHandle.empty())
+        {
+            nsi.SetAttribute(_headlightXformHandle,
+                NSI::DoubleMatrixArg("transformationmatrix",
+                    headlightMatrix.GetArray()));
+        }
     }
 
     // Update the fov of camera.
@@ -412,13 +431,25 @@ std::string HdNSIRenderPass::ExportNSIHeadLightShader()
     return handle;
 }
 
-void HdNSIRenderPass::_CreateNSIHeadLight()
+void HdNSIRenderPass::_CreateNSIHeadLight(bool create)
 {
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    // Create the transform node.
     const std::string &prefix = boost::lexical_cast<std::string>(this);
     _headlightXformHandle = prefix + "|headlight1";
+    std::string headlightShapeHandle = prefix + "|headlightShape1";
+    std::string headlightGeoAttrsHandle = headlightShapeHandle + "Attr1";
+
+    if (!create)
+    {
+        nsi.Delete(_headlightXformHandle);
+        nsi.Delete(headlightShapeHandle);
+        nsi.Delete(headlightGeoAttrsHandle);
+        _headlightXformHandle.clear();
+        return;
+    }
+
+    // Create the transform node.
     nsi.Create(_headlightXformHandle, "transform");
     {
         const GfMatrix4d &viewInvMatrix = _viewMatrix.GetInverse();
@@ -436,26 +467,23 @@ void HdNSIRenderPass::_CreateNSIHeadLight()
     nsi.Connect(_headlightXformHandle, "", NSI_SCENE_ROOT, "objects");
 
     // Create the headlight shape node.
-    _headlightShapeHandle = prefix + "|headlightShape1";
-    nsi.Create(_headlightShapeHandle, "environment");
+    nsi.Create(headlightShapeHandle, "environment");
     {
-        nsi.SetAttribute(_headlightShapeHandle,
+        nsi.SetAttribute(headlightShapeHandle,
             NSI::DoubleArg("angle", 0));
     }
-    nsi.Connect(_headlightShapeHandle, "", _headlightXformHandle, "objects");
+    nsi.Connect(headlightShapeHandle, "", _headlightXformHandle, "objects");
 
     // Create the geometryattributes node for light.
-    _headlightGeoAttrsHandle = _headlightShapeHandle + "Attr1";
-
-    nsi.Create(_headlightGeoAttrsHandle, "attributes");
-    nsi.Connect(_headlightGeoAttrsHandle, "", _headlightXformHandle, "geometryattributes");
+    nsi.Create(headlightGeoAttrsHandle, "attributes");
+    nsi.Connect(headlightGeoAttrsHandle, "", _headlightXformHandle, "geometryattributes");
 
     // Attach the light shader to the headlight shape.
     std::string headlightShaderHandle = ExportNSIHeadLightShader();
-    nsi.Connect(headlightShaderHandle, "", _headlightGeoAttrsHandle, "surfaceshader");
+    nsi.Connect(headlightShaderHandle, "", headlightGeoAttrsHandle, "surfaceshader");
 }
 
-void HdNSIRenderPass::_CreateNSIEnvironmentLight()
+void HdNSIRenderPass::_CreateNSIEnvironmentLight(bool create)
 {
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
@@ -476,6 +504,12 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight()
     nsi.Delete(envlightShaderHandle);
     nsi.Delete(envlightFileShaderHandle);
     nsi.Delete(envlightCoordShaderHandle);
+
+    if (!create)
+    {
+        _envlightXformHandle.clear();
+        return;
+    }
 
     // Create the empty transform.
     nsi.Create(_envlightXformHandle, "transform");

@@ -27,10 +27,11 @@ public:
 
 private:
 	void CreateNodes(
-    	HdNSIRenderParam *renderParam,
+		HdNSIRenderParam *renderParam,
 		NSI::Context &i_nsi);
 
 	void DeleteNodes(
+		HdNSIRenderParam *renderParam,
 		NSI::Context &i_nsi);
 
 	void SetShaderParams(

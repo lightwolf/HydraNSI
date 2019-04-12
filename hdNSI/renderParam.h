@@ -52,6 +52,7 @@ public:
     : _renderDelegate(renderDelegate)
     , _nsi(nsi)
     , _sceneEdited(false)
+    , _numLights{0}
     {}
 
     virtual ~HdNSIRenderParam() = default;
@@ -69,6 +70,10 @@ public:
     bool SceneEdited() const { return _sceneEdited; }
     void ResetSceneEdited() { _sceneEdited = false; }
 
+    void AddLight() { ++_numLights; }
+    void RemoveLight() { --_numLights; }
+    bool HasLights() const { return _numLights != 0; }
+
 private:
     HdNSIRenderDelegate *_renderDelegate;
 
@@ -77,6 +82,9 @@ private:
 
     /// A flag to know if the scene has been edited.
     std::atomic<bool> _sceneEdited;
+
+    /// Number of lights in the scene.
+    std::atomic<unsigned> _numLights;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

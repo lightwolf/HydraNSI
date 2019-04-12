@@ -123,14 +123,12 @@ private:
 
     // Our headlight handle.
     std::string ExportNSIHeadLightShader();
-    void _CreateNSIHeadLight();
+    void _CreateNSIHeadLight(bool create);
 
     std::string _headlightXformHandle;
-    std::string _headlightShapeHandle;
-    std::string _headlightGeoAttrsHandle;
 
     // Our environment light handles.
-    void _CreateNSIEnvironmentLight();
+    void _CreateNSIEnvironmentLight(bool create);
 
     std::string _envlightXformHandle;
 

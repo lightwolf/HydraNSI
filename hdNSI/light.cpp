@@ -26,7 +26,7 @@ void HdNSILight::Sync(
 	HdRenderParam *renderParam,
 	HdDirtyBits *dirtyBits)
 {
-    auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+	auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
 	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
 	std::string xform_handle = GetId().GetString();
@@ -76,9 +76,9 @@ void HdNSILight::Sync(
 
 void HdNSILight::Finalize(HdRenderParam *renderParam)
 {
-	NSI::Context &nsi =
-		static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
-	DeleteNodes(nsi);
+	auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
+	DeleteNodes(nsiRenderParam, nsi);
 }
 
 HdDirtyBits HdNSILight::GetInitialDirtyBitsMask() const
@@ -91,7 +91,7 @@ HdDirtyBits HdNSILight::GetInitialDirtyBitsMask() const
 	don't depend on attributes are done here.
 */
 void HdNSILight::CreateNodes(
-    HdNSIRenderParam *renderParam,
+	HdNSIRenderParam *renderParam,
 	NSI::Context &i_nsi)
 {
 	std::string xform_handle = GetId().GetString();
@@ -136,15 +136,21 @@ void HdNSILight::CreateNodes(
 	i_nsi.SetAttribute(shader_handle,
 		NSI::StringArg("shaderfilename", shaderPath));
 
+	assert(!m_nodes_created);
 	m_nodes_created = true;
+	renderParam->AddLight();
 }
 
 /*
 	Delete all the nodes added to the scene for the light.
 */
 void HdNSILight::DeleteNodes(
+	HdNSIRenderParam *renderParam,
 	NSI::Context &i_nsi)
 {
+	if (m_nodes_created)
+		return;
+
 	std::string xform_handle = GetId().GetString();
 	std::string geo_handle = xform_handle + "|geo";
 	std::string attr_handle = xform_handle + "|attr";
@@ -156,6 +162,7 @@ void HdNSILight::DeleteNodes(
 	i_nsi.Delete(shader_handle);
 
 	m_nodes_created = false;
+	renderParam->RemoveLight();
 }
 
 void HdNSILight::SetShaderParams(
