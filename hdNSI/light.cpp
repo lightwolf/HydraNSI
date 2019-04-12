@@ -56,7 +56,8 @@ void HdNSILight::Sync(
 	{
 		SetShaderParams(nsi, sceneDelegate);
 
-		if (m_typeId == HdPrimTypeTokens->diskLight)
+		if (m_typeId == HdPrimTypeTokens->diskLight ||
+		    m_typeId == HdPrimTypeTokens->sphereLight)
 		{
 			float radius = sceneDelegate->GetLightParamValue(
 				GetId(), UsdLuxTokens->radius).Get<float>();
@@ -113,14 +114,17 @@ void HdNSILight::CreateNodes(
 	i_nsi.Create(xform_handle, "transform");
 	i_nsi.Connect(xform_handle, "", NSI_SCENE_ROOT, "objects");
 
-	if (m_typeId == HdPrimTypeTokens->diskLight)
+	if (m_typeId == HdPrimTypeTokens->diskLight ||
+	    m_typeId == HdPrimTypeTokens->sphereLight)
 	{
 		i_nsi.Create(geo_handle, "particles");
 		float P[3] = { 0, 0, 0 };
 		float N[3] = { 0, 0, -1 };
-		i_nsi.SetAttribute(geo_handle, (
-			NSI::PointsArg("P", P, 1),
-			NSI::NormalsArg("N", N, 1)));
+		i_nsi.SetAttribute(geo_handle, NSI::PointsArg("P", P, 1));
+		if (m_typeId == HdPrimTypeTokens->diskLight)
+		{
+			i_nsi.SetAttribute(geo_handle, NSI::NormalsArg("N", N, 1));
+		}
 	}
 	else if (m_typeId == HdPrimTypeTokens->distantLight)
 	{
@@ -143,6 +147,7 @@ void HdNSILight::CreateNodes(
 	std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight();
 	/* FIXME: We need our own shaders. */
 	if (m_typeId == HdPrimTypeTokens->diskLight ||
+	    m_typeId == HdPrimTypeTokens->sphereLight ||
 	    m_typeId == HdPrimTypeTokens->rectLight)
 	{
 		shaderPath += "/maya/osl/areaLight";

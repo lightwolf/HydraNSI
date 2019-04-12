@@ -66,7 +66,7 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
     HdPrimTypeTokens->distantLight,
     //HdPrimTypeTokens->domeLight,
     HdPrimTypeTokens->rectLight,
-    //HdPrimTypeTokens->sphereLight
+    HdPrimTypeTokens->sphereLight
 };
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_BPRIM_TYPES =
