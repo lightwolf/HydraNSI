@@ -69,6 +69,17 @@ void HdNSILight::Sync(
 			float angle = angle_v.Get<float>();
 			nsi.SetAttribute(geo_handle, NSI::DoubleArg("angle", angle));
 		}
+		else if (m_typeId == HdPrimTypeTokens->rectLight)
+		{
+			float width = sceneDelegate->GetLightParamValue(
+				GetId(), UsdLuxTokens->width).Get<float>();
+			float height = sceneDelegate->GetLightParamValue(
+				GetId(), UsdLuxTokens->height).Get<float>();
+			float hw = 0.5f * width;
+			float hh = 0.5f * height;
+			float P[12] = {hw, -hh, 0, -hw, -hh, 0, -hw, hh, 0, hw, hh, 0};
+			nsi.SetAttribute(geo_handle, NSI::PointsArg("P", P, 4));
+		}
 	}
 
 	*dirtyBits = Clean;
@@ -115,6 +126,12 @@ void HdNSILight::CreateNodes(
 	{
 		i_nsi.Create(geo_handle, "environment");
 	}
+	else if (m_typeId == HdPrimTypeTokens->rectLight)
+	{
+		i_nsi.Create(geo_handle, "mesh");
+		i_nsi.SetAttribute(geo_handle, NSI::IntegerArg("nvertices", 4));
+		/* P depends on width/height so is set elsewhere. */
+	}
 	i_nsi.Connect(geo_handle, "", xform_handle, "objects");
 
 	i_nsi.Create(attr_handle, "attributes");
@@ -125,7 +142,8 @@ void HdNSILight::CreateNodes(
 
 	std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight();
 	/* FIXME: We need our own shaders. */
-	if (m_typeId == HdPrimTypeTokens->diskLight)
+	if (m_typeId == HdPrimTypeTokens->diskLight ||
+	    m_typeId == HdPrimTypeTokens->rectLight)
 	{
 		shaderPath += "/maya/osl/areaLight";
 	}
