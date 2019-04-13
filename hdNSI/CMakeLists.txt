@@ -39,15 +39,6 @@ pxr_plugin(hdNSI
     PRIVATE_CLASSES
         light
         outputDriver
-)
 
-# if (X11_FOUND OR APPLE)
-# pxr_build_test(testHdNSI
-#     LIBRARIES
-#         hdNSI
-#         garch
-#         arch
-#     CPPFILES
-#         testenv/testHdNSI.cpp
-# )
-# endif()
+    DISABLE_PRECOMPILED_HEADERS
+)
