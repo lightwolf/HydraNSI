@@ -52,7 +52,7 @@ std::multimap<SdfPath, std::string> HdNSIMesh::_nsiMeshXformHandles; // static
 HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
-    , _color(0.3f, 0.3f, 0.3f, 1.0f)
+    , _color(0.3f, 0.3f, 0.3f)
     , _leftHanded(-1)
     , _refined(false)
     , _smoothNormals(false)
@@ -380,15 +380,25 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _points = pointsValue.Get<VtVec3fArray>();
 
         // Get the color of the object if possible.
-        _color.Set(0.3f, 0.3f, 0.3f, 1.0f);
+        _color.Set(0.3f, 0.3f, 0.3f);
 
+#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
         VtValue colorValue = sceneDelegate->Get(id, HdTokens->color);
         if (!colorValue.IsEmpty()) {
             VtVec4fArray colors = colorValue.Get<VtVec4fArray>();
             if (colors.size()) {
+                _color = GfVec3f(colors[0][0], colors[0][1], colors[0][2]);
+            }
+        }
+#else
+        VtValue colorValue = sceneDelegate->Get(id, HdTokens->displayColor);
+        if (!colorValue.IsEmpty()) {
+            VtVec3fArray colors = colorValue.Get<VtVec3fArray>();
+            if (colors.size()) {
                 _color = colors[0];
             }
         }
+#endif
     }
 
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {

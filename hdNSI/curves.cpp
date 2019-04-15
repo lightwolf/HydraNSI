@@ -349,6 +349,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         // Get the colors.
         _colors.clear();
 
+#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
         if (_primvarSourceMap.count(HdTokens->color)) {
             const VtValue &_colorsVal = _primvarSourceMap[HdTokens->color].data;
             const VtVec4fArray &colors = _colorsVal.Get<VtVec4fArray>();
@@ -359,6 +360,13 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
                 _colors[i] = GfVec3f(color[0], color[1], color[2]);
             }
         }
+#else
+        if (_primvarSourceMap.count(HdTokens->displayColor)) {
+            const VtValue &_colorsVal =
+                _primvarSourceMap[HdTokens->displayColor].data;
+            _colors = _colorsVal.Get<VtVec3fArray>();
+        }
+#endif
 
         if (_colors.empty()) {
             _colors.resize(_points.size());

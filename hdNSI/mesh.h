@@ -179,7 +179,7 @@ private:
     VtVec3fArray _points;
     VtIntArray _faceVertexCounts;
     VtIntArray _faceVertexIndices;
-    GfVec4f _color;
+    GfVec3f _color;
 
     Hd_VertexAdjacency _adjacency;
     VtVec3fArray _normals;
