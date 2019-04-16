@@ -1,6 +1,8 @@
 set(PXR_PREFIX pxr/imaging)
 set(PXR_PACKAGE hdNSI)
 
+add_subdirectory(osl)
+
 pxr_plugin(hdNSI
    LIBRARIES
         arch
@@ -35,6 +37,7 @@ pxr_plugin(hdNSI
 
     RESOURCE_FILES
         plugInfo.json
+        ${OSL_RESOURCES}
 
     PRIVATE_CLASSES
         light
