@@ -192,6 +192,8 @@ public:
     ///   \param tracker The change tracker passed to prim Sync().
     virtual void CommitResources(HdChangeTracker *tracker) override;
 
+    virtual TfToken GetMaterialBindingPurpose() const override;
+
     virtual void SetRenderSetting(
         TfToken const& key, VtValue const& value) override;
 
@@ -201,6 +203,8 @@ public:
     void RemoveRenderPass(HdNSIRenderPass *renderPass);
 
     const std::string& GetDelight() const { return _delight; }
+
+    const std::string FindShader(const std::string &id) const;
 
 private:
     void SetShadingSamples() const;
@@ -243,6 +247,9 @@ private:
 
     /* Root of renderer installation. */
     std::string _delight;
+
+    /* Path to directory with our builtin shaders. */
+    std::string _shaders_path;
 
 public:
     // A callback that interprets NSI error codes and injects them into

@@ -41,6 +41,7 @@ pxr_plugin(hdNSI
 
     PRIVATE_CLASSES
         light
+        material
         outputDriver
 
     DISABLE_PRECOMPILED_HEADERS

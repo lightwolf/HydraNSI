@@ -1,3 +1,54 @@
-shader UsdUVTexture()
+string map_wrap(string w)
 {
+	if (w == "useMetadata")
+		return "default";
+	if (w == "repeat")
+		return "periodic";
+	/* black, clamp and mirror are the same in OSL. */
+	return w;
+}
+
+shader UsdUVTexture(
+	string file = "",
+	float st[2] = {0, 0},
+	string wrapS = "useMetadata",
+	string wrapT = "useMetadata",
+	float fallback[4] = {0, 0, 0, 0},
+	float scale[4] = {1, 1, 1, 1},
+	float bias[4] = {0, 0, 0, 0},
+
+	output float r = 0,
+	output float g = 0,
+	output float b = 0,
+	output float a = 0,
+	output color rgb = color(0),
+	output float rgba[4] = {0})
+{
+	rgba = fallback;
+
+	if (file != "")
+	{
+		int nc = 0;
+		if (gettextureinfo(file, "channels", nc))
+		{
+			float tex_a;
+			color tex_c = texture(
+				file,
+				st[0], st[1],
+				"swrap", map_wrap(wrapS),
+				"twrap", map_wrap(wrapT),
+				"alpha", tex_a);
+
+			if (nc > 3) rgba[3] = tex_a * scale[3] + bias[3];
+			if (nc > 2) rgba[2] = tex_c[2] * scale[2] + bias[2];
+			if (nc > 1) rgba[1] = tex_c[1] * scale[1] + bias[1];
+			if (nc > 0) rgba[0] = tex_c[0] * scale[0] + bias[0];
+		}
+	}
+
+	rgb = color(rgba[0], rgba[1], rgba[2]);
+	r = rgba[0];
+	g = rgba[1];
+	b = rgba[2];
+	a = rgba[3];
 }

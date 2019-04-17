@@ -1,3 +1,19 @@
-shader UsdPreviewSurface()
+shader UsdPreviewSurface(
+	color diffuseColor = color(0.18),
+	color emissiveColor = color(0),
+	int useSpecularWorkflow = 0,
+	color specularColor = color(0),
+	float metallic = 0,
+	float roughness = 0.5,
+	float clearcoat = 0,
+	float clearcoatRoughness = 0.01,
+	float opacity = 1,
+	float ior = 1.5,
+	normal normal_ = normal(0,0,1),
+	float displacement = 0,
+	float occlusion = 1)
 {
+	Ci =
+		diffuseColor * diffuse(N)
+		+ emissiveColor * emission();
 }

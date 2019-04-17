@@ -23,6 +23,8 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
+#include "pxr/base/plug/plugin.h"
+#include "pxr/base/plug/thisPlugin.h"
 #include "pxr/base/tf/getenv.h"
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
@@ -39,9 +41,9 @@
 #include "pxr/imaging/hdNSI/curves.h"
 //XXX: Add other Rprim types later
 #include "pxr/imaging/hd/camera.h"
-//XXX: Add other Sprim types later
 #include "pxr/imaging/hd/bprim.h"
 #include "pxr/imaging/hdNSI/light.h"
+#include "pxr/imaging/hdNSI/material.h"
 //XXX: Add bprim types
 
 #include "delight.h"
@@ -61,6 +63,7 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_RPRIM_TYPES =
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
 {
     HdPrimTypeTokens->camera,
+    HdPrimTypeTokens->material,
     //HdPrimTypeTokens->cylinderLight,
     HdPrimTypeTokens->diskLight,
     HdPrimTypeTokens->distantLight,
@@ -121,6 +124,10 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     if (PDlGetInstallRoot) {
         _delight = PDlGetInstallRoot();
     }
+
+    /* Figure out where our shaders are. */
+    PlugPluginPtr plugin = PLUG_THIS_PLUGIN;
+    _shaders_path = PlugFindPluginResource(plugin, "osl", false);
 
     decltype(&DlGetLibNameAndVersionString) PDlGetLibNameAndVersionString;
     _capi->LoadFunction(PDlGetLibNameAndVersionString,
@@ -228,6 +235,12 @@ HdNSIRenderDelegate::CommitResources(HdChangeTracker *tracker)
     // HdEngine::Execute().
     // XXX TODO: does NSI need a sort of commit? don't think so...
     // nsiCommit(_nsi_ctx);
+}
+
+TfToken HdNSIRenderDelegate::GetMaterialBindingPurpose() const
+{
+    /* Need this to get Material delegates instead of HydraPbsSurface. */
+    return HdTokens->full;
 }
 
 void HdNSIRenderDelegate::SetRenderSetting(
@@ -349,8 +362,12 @@ HdNSIRenderDelegate::CreateSprim(TfToken const& typeId,
     {
         return new HdNSILight(typeId, sprimId);
     }
-    else if (typeId == HdPrimTypeTokens->material) {
-    } else {
+    else if (typeId == HdPrimTypeTokens->material)
+    {
+        return new HdNSIMaterial(sprimId);
+    }
+    else
+    {
         TF_CODING_ERROR("Unknown Sprim Type %s", typeId.GetText());
     }
 
@@ -364,6 +381,11 @@ HdNSIRenderDelegate::CreateFallbackSprim(TfToken const& typeId)
     // They'll use default values and won't be updated by a scene delegate.
     if (typeId == HdPrimTypeTokens->camera) {
         return new HdCamera(SdfPath::EmptyPath());
+    }
+    else if (typeId == HdPrimTypeTokens->material)
+    {
+        /* I don't think we have any use for this. */
+        return nullptr;
     }
     else if (
         typeId == HdPrimTypeTokens->cylinderLight ||
@@ -416,6 +438,15 @@ void HdNSIRenderDelegate::RemoveRenderPass(HdNSIRenderPass *renderPass)
     _renderPasses.erase(
         std::remove(_renderPasses.begin(), _renderPasses.end(), renderPass),
         _renderPasses.end());
+}
+
+const std::string HdNSIRenderDelegate::FindShader(const std::string &id) const
+{
+    /*
+        This eventually needs to be more elaborate. For now, only load our own
+        shaders to support the UsdPreviewSurface.
+    */
+    return TfStringCatPaths(_shaders_path, id) + ".oso";
 }
 
 void HdNSIRenderDelegate::SetShadingSamples() const

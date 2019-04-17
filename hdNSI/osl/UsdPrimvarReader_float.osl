@@ -1,0 +1,8 @@
+shader UsdPrimvarReader_float(
+	string varname = "",
+	float fallback = 0,
+	output float result = fallback)
+{
+	getattribute(varname, result);
+}
+
