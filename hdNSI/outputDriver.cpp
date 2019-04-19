@@ -176,11 +176,11 @@ PtDspyError HdNSIOutputDriver::ImageData(
 			imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
 			imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
 
-			float depth = *(float*)(cdata + i * entrySize + 4);
-			// HdxCompositor wants depth in [-1, 1]
+			float Ze = - *(float*)(cdata + i * entrySize + 4);
+			// HdxCompositor wants a post-projection depth.
 			float nd =
-				(depth / std::numeric_limits<float>::max()) * 2.0f - 1.0f;
-				imageHandle->_depth_buffer[p] = nd;
+				(imageHandle->m_projM22 * Ze + imageHandle->m_projM32) / -Ze;
+			imageHandle->_depth_buffer[p] = nd;
 
 			++ i;
 		}

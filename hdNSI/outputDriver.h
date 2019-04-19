@@ -14,6 +14,12 @@ public:
 		int _originalSizeX, _originalSizeY;
 		int _originX, _originY;
 
+		/*
+			The elements of the projection matrix needed to compute an
+			OpenGL like depth.
+		*/
+		double m_projM22{-0.5}, m_projM32{0.0};
+
 		// Buffer for RGBA.
 		std::vector<uint8_t> _buffer;
 		// Buffer for Z.

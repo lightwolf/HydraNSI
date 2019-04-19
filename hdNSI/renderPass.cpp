@@ -122,6 +122,9 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         _projMatrix = projMatrix;
 
         resetCameraPersp = true;
+        /* The output driver needs this to remap Z. */
+        _imageHandle->m_projM22 = _projMatrix[2][2];
+        _imageHandle->m_projM32 = _projMatrix[3][2];
     }
 
     // Create the camera's transform and the all NSI objects.
