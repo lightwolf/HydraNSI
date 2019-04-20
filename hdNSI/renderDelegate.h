@@ -206,8 +206,11 @@ public:
 
     const std::string FindShader(const std::string &id) const;
 
+    const char* DefaultMaterialHandle() const { return "defaultShader"; }
+
 private:
     void SetShadingSamples() const;
+    void ExportDefaultMaterial() const;
 
 private:
     static const TfTokenVector SUPPORTED_RPRIM_TYPES;

@@ -6,6 +6,7 @@ set(OSL_SOURCES
 	UsdPreviewSurface.osl
 	UsdPrimvarReader_float.osl
 	UsdPrimvarReader_float2.osl
+	UsdPrimvarReader_float3.osl
 	UsdUVTexture.osl
 	)
 

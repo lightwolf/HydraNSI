@@ -201,6 +201,8 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::StringArg("bucketorder", "spiral"));
+
+    ExportDefaultMaterial();
 }
 
 HdNSIRenderDelegate::~HdNSIRenderDelegate()
@@ -455,6 +457,34 @@ void HdNSIRenderDelegate::SetShadingSamples() const
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::IntegerArg("quality.shadingsamples", s.Get<int>()));
+}
+
+/*
+    Export a simple shading network which is used as the default material when
+    none is assigned to a primitive.
+*/
+void HdNSIRenderDelegate::ExportDefaultMaterial() const
+{
+    std::string baseHandle = DefaultMaterialHandle();
+    std::string shaderHandle = baseHandle + "|PreviewSurface";
+    std::string colorHandle = baseHandle + "|ColorReader";
+    _nsi->Create(baseHandle, "attributes");
+
+    _nsi->Create(shaderHandle, "shader");
+    _nsi->SetAttribute(shaderHandle,
+        NSI::StringArg("shaderfilename", FindShader("UsdPreviewSurface")));
+    _nsi->Connect(shaderHandle, "", baseHandle, "surfaceshader");
+
+    /* Read 'displayColor' primvar and use as diffuse color. */
+    _nsi->Create(colorHandle, "shader");
+    float fallback[3] = {1.0f, 1.0f, 1.0f};
+    _nsi->SetAttribute(colorHandle, (
+        NSI::StringArg("shaderfilename",
+            FindShader("UsdPrimvarReader_float3")),
+        NSI::StringArg("varname", "displayColor"),
+        NSI::ColorArg("fallback", fallback)
+        ));
+    _nsi->Connect(colorHandle, "result", shaderHandle, "diffuseColor");
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

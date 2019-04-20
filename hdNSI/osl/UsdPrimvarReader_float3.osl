@@ -1,0 +1,8 @@
+shader UsdPrimvarReader_float3(
+	string varname = "",
+	color fallback = color(0),
+	output color result = color(0))
+{
+	result = fallback;
+	getattribute(varname, result);
+}

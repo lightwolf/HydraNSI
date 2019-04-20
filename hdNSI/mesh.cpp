@@ -43,8 +43,6 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::map<std::string, std::string> HdNSIMesh::_nsiMeshShaderHandles; // static
-
 std::map<SdfPath, std::string> HdNSIMesh::_nsiMeshShapeHandles; // static
 
 std::multimap<SdfPath, std::string> HdNSIMesh::_nsiMeshXformHandles; // static
@@ -85,21 +83,6 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
 
     _masterShapeHandle.clear();
 
-    // Delete the shader.
-    char colorKey[256];
-    sprintf(colorKey, "%.3f %.3f %.3f", _color[0], _color[1], _color[2]);
-
-    if (_nsiMeshShaderHandles.count(colorKey)) {
-        auto range = _nsiMeshShaderHandles.equal_range(colorKey);
-        for (auto itr = range.first; itr != range.second; ++ itr) {
-            const std::string &handle = itr->second;
-            nsi.Delete(handle);
-        }
-        _nsiMeshShaderHandles.erase(colorKey);
-    }
-
-    _shaderHandle.clear();
-
     // Delete the attributes node.
     nsi.Delete(_attrsHandle);
 
@@ -125,6 +108,7 @@ HdNSIMesh::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
         | HdChangeTracker::DirtyInstanceIndex
+        | HdChangeTracker::DirtyMaterialId
         ;
 
     return (HdDirtyBits)mask;
@@ -208,33 +192,14 @@ HdNSIMesh::_CreateNSIMesh(
 
     _nsiMeshXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the shader based on the color.
-    char colorKey[256];
-    sprintf(colorKey, "%.3f %.3f %.3f", _color[0], _color[1], _color[2]);
-
-    _shaderHandle = std::string(colorKey) + "|shader1";
-
-    if (!_nsiMeshShaderHandles.count(colorKey)) {
-        // Create the default shader node.
-        const std::string &shaderPath =
-            renderParam->GetRenderDelegate()->GetDelight()
-            + "/maya/osl/dl3DelightMaterial";
-
-        nsi.Create(_shaderHandle, "shader");
-        nsi.SetAttribute(_shaderHandle,
-            (NSI::StringArg("shaderfilename", shaderPath),
-                NSI::ColorArg("i_color", _color.data())));
-
-        _nsiMeshShaderHandles.insert(
-            std::make_pair(colorKey, _shaderHandle));
-    }
+    /* Export color primvar (this is a temporary patch). */
+    nsi.SetAttribute(_masterShapeHandle,
+        NSI::ColorArg("displayColor", _color.data()));
 
     // Create the attribute node.
     _attrsHandle = id.GetString() + "|attributes1";
 
     nsi.Create(_attrsHandle, "attributes");
-    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
-
     nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 
     return newShape;
@@ -378,16 +343,16 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         VtValue pointsValue = sceneDelegate->Get(id, HdTokens->points);
         _points = pointsValue.Get<VtVec3fArray>();
+    }
 
-        // Get the color of the object if possible.
-        _color.Set(0.3f, 0.3f, 0.3f);
-
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->displayColor))
+    {
 #if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
         VtValue colorValue = sceneDelegate->Get(id, HdTokens->color);
         if (!colorValue.IsEmpty()) {
             VtVec4fArray colors = colorValue.Get<VtVec4fArray>();
             if (colors.size()) {
-                _color = GfVec3f(colors[0][0], colors[0][1], colors[0][2]);
+                _color = GfVec3f(colors.crbegin()->data());
             }
         }
 #else
@@ -395,7 +360,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         if (!colorValue.IsEmpty()) {
             VtVec3fArray colors = colorValue.Get<VtVec3fArray>();
             if (colors.size()) {
-                _color = colors[0];
+                _color = *colors.crbegin();
             }
         }
 #endif
@@ -586,6 +551,34 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
             nsi.SetAttributeAtTime(masterXformHandle, 0.0,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
+    }
+
+    if (0 != (*dirtyBits & HdChangeTracker::DirtyMaterialId))
+    {
+        /* Remove previous material, if any. */
+        if (!_assignedMaterialHandle.empty())
+        {
+            nsi.Disconnect(
+                _assignedMaterialHandle, "",
+                _masterShapeHandle, "geometryattributes");
+            _assignedMaterialHandle.clear();
+        }
+        /* Figure out the new material to use. */
+        std::string mat = sceneDelegate->GetMaterialId(GetId()).GetString();
+        if (mat.empty())
+        {
+            /* Use the default material. */
+            _assignedMaterialHandle =
+                renderParam->GetRenderDelegate()->DefaultMaterialHandle();
+        }
+        else
+        {
+            _assignedMaterialHandle = mat + "|mat";
+        }
+        /* Connect it. */
+        nsi.Connect(
+            _assignedMaterialHandle, "",
+            _masterShapeHandle, "geometryattributes");
     }
 
     // Clean all dirty bits.

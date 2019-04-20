@@ -189,11 +189,10 @@ private:
     // NSI handles.
     std::string _masterShapeHandle;
 
-    std::string _shaderHandle;
     std::string _attrsHandle;
 
-    // From the unique color to the attribute and default shader node handles.
-    static std::map<std::string, std::string> _nsiMeshShaderHandles;
+    /* Handle of connected material. */
+    std::string _assignedMaterialHandle;
 
     // From USD id to the NSI mesh node handles.
     static std::map<SdfPath, std::string> _nsiMeshShapeHandles;
