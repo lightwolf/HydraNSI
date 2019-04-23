@@ -33,6 +33,7 @@
 #include "pxr/imaging/hd/vertexAdjacency.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
+#include "pxr/imaging/hdNSI/materialAssign.h"
 
 #include <nsi_dynamic.hpp>
 
@@ -185,11 +186,9 @@ private:
     // NSI handles.
     std::string _masterShapeHandle;
 
-    std::string _shadersHandle;
     std::string _attrsHandle;
 
-    // From the unique color to the attribute and shader node handles.
-    static std::multimap<SdfPath, std::string> _nsiPointCloudShaderHandles;
+    HdNSIMaterialAssign _material;
 
     // From USD id to the NSI particles node handles.
     static std::map<SdfPath, std::string> _nsiPointCloudShapeHandles;
