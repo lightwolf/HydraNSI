@@ -553,33 +553,9 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         }
     }
 
-    if (0 != (*dirtyBits & HdChangeTracker::DirtyMaterialId))
-    {
-        /* Remove previous material, if any. */
-        if (!_assignedMaterialHandle.empty())
-        {
-            nsi.Disconnect(
-                _assignedMaterialHandle, "",
-                _masterShapeHandle, "geometryattributes");
-            _assignedMaterialHandle.clear();
-        }
-        /* Figure out the new material to use. */
-        std::string mat = sceneDelegate->GetMaterialId(GetId()).GetString();
-        if (mat.empty())
-        {
-            /* Use the default material. */
-            _assignedMaterialHandle =
-                renderParam->GetRenderDelegate()->DefaultMaterialHandle();
-        }
-        else
-        {
-            _assignedMaterialHandle = mat + "|mat";
-        }
-        /* Connect it. */
-        nsi.Connect(
-            _assignedMaterialHandle, "",
-            _masterShapeHandle, "geometryattributes");
-    }
+    _material.Sync(
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+        _masterShapeHandle);
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

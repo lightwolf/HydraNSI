@@ -32,6 +32,7 @@
 #include "pxr/imaging/hd/vertexAdjacency.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
+#include "pxr/imaging/hdNSI/materialAssign.h"
 
 #include <nsi.hpp>
 
@@ -191,8 +192,7 @@ private:
 
     std::string _attrsHandle;
 
-    /* Handle of connected material. */
-    std::string _assignedMaterialHandle;
+    HdNSIMaterialAssign _material;
 
     // From USD id to the NSI mesh node handles.
     static std::map<SdfPath, std::string> _nsiMeshShapeHandles;
