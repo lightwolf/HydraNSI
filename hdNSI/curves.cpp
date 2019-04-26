@@ -240,7 +240,7 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
     attrs.push(NSI::Argument::New("nvertices")
         ->SetType(NSITypeInteger)
         ->SetCount(_curveVertexCounts.size())
-        ->SetValuePointer(_curveVertexCounts.data()));
+        ->SetValuePointer(_curveVertexCounts.cdata()));
 
     // "P"
     attrs.push(NSI::Argument::New("P")
@@ -252,7 +252,7 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
     attrs.push(NSI::Argument::New("width")
         ->SetType(NSITypeFloat)
         ->SetCount(_widths.size())
-        ->SetValuePointer(_widths.data()));
+        ->SetValuePointer(_widths.cdata()));
 
     // "basis"
     if (_basis == HdTokens->catmullRom)
@@ -269,7 +269,7 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
     attrs.push(NSI::Argument::New("DisplayColor")
         ->SetType(NSITypeColor)
         ->SetCount(_colors.size())
-        ->SetValuePointer(_colors.data()));
+        ->SetValuePointer(_colors.cdata()));
 
     nsi.SetAttribute(_masterShapeHandle, attrs);
 }

@@ -262,7 +262,7 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
     attrs.push(NSI::Argument::New("nvertices")
         ->SetType(NSITypeInteger)
         ->SetCount(_faceVertexCounts.size())
-        ->SetValuePointer(_faceVertexCounts.data()));
+        ->SetValuePointer(_faceVertexCounts.cdata()));
 
     // "P"
     attrs.push(NSI::Argument::New("P")
@@ -274,7 +274,7 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
     attrs.push(NSI::Argument::New("P.indices")
         ->SetType(NSITypeInteger)
         ->SetCount(_faceVertexIndices.size())
-        ->SetValuePointer(_faceVertexIndices.data()));
+        ->SetValuePointer(_faceVertexIndices.cdata()));
 
     // "N"
     if (_normals.size()) {
@@ -286,7 +286,7 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
         attrs.push(NSI::Argument::New("N.indices")
             ->SetType(NSITypeInteger)
             ->SetCount(_faceVertexIndices.size())
-            ->SetValuePointer(_faceVertexIndices.data()));
+            ->SetValuePointer(_faceVertexIndices.cdata()));
     }
 
     nsi.SetAttribute(_masterShapeHandle, attrs);
@@ -379,7 +379,8 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _faceVertexIndices = _topology.GetFaceVertexIndices();
 
         _adjacency.BuildAdjacencyTable(&_topology);
-	_normals = Hd_SmoothNormals::ComputeSmoothNormals(&_adjacency, _points.size(), _points.data());
+        _normals = Hd_SmoothNormals::ComputeSmoothNormals(
+            &_adjacency, _points.size(), _points.cdata());
 
         if (_topology.GetOrientation() == HdTokens->leftHanded) {
             _leftHanded = 1;

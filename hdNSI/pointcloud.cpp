@@ -196,13 +196,13 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
     attrs.push(NSI::Argument::New("width")
         ->SetType(NSITypeFloat)
         ->SetCount(_widths.size())
-        ->SetValuePointer(_widths.data()));
+        ->SetValuePointer(_widths.cdata()));
 
     // "id"
     attrs.push(NSI::Argument::New("id")
         ->SetType(NSITypeInteger)
         ->SetCount(_pointsIds.size())
-        ->SetValuePointer(_pointsIds.data()));
+        ->SetValuePointer(_pointsIds.cdata()));
 
     // "N"
     if (_normals.size()) {
