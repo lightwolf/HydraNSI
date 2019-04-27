@@ -468,6 +468,7 @@ void HdNSIRenderDelegate::ExportDefaultMaterial() const
     std::string baseHandle = DefaultMaterialHandle();
     std::string shaderHandle = baseHandle + "|PreviewSurface";
     std::string colorHandle = baseHandle + "|ColorReader";
+    std::string opacityHandle = baseHandle + "|OpacityReader";
     _nsi->Create(baseHandle, "attributes");
 
     _nsi->Create(shaderHandle, "shader");
@@ -485,6 +486,16 @@ void HdNSIRenderDelegate::ExportDefaultMaterial() const
         NSI::ColorArg("fallback", fallback)
         ));
     _nsi->Connect(colorHandle, "result", shaderHandle, "diffuseColor");
+
+    /* Read 'displayOpacity' primvar and use as opacity. */
+    _nsi->Create(opacityHandle, "shader");
+    _nsi->SetAttribute(opacityHandle, (
+        NSI::StringArg("shaderfilename",
+            FindShader("UsdPrimvarReader_float")),
+        NSI::StringArg("varname", "displayOpacity"),
+        NSI::FloatArg("fallback", 1.0f)
+        ));
+    _nsi->Connect(opacityHandle, "result", shaderHandle, "opacity");
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

@@ -13,7 +13,7 @@ shader UsdPreviewSurface(
 	float displacement = 0,
 	float occlusion = 1)
 {
-	Ci =
-		diffuseColor * diffuse(N)
-		+ emissiveColor * emission();
+	Ci = opacity * diffuseColor * diffuse(N);
+	Ci += (1 - opacity) * transparent();
+	Ci += emissiveColor * emission();
 }
