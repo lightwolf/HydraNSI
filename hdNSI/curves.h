@@ -32,6 +32,8 @@
 #include "pxr/imaging/hd/vertexAdjacency.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
+#include "pxr/imaging/hdNSI/materialAssign.h"
+#include "pxr/imaging/hdNSI/primvars.h"
 
 #include <nsi.hpp>
 
@@ -158,12 +160,6 @@ private:
                            HdDirtyBits *dirtyBits,
                            HdBasisCurvesReprDesc const &desc);
 
-    // Populate _primvarSourceMap (our local cache of primvar data) based on
-    // scene data. Primvars will be turned into samplers in _PopulateRtCurves,
-    // through the help of the _CreatePrimvarSampler() method.
-    void _UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                               HdDirtyBits dirtyBits);
-
     // Utility function to create a NSI triangle curves and populate topology.
     void _CreateNSICurves(
         HdNSIRenderParam *renderParam,
@@ -180,17 +176,15 @@ private:
     VtIntArray _curveVertexCounts;
     VtIntArray _curveVertexIndices;
     VtFloatArray _widths;
-    VtVec3fArray _colors;
     TfToken _basis;
 
     // NSI handles.
     std::string _masterShapeHandle;
 
-    std::string _shaderHandle;
     std::string _attrsHandle;
 
-    // From the unique color to the attribute and shader node handles.
-    static std::multimap<size_t, std::string> _nsiCurvesShaderHandles;
+    HdNSIMaterialAssign _material;
+    HdNSIPrimvars _primvars;
 
     // From USD id to the NSI curves node handles.
     static std::map<SdfPath, std::string> _nsiCurvesShapeHandles;
@@ -200,16 +194,6 @@ private:
 
     // Draw styles.
     bool _refined;
-
-    // A local cache of primvar scene data. "data" is a copy-on-write handle to
-    // the actual primvar buffer, and "interpolation" is the interpolation mode
-    // to be used. This cache is used in _PopulateRtCurves to populate the
-    // primvar sampler map in the prototype context, which is used for shading.
-    struct PrimvarSource {
-        VtValue data;
-        HdInterpolation interpolation;
-    };
-    TfHashMap<TfToken, PrimvarSource, TfToken::HashFunctor> _primvarSourceMap;
 
     // This class does not support copying.
     HdNSICurves(const HdNSICurves&)             = delete;

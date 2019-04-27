@@ -40,7 +40,6 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::multimap<size_t, std::string> HdNSICurves::_nsiCurvesShaderHandles; // static
 std::map<SdfPath, std::string> HdNSICurves::_nsiCurvesShapeHandles; // static
 std::multimap<SdfPath, std::string> HdNSICurves::_nsiCurvesXformHandles; // static
 
@@ -69,21 +68,6 @@ HdNSICurves::Finalize(HdRenderParam *renderParam)
         }
     }
     _nsiCurvesXformHandles.erase(id);
-
-    // Delete shader.
-    const size_t colorsKey =
-        boost::hash_range(_colors.begin(), _colors.end());
-
-    if (_nsiCurvesShaderHandles.count(colorsKey)) {
-        auto range = _nsiCurvesShaderHandles.equal_range(colorsKey);
-        for (auto itr = range.first; itr != range.second; ++ itr) {
-            const std::string &handle = itr->second;
-            nsi.Delete(handle);
-        }
-        _nsiCurvesShaderHandles.erase(colorsKey);
-    }
-
-    _shaderHandle.clear();
 
     // Delete the attribute.
     nsi.Delete(_attrsHandle);
@@ -118,6 +102,7 @@ HdNSICurves::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
         | HdChangeTracker::DirtyInstanceIndex
+        | HdChangeTracker::DirtyMaterialId
         ;
 
     return (HdDirtyBits)mask;
@@ -193,40 +178,10 @@ HdNSICurves::_CreateNSICurves(
 
     _nsiCurvesXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    // Create the hair shader based on the hashed color array.
-    _shaderHandle = id.GetString() + "|shader1";
-
-    const size_t colorsKey = boost::hash_range(_colors.begin(), _colors.end());
-
-    if (!_nsiCurvesShaderHandles.count(colorsKey)) {
-        // Create the dlHairAndFur shader.
-        std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight()
-            + "/maya/osl/dlHairAndFur";
-
-        nsi.Create(_shaderHandle, "shader");
-        nsi.SetAttribute(_shaderHandle, NSI::StringArg("shaderfilename", shaderPath));
-        nsi.SetAttribute(_shaderHandle, NSI::FloatArg("dye_weight", 0.8f));
-
-        _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, _shaderHandle));
-
-        // Create the dlPrimitiveAttribute shader.
-        shaderPath = renderParam->GetRenderDelegate()->GetDelight()
-            + "/maya/osl/dlPrimitiveAttribute";
-        std::string displayColorShaderHandle = id.GetString() + "|shader2";
-        nsi.Create(displayColorShaderHandle, "shader");
-        nsi.SetAttribute(displayColorShaderHandle, (NSI::StringArg("shaderfilename", shaderPath),
-            NSI::StringArg("attribute_name", "DisplayColor"),
-            NSI::IntegerArg("attribute_type", 1)));
-        nsi.Connect(displayColorShaderHandle, "o_color", _shaderHandle, "i_color");
-
-        _nsiCurvesShaderHandles.insert(std::make_pair(colorsKey, displayColorShaderHandle));
-    }
-
     // Create the attribute node and connect shader to this.
     _attrsHandle = id.GetString() + "|attributes1";
 
     nsi.Create(_attrsHandle, "attributes");
-    nsi.Connect(_shaderHandle, "", _attrsHandle, "surfaceshader");
 
     nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
@@ -265,46 +220,7 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
         attrs.push(new NSI::StringArg("basis", "b-spline"));
     }
 
-    // "DisplayColor" for the shader.
-    attrs.push(NSI::Argument::New("DisplayColor")
-        ->SetType(NSITypeColor)
-        ->SetCount(_colors.size())
-        ->SetValuePointer(_colors.cdata()));
-
     nsi.SetAttribute(_masterShapeHandle, attrs);
-}
-
-void
-HdNSICurves::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                                   HdDirtyBits dirtyBits)
-{
-    HD_TRACE_FUNCTION();
-    SdfPath const& id = GetId();
-
-    // Update _primvarSourceMap, our local cache of raw primvar data.
-    // This function pulls data from the scene delegate, but defers processing.
-    //
-    // While iterating primvars, we skip "points" (vertex positions) because
-    // the points primvar is processed by _PopulateRtCurves. We only call
-    // GetPrimvar on primvars that have been marked dirty.
-    //
-    // Currently, hydra doesn't have a good way of communicating changes in
-    // the set of primvars, so we only ever add and update to the primvar set.
-
-    HdPrimvarDescriptorVector primvars;
-    for (size_t i=0; i < HdInterpolationCount; ++i) {
-        HdInterpolation interp = static_cast<HdInterpolation>(i);
-        primvars = GetPrimvarDescriptors(sceneDelegate, interp);
-        for (HdPrimvarDescriptor const& pv: primvars) {
-            if (HdChangeTracker::IsPrimvarDirty(dirtyBits, id, pv.name) &&
-                pv.name != HdTokens->points) {
-                _primvarSourceMap[pv.name] = {
-                    GetPrimvar(sceneDelegate, pv.name),
-                    interp
-                };
-            }
-        }
-    }
 }
 
 void
@@ -324,12 +240,6 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
-        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
-    }
-
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         // Get the all points.
         VtValue pointsVal = sceneDelegate->Get(id, HdTokens->points);
@@ -344,33 +254,6 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
             std::fill(_widths.begin(), _widths.end(), 0.1f);
         } else {
             _widths = widthsVal.Get<VtFloatArray>();
-        }
-
-        // Get the colors.
-        _colors.clear();
-
-#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
-        if (_primvarSourceMap.count(HdTokens->color)) {
-            const VtValue &_colorsVal = _primvarSourceMap[HdTokens->color].data;
-            const VtVec4fArray &colors = _colorsVal.Get<VtVec4fArray>();
-
-            _colors.resize(colors.size());
-            for (size_t i = 0; i < colors.size(); ++ i) {
-                const GfVec4f &color = colors[i];
-                _colors[i] = GfVec3f(color[0], color[1], color[2]);
-            }
-        }
-#else
-        if (_primvarSourceMap.count(HdTokens->displayColor)) {
-            const VtValue &_colorsVal =
-                _primvarSourceMap[HdTokens->displayColor].data;
-            _colors = _colorsVal.Get<VtVec3fArray>();
-        }
-#endif
-
-        if (_colors.empty()) {
-            _colors.resize(_points.size());
-            std::fill(_colors.begin(), _colors.end(), GfVec3f(0.5f, 0, 0.5f));
         }
 
         newCurves = true;
@@ -496,6 +379,14 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
     }
+
+    _material.Sync(
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+        _masterShapeHandle);
+
+    _primvars.Sync(
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+        _masterShapeHandle, VtIntArray()); // _curveVertexIndices ?
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;
