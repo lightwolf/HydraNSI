@@ -33,6 +33,7 @@
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
 #include "pxr/imaging/hdNSI/materialAssign.h"
+#include "pxr/imaging/hdNSI/primvars.h"
 
 #include <nsi.hpp>
 
@@ -159,12 +160,6 @@ private:
                          HdDirtyBits *dirtyBits,
                          HdMeshReprDesc const &desc);
 
-    // Populate _primvarSourceMap (our local cache of primvar data) based on
-    // scene data. Primvars will be turned into samplers in _PopulateRtMesh,
-    // through the help of the _CreatePrimvarSampler() method.
-    void _UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                               HdDirtyBits dirtyBits);
-
     // Utility function to create a NSI triangle mesh and populate topology.
     bool _CreateNSIMesh(
         HdNSIRenderParam *renderParam,
@@ -180,7 +175,6 @@ private:
     VtVec3fArray _points;
     VtIntArray _faceVertexCounts;
     VtIntArray _faceVertexIndices;
-    GfVec3f _color;
 
     Hd_VertexAdjacency _adjacency;
     VtVec3fArray _normals;
@@ -193,6 +187,7 @@ private:
     std::string _attrsHandle;
 
     HdNSIMaterialAssign _material;
+    HdNSIPrimvars _primvars;
 
     // From USD id to the NSI mesh node handles.
     static std::map<SdfPath, std::string> _nsiMeshShapeHandles;
@@ -202,19 +197,8 @@ private:
 
     // Draw styles.
     bool _refined;
-    bool _smoothNormals;
     bool _doubleSided;
     HdCullStyle _cullStyle;
-
-    // A local cache of primvar scene data. "data" is a copy-on-write handle to
-    // the actual primvar buffer, and "interpolation" is the interpolation mode
-    // to be used. This cache is used in _PopulateRtMesh to populate the
-    // primvar sampler map in the prototype context, which is used for shading.
-    struct PrimvarSource {
-        VtValue data;
-        HdInterpolation interpolation;
-    };
-    TfHashMap<TfToken, PrimvarSource, TfToken::HashFunctor> _primvarSourceMap;
 
     // This class does not support copying.
     HdNSIMesh(const HdNSIMesh&)             = delete;

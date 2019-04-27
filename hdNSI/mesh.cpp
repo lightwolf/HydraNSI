@@ -50,10 +50,8 @@ std::multimap<SdfPath, std::string> HdNSIMesh::_nsiMeshXformHandles; // static
 HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
-    , _color(0.3f, 0.3f, 0.3f)
     , _leftHanded(-1)
     , _refined(false)
-    , _smoothNormals(false)
     , _doubleSided(false)
     , _cullStyle(HdCullStyleDontCare)
 {
@@ -192,10 +190,6 @@ HdNSIMesh::_CreateNSIMesh(
 
     _nsiMeshXformHandles.insert(std::make_pair(id, masterXformHandle));
 
-    /* Export color primvar (this is a temporary patch). */
-    nsi.SetAttribute(_masterShapeHandle,
-        NSI::ColorArg("displayColor", _color.data()));
-
     // Create the attribute node.
     _attrsHandle = id.GetString() + "|attributes1";
 
@@ -293,39 +287,6 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
 }
 
 void
-HdNSIMesh::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                                 HdDirtyBits dirtyBits)
-{
-    HD_TRACE_FUNCTION();
-    SdfPath const& id = GetId();
-
-    // Update _primvarSourceMap, our local cache of raw primvar data.
-    // This function pulls data from the scene delegate, but defers processing.
-    //
-    // While iterating primvars, we skip "points" (vertex positions) because
-    // the points primvar is processed by _PopulateRtMesh. We only call
-    // GetPrimvar on primvars that have been marked dirty.
-    //
-    // Currently, hydra doesn't have a good way of communicating changes in
-    // the set of primvars, so we only ever add and update to the primvar set.
-
-    HdPrimvarDescriptorVector primvars;
-    for (size_t i=0; i < HdInterpolationCount; ++i) {
-        HdInterpolation interp = static_cast<HdInterpolation>(i);
-        primvars = GetPrimvarDescriptors(sceneDelegate, interp);
-        for (HdPrimvarDescriptor const& pv: primvars) {
-            if (HdChangeTracker::IsPrimvarDirty(dirtyBits, id, pv.name) &&
-                pv.name != HdTokens->points) {
-                _primvarSourceMap[pv.name] = {
-                    GetPrimvar(sceneDelegate, pv.name),
-                    interp
-                };
-            }
-        }
-    }
-}
-
-void
 HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
                            HdNSIRenderParam *renderParam,
                            NSI::Context &nsi,
@@ -343,27 +304,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         VtValue pointsValue = sceneDelegate->Get(id, HdTokens->points);
         _points = pointsValue.Get<VtVec3fArray>();
-    }
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->displayColor))
-    {
-#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
-        VtValue colorValue = sceneDelegate->Get(id, HdTokens->color);
-        if (!colorValue.IsEmpty()) {
-            VtVec4fArray colors = colorValue.Get<VtVec4fArray>();
-            if (colors.size()) {
-                _color = GfVec3f(colors.crbegin()->data());
-            }
-        }
-#else
-        VtValue colorValue = sceneDelegate->Get(id, HdTokens->displayColor);
-        if (!colorValue.IsEmpty()) {
-            VtVec3fArray colors = colorValue.Get<VtVec3fArray>();
-            if (colors.size()) {
-                _color = *colors.crbegin();
-            }
-        }
-#endif
     }
 
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {
@@ -409,11 +349,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsDoubleSidedDirty(*dirtyBits, id)) {
         _doubleSided = IsDoubleSided(sceneDelegate);
     }
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
-        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
-    }
 
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
@@ -429,25 +364,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // If the refine level is 0, triangulate instead of subdividing.
     doRefine = doRefine && (_topology.GetRefineLevel() > 0);
-
-    // The repr defines whether we should compute smooth normals for this mesh:
-    // per-vertex normals taken as an average of adjacent faces, and
-    // interpolated smoothly across faces.
-    _smoothNormals = !desc.flatShadingEnabled;
-
-    // If the subdivision scheme is "none" or "bilinear", force us not to use
-    // smooth normals.
-    _smoothNormals = _smoothNormals &&
-        (_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
-        (_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
-
-    // If the scene delegate has provided authored normals, force us to not use
-    // smooth normals.
-    bool authoredNormals = false;
-    if (_primvarSourceMap.count(HdTokens->normals) > 0) {
-        authoredNormals = true;
-    }
-    _smoothNormals = _smoothNormals && !authoredNormals;
 
     ////////////////////////////////////////////////////////////////////////
     // 3. Populate NSI prototype object.
@@ -558,6 +474,10 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
         _masterShapeHandle);
+
+    _primvars.Sync(
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+        _masterShapeHandle, _faceVertexIndices);
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

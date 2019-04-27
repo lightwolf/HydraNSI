@@ -212,48 +212,7 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
             ->SetValuePointer(_normals.cdata()));
     }
 
-    // "displayColor"
-    if (_colors.size()) {
-        attrs.push(NSI::Argument::New("displayColor")
-            ->SetType(NSITypeColor)
-            ->SetCount(_colors.size())
-            ->SetValuePointer(_colors.cdata()));
-    }
-
     nsi.SetAttribute(_masterShapeHandle, attrs);
-}
-
-void
-HdNSIPointCloud::_UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                                       HdDirtyBits dirtyBits)
-{
-    HD_TRACE_FUNCTION();
-    SdfPath const& id = GetId();
-
-    // Update _primvarSourceMap, our local cache of raw primvar data.
-    // This function pulls data from the scene delegate, but defers processing.
-    //
-    // While iterating primvars, we skip "points" (vertex positions) because
-    // the points primvar is processed by _PopulateRtPointCloud. We only call
-    // GetPrimvar on primvars that have been marked dirty.
-    //
-    // Currently, hydra doesn't have a good way of communicating changes in
-    // the set of primvars, so we only ever add and update to the primvar set.
-
-    HdPrimvarDescriptorVector primvars;
-    for (size_t i=0; i < HdInterpolationCount; ++i) {
-        HdInterpolation interp = static_cast<HdInterpolation>(i);
-        primvars = GetPrimvarDescriptors(sceneDelegate, interp);
-        for (HdPrimvarDescriptor const& pv: primvars) {
-            if (HdChangeTracker::IsPrimvarDirty(dirtyBits, id, pv.name) &&
-                pv.name != HdTokens->points) {
-                _primvarSourceMap[pv.name] = {
-                    GetPrimvar(sceneDelegate, pv.name),
-                    interp
-                };
-            }
-        }
-    }
 }
 
 void
@@ -272,12 +231,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     ////////////////////////////////////////////////////////////////////////
     // 1. Pull scene data.
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->primvar)) {
-        _UpdatePrimvarSources(sceneDelegate, *dirtyBits);
-    }
 
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         VtValue value = sceneDelegate->Get(id, HdTokens->points);
@@ -300,33 +253,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         if (_widths.empty()) {
             _widths.resize(_points.size());
             std::fill(_widths.begin(), _widths.end(), 0.1f);
-        }
-
-        // Get the color.
-        _colors.clear();
-
-#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
-        if (_primvarSourceMap.count(HdTokens->color)) {
-            const VtValue &_colorsVal = _primvarSourceMap[HdTokens->color].data;
-            const VtVec4fArray &colors = _colorsVal.Get<VtVec4fArray>();
-
-            _colors.resize(colors.size());
-            for (size_t i = 0; i < colors.size(); ++i) {
-                const GfVec4f &color = colors[i];
-                _colors[i] = GfVec3f(color[0], color[1], color[2]);
-            }
-        }
-#else
-        if (_primvarSourceMap.count(HdTokens->displayColor)) {
-            const VtValue &_colorsVal =
-                _primvarSourceMap[HdTokens->displayColor].data;
-            _colors = _colorsVal.Get<VtVec3fArray>();
-        }
-#endif
-
-        if (_colors.empty()) {
-            _colors.resize(_points.size());
-            std::fill(_colors.begin(), _colors.end(), GfVec3f(0.5f, 0.5f, 0.5f));
         }
 
         newPointCloud = true;
@@ -359,8 +285,7 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     // Populate/update points in the NSI pointcloud.
     if (newPointCloud || 
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths) ||
-        (_primvarSourceMap.count(HdTokens->widths) > 0)) {
+        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths)) {
         _SetNSIPointCloudAttributes(nsi);
     }
 
@@ -436,6 +361,10 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
         _masterShapeHandle);
+
+    _primvars.Sync(
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+        _masterShapeHandle, VtIntArray());
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

@@ -34,6 +34,7 @@
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
 #include "pxr/imaging/hdNSI/materialAssign.h"
+#include "pxr/imaging/hdNSI/primvars.h"
 
 #include <nsi_dynamic.hpp>
 
@@ -160,12 +161,6 @@ private:
                                HdDirtyBits *dirtyBits,
                                HdPointsReprDesc const &desc);
 
-    // Populate _primvarSourceMap (our local cache of primvar data) based on
-    // scene data. Primvars will be turned into samplers in _PopulateRtPointCloud,
-    // through the help of the _CreatePrimvarSampler() method.
-    void _UpdatePrimvarSources(HdSceneDelegate* sceneDelegate,
-                               HdDirtyBits dirtyBits);
-
     // Utility function to create a NSI triangle pointcloud and populate topology.
     void _CreateNSIPointCloud(
         HdNSIRenderParam *renderParam,
@@ -181,7 +176,6 @@ private:
     VtVec3fArray _normals;
     VtIntArray _pointsIds;
     VtFloatArray _widths;
-    VtVec3fArray _colors;
 
     // NSI handles.
     std::string _masterShapeHandle;
@@ -189,24 +183,13 @@ private:
     std::string _attrsHandle;
 
     HdNSIMaterialAssign _material;
+    HdNSIPrimvars _primvars;
 
     // From USD id to the NSI particles node handles.
     static std::map<SdfPath, std::string> _nsiPointCloudShapeHandles;
 
     // From USD id to the NSI transforms node handles.
     static std::multimap<SdfPath, std::string> _nsiPointCloudXformHandles;
-
-    // Draw styles.
-
-    // A local cache of primvar scene data. "data" is a copy-on-write handle to
-    // the actual primvar buffer, and "interpolation" is the interpolation mode
-    // to be used. This cache is used in _PopulateRtPointCloud to populate the
-    // primvar sampler map in the prototype context, which is used for shading.
-    struct PrimvarSource {
-        VtValue data;
-        HdInterpolation interpolation;
-    };
-    TfHashMap<TfToken, PrimvarSource, TfToken::HashFunctor> _primvarSourceMap;
 
     // This class does not support copying.
     HdNSIPointCloud(const HdNSIPointCloud&)             = delete;
