@@ -8,6 +8,11 @@ set(OSL_SOURCES
 	UsdPrimvarReader_float.osl
 	UsdPrimvarReader_float2.osl
 	UsdPrimvarReader_float3.osl
+	UsdPrimvarReader_int.osl
+	UsdPrimvarReader_normal.osl
+	UsdPrimvarReader_point.osl
+	UsdPrimvarReader_string.osl
+	UsdPrimvarReader_vector.osl
 	UsdUVTexture.osl
 	)
 

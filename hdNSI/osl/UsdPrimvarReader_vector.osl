@@ -1,0 +1,8 @@
+shader UsdPrimvarReader_vector(
+	string varname = "",
+	vector fallback = vector(0),
+	output vector result = fallback)
+{
+	getattribute(varname, result);
+}
+

@@ -1,0 +1,8 @@
+shader UsdPrimvarReader_point(
+	string varname = "",
+	point fallback = point(0),
+	output point result = fallback)
+{
+	getattribute(varname, result);
+}
+

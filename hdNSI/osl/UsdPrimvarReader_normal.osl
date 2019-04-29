@@ -1,0 +1,8 @@
+shader UsdPrimvarReader_normal(
+	string varname = "",
+	normal fallback = normal(0),
+	output normal result = fallback)
+{
+	getattribute(varname, result);
+}
+
