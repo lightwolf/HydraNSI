@@ -130,6 +130,10 @@ void HdNSILight::CreateNodes(
 	{
 		i_nsi.Create(geo_handle, "environment");
 	}
+	else if (m_typeId == HdPrimTypeTokens->domeLight)
+	{
+		i_nsi.Create(geo_handle, "environment");
+	}
 	else if (m_typeId == HdPrimTypeTokens->rectLight)
 	{
 		i_nsi.Create(geo_handle, "mesh");
@@ -144,18 +148,8 @@ void HdNSILight::CreateNodes(
 	i_nsi.Create(shader_handle, "shader");
 	i_nsi.Connect(shader_handle, "", attr_handle, "surfaceshader");
 
-	std::string shaderPath = renderParam->GetRenderDelegate()->GetDelight();
-	/* FIXME: We need our own shaders. */
-	if (m_typeId == HdPrimTypeTokens->diskLight ||
-	    m_typeId == HdPrimTypeTokens->sphereLight ||
-	    m_typeId == HdPrimTypeTokens->rectLight)
-	{
-		shaderPath += "/maya/osl/areaLight";
-	}
-	else if (m_typeId == HdPrimTypeTokens->distantLight)
-	{
-		shaderPath += "/maya/osl/distantLight";
-	}
+	std::string shaderPath = renderParam->GetRenderDelegate()->FindShader(
+		"UsdLuxLight");
 	i_nsi.SetAttribute(shader_handle,
 		NSI::StringArg("shaderfilename", shaderPath));
 
@@ -222,10 +216,10 @@ void HdNSILight::SetShaderParams(
 	}
 
 	i_nsi.SetAttribute(shader_handle, (
-		NSI::ColorArg("i_color", emission.data()),
-		NSI::IntegerArg("normalize_area", normalize),
-		NSI::FloatArg("diffuse_contribution", diffuse),
-		NSI::FloatArg("specular_contribution", specular)));
+		NSI::ColorArg("color_", emission.data()),
+		NSI::IntegerArg("normalize", normalize),
+		NSI::FloatArg("diffuse", diffuse),
+		NSI::FloatArg("specular", specular)));
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

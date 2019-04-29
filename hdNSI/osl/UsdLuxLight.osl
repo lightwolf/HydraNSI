@@ -1,0 +1,44 @@
+surface UsdLuxLight(
+	/*
+		Many parameters get baked into color at export time. This is why we
+		don't have intensity, exposure, etc. Should reconsider this if we want
+		this shader to be used in a network.
+	*/
+	color color_ = color(1),
+	int normalize = 0,
+	float diffuse = 1,
+	float specular = 1)
+{
+	Ci = 0;
+
+	/* Make it single sided. */
+	if (backfacing())
+	{
+		Ci = transparent();
+		return;
+	}
+
+	/* So the light does not cast any shadows. */
+	if (!raytype("camera"))
+	{
+		Ci += transparent();
+	}
+
+	color result = color_;
+
+	if (normalize)
+	{
+		result /= surfacearea();
+	}
+
+	if (raytype("diffuse"))
+	{
+		result *= diffuse;
+	}
+	if (raytype("specular"))
+	{
+		result *= specular;
+	}
+
+	Ci += result * emission();
+}

@@ -3,6 +3,7 @@
 # subdirectory.
 
 set(OSL_SOURCES
+	UsdLuxLight.osl
 	UsdPreviewSurface.osl
 	UsdPrimvarReader_float.osl
 	UsdPrimvarReader_float2.osl
