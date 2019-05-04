@@ -357,6 +357,7 @@ void HdNSIRenderPass::_CreateNSICamera()
             NSI::StringArg("layertype", "color"),
             NSI::StringArg("scalarformat", "uint8"),
             NSI::IntegerArg("withalpha", 1),
+            NSI::IntegerArg("dithering", 1),
             NSI::IntegerArg("sortkey", 0),
             NSI::StringArg("variablesource", "shader"),
             NSI::PointerArg("outputhandle", _imageHandle)));
