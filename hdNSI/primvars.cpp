@@ -134,11 +134,7 @@ void HdNSIPrimvars::SetOnePrimvar(
 	}
 
 	/* Output indices if needed. */
-	bool supportsIndices =
-		primvar.interpolation == HdInterpolationVarying ||
-		primvar.interpolation == HdInterpolationVertex ||
-		primvar.interpolation == HdInterpolationFaceVarying;
-	if (supportsIndices && !vertexIndices.empty())
+	if (primvar.interpolation == HdInterpolationVertex && !vertexIndices.empty())
 	{
 		nsi.SetAttribute(geoHandle,
 			*NSI::Argument(primvar.name.GetString() + ".indices")
