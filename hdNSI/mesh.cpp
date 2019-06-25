@@ -50,6 +50,11 @@ std::multimap<SdfPath, std::string> HdNSIMesh::_nsiMeshXformHandles; // static
 HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
+    , _normalsInterpolation(HdInterpolationFaceVarying)
+    , _adjacencyValid(false)
+    , _computedNormalsValid(false)
+    , _authoredNormals(false)
+    , _smoothNormals(false)
     , _leftHanded(-1)
     , _refined(false)
     , _doubleSided(false)
@@ -277,10 +282,13 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
             ->SetCount(_normals.size())
             ->SetValuePointer(_normals.cdata()));
 
-        attrs.push(NSI::Argument::New("N.indices")
-            ->SetType(NSITypeInteger)
-            ->SetCount(_faceVertexIndices.size())
-            ->SetValuePointer(_faceVertexIndices.cdata()));
+        if (_normalsInterpolation == HdInterpolationVertex)
+        {
+            attrs.push(NSI::Argument::New("N.indices")
+                ->SetType(NSITypeInteger)
+                ->SetCount(_faceVertexIndices.size())
+                ->SetValuePointer(_faceVertexIndices.cdata()));
+        }
     }
 
     nsi.SetAttribute(_masterShapeHandle, attrs);
@@ -304,6 +312,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         VtValue pointsValue = sceneDelegate->Get(id, HdTokens->points);
         _points = pointsValue.Get<VtVec3fArray>();
+        _computedNormalsValid = false;
     }
 
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {
@@ -317,10 +326,8 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
         _faceVertexCounts = _topology.GetFaceVertexCounts();
         _faceVertexIndices = _topology.GetFaceVertexIndices();
-
-        _adjacency.BuildAdjacencyTable(&_topology);
-        _normals = Hd_SmoothNormals::ComputeSmoothNormals(
-            &_adjacency, _points.size(), _points.cdata());
+        _adjacencyValid = false;
+        _computedNormalsValid = false;
 
         if (_topology.GetOrientation() == HdTokens->leftHanded) {
             _leftHanded = 1;
@@ -350,6 +357,25 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _doubleSided = IsDoubleSided(sceneDelegate);
     }
 
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals)) {
+        // TODO: support other interpolations than FaceVarying (ie, uniform, vertex)
+
+        // If we just do "GetNormals" when there are no normals,  it will
+        // raise a scary error... but there's no "easy" way to check if normals
+        // are defined - so we use GetPrimvarDescriptors, and iterate through all
+        auto primvars = GetPrimvarDescriptors(sceneDelegate, HdInterpolationFaceVarying);
+        for (HdPrimvarDescriptor const& pv: primvars) {
+            if (pv.name == HdTokens->normals) {
+                VtValue normalsValue = GetNormals(sceneDelegate);
+                if (normalsValue.IsHolding<VtVec3fArray>()) {
+                    _normals = normalsValue.UncheckedGet<VtVec3fArray>();
+                    _authoredNormals = true;
+                    _normalsInterpolation = pv.interpolation;
+                }
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
@@ -364,6 +390,17 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // If the refine level is 0, triangulate instead of subdividing.
     doRefine = doRefine && (_topology.GetRefineLevel() > 0);
+
+    // The repr defines whether we should compute smooth normals for this mesh:
+    // per-vertex normals taken as an average of adjacent faces, and
+    // interpolated smoothly across faces.
+    _smoothNormals = !desc.flatShadingEnabled;
+
+    // If the subdivision scheme is "none" or "bilinear", force us not to use
+    // smooth normals.
+    _smoothNormals = _smoothNormals &&
+        (_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
+        (_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
 
     ////////////////////////////////////////////////////////////////////////
     // 3. Populate NSI prototype object.
@@ -392,6 +429,28 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
             NSI::CStringPArg("subdivision.scheme",
                 refineLevel ? "catmull-clark" : ""));
     }
+
+    // Update normals
+    if (!_authoredNormals && _smoothNormals) {
+        _normalsInterpolation = HdInterpolationVertex;
+        // Update the smooth normals in steps:
+       // 1. If the topology is dirty, update the adjacency table, a processed
+       //    form of the topology that helps calculate smooth normals quickly.
+       // 2. If the points are dirty, update the smooth normal buffer itself.
+        if (!_adjacencyValid) {
+            _adjacency.BuildAdjacencyTable(&_topology);
+            _adjacencyValid = true;
+            // If we rebuilt the adjacency table, force a rebuild of normals.
+            _computedNormalsValid = false;
+        }
+        if (!_computedNormalsValid) {
+            _normals = Hd_SmoothNormals::ComputeSmoothNormals(
+                &_adjacency, _points.size(), _points.cdata());
+            _computedNormalsValid = true;
+        }
+    }
+    // If we have no authored normals, but we're not doing smooth normals, we just let
+    // 3delight use it's own default normals
 
     // Populate/update points in the NSI mesh.
     if (newMesh || 
