@@ -1,6 +1,5 @@
 #include "outputDriver.h"
 
-
 #include <cassert>
 #include <limits>
 
@@ -45,27 +44,37 @@ PtDspyError HdNSIOutputDriver::ImageOpen(
 		return PkDspyErrorBadParams;
 	}
 
-	// Find the pointer to preallocated handle
-	Handle *imageHandle = nullptr;
+	// Find the pointer to preallocated renderBuffer
+	using PXR_INTERNAL_NS::HdNSIRenderBuffer;
+	HdNSIRenderBuffer *buffer = nullptr;
 
 	for (int i = 0; i < paramCount; ++i)
 	{
 		const UserParameter *parameter = parameters + i;
 
 		const std::string param_name = parameter->name;
-		if (param_name == "outputhandle") {
-			imageHandle = ((Handle**)parameter->value)[0];
-			break;
+		if (param_name == "buffer") {
+			buffer = ((HdNSIRenderBuffer**)parameter->value)[0];
 		}
 	}
 
-	if (imageHandle == nullptr) {
+	if (buffer == nullptr)
+	{
 		return PkDspyErrorBadParams;
 	}
+
+	/* Minimal sanity check: number of components. */
+	if (HdGetComponentCount(buffer->GetFormat()) != numFormats)
+	{
+		return PkDspyErrorBadParams;
+	}
+
+	Handle *imageHandle = new Handle;
 
 	// Initialize the image handle.
 	imageHandle->_width = width;
 	imageHandle->_height = height;
+	imageHandle->m_buffer = buffer;
 
 	for(int i = 0;i < paramCount; ++ i)
 	{
@@ -84,11 +93,11 @@ PtDspyError HdNSIOutputDriver::ImageOpen(
 			imageHandle->_originX = origin[0];
 			imageHandle->_originY = origin[1];
 		}
+		else if (param_name == "projectdepth")
+		{
+			imageHandle->m_project = *(ProjData**)parameter->value;
+		}
 	}
-
-	imageHandle->_depth_buffer.resize(width * height,
-	std::numeric_limits<float>::max());
-	imageHandle->_buffer.resize(width * height * 4, 0);
 
 	*phImage = imageHandle;
 
@@ -163,34 +172,57 @@ PtDspyError HdNSIOutputDriver::ImageData(
 		return PkDspyErrorStop;
 	}
 
-	assert(entrySize == 8);
-	int i = 0;
+	assert(entrySize == HdDataSizeOfFormat(imageHandle->m_buffer->GetFormat()));
+	auto bufferFormat = imageHandle->m_buffer->GetFormat();
+	bool intConvert = PXR_INTERNAL_NS::HdFormatInt32 ==
+		HdGetComponentFormat(bufferFormat);
+	uint8_t *buffer = imageHandle->m_buffer->Map();
 
-	for (int y = yMin; y < yMaxPlusOne; ++ y) {
-		for (int x = xMin; x < xMaxPlusOne; ++ x) {
-			size_t p = x + (imageHandle->_height - y - 1) * imageHandle->_width;
-			size_t dstOffset = p * 4;
-
-			imageHandle->_buffer[dstOffset + 0] = cdata[i * entrySize + 0];
-			imageHandle->_buffer[dstOffset + 1] = cdata[i * entrySize + 1];
-			imageHandle->_buffer[dstOffset + 2] = cdata[i * entrySize + 2];
-			imageHandle->_buffer[dstOffset + 3] = cdata[i * entrySize + 3];
-
-			float Ze = - *(float*)(cdata + i * entrySize + 4);
-			// HdxCompositor wants a post-projection depth.
-			float nd =
-				(imageHandle->m_projM22 * Ze + imageHandle->m_projM32) / -Ze;
-			imageHandle->_depth_buffer[p] = nd;
-
-			++ i;
+	for (int y = yMin; y < yMaxPlusOne; ++ y)
+	{
+		/* Hydra works with row 0 at the bottom. */
+		int buffer_y = imageHandle->_height - y - 1;
+		uint8_t *buf_out =
+			buffer + entrySize * (buffer_y * imageHandle->_width + xMin);
+		const uint8_t *buf_in =
+			cdata + entrySize * (y - yMin) * (xMaxPlusOne - xMin);
+		if (imageHandle->m_project)
+		{
+			const auto &pd = *imageHandle->m_project;
+			/* Hydra expects a post-projection depth. */
+			for (int x = xMin; x < xMaxPlusOne; ++x)
+			{
+				int i = x - xMin;
+				float Ze = - ((const float*)buf_in)[i];
+				float nd = (pd.M22 * Ze + pd.M32) / -Ze;
+				((float*)buf_out)[i] = nd;
+			}
+		}
+		else if (intConvert)
+		{
+			/* Integer AOVs were rendered as float. Convert here. */
+			int32_t *out = (int32_t*)buf_out;
+			const float *in = (const float*)buf_in;
+			int n = HdGetComponentCount(bufferFormat) * (xMaxPlusOne - xMin);
+			for (int i = 0; i < n; ++i)
+			{
+				out[i] = static_cast<int>(in[i]);
+			}
+		}
+		else
+		{
+			memcpy(buf_out, buf_in, entrySize * (xMaxPlusOne - xMin));
 		}
 	}
+	imageHandle->m_buffer->Unmap();
 
     return PkDspyErrorNone;
 }
 
 PtDspyError HdNSIOutputDriver::ImageClose(PtDspyImageHandle hImage)
 {
+	Handle *imageHandle = reinterpret_cast<Handle *>(hImage);
+	delete imageHandle;
 	return PkDspyErrorNone;
 }
 // vim: set softtabstop=0 noexpandtab shiftwidth=4:

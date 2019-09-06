@@ -74,11 +74,51 @@ public:
     void RemoveLight() { --_numLights; }
     bool HasLights() const { return _numLights != 0; }
 
+    void StartRender()
+    {
+        if( !_rendering)
+        {
+            _rendering = true;
+            GetNSIContext().RenderControl((
+                NSI::CStringPArg("action", "start"),
+                NSI::IntegerArg("interactive", 1),
+                NSI::IntegerArg("progressive", 1)));
+        }
+    }
+
+    void StopRender()
+    {
+        if (_rendering)
+        {
+            _rendering = false;
+            GetNSIContext().RenderControl(
+                NSI::CStringPArg("action", "stop"));
+        }
+    }
+
+    void SyncRender()
+    {
+        if (!_rendering)
+        {
+            /* Restart the render if it was stopped. */
+            StartRender();
+        }
+        else
+        {
+            /* Otherwise just sync. */
+            GetNSIContext().RenderControl(
+                NSI::CStringPArg("action", "synchronize"));
+        }
+    }
+
 private:
     HdNSIRenderDelegate *_renderDelegate;
 
     /// A smart pointer to the NSI API.
     std::shared_ptr<NSI::Context> _nsi;
+
+    /// true when the render is actually running
+    bool _rendering{false};
 
     /// A flag to know if the scene has been edited.
     std::atomic<bool> _sceneEdited;

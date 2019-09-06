@@ -47,7 +47,8 @@ HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
                                  HdNSIRenderDelegate *renderDelegate,
                                  HdNSIRenderParam *renderParam)
     : HdRenderPass(index, collection)
-    , _imageHandle{new HdNSIOutputDriver::Handle}
+    , _colorBuffer{SdfPath::EmptyPath()}
+    , _depthBuffer{SdfPath::EmptyPath()}
     , _width(0)
     , _height(0)
     , _renderDelegate(renderDelegate)
@@ -63,10 +64,8 @@ HdNSIRenderPass::~HdNSIRenderPass()
     // Stop the render.
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    StopRender();
+    _renderParam->StopRender();
     nsi.RenderControl(NSI::CStringPArg("action", "wait"));
-
-    delete _imageHandle;
 }
 
 void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
@@ -116,6 +115,33 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         resetCameraXform = true;
     }
 
+    // If the list of AOVs changed, update the outputs.
+    HdRenderPassAovBindingVector aovBindings =
+        renderPassState->GetAovBindings();
+    bool createOutputs = false;
+
+    if( _outputNodes.empty() || aovBindings != _aovBindings )
+    {
+        _aovBindings = aovBindings;
+        if( aovBindings.empty() )
+        {
+            _colorBuffer.Allocate(
+                GfVec3i(_width, _height, 1), HdFormatUNorm8Vec4, true);
+            _depthBuffer.Allocate(
+                GfVec3i(_width, _height, 1), HdFormatFloat32, true);
+            HdRenderPassAovBinding aov;
+            aov.aovName = HdAovTokens->color;
+            aov.renderBuffer = &_colorBuffer;
+            aovBindings.push_back(aov);
+            aov.aovName = HdAovTokens->depth;
+            aov.renderBuffer = &_depthBuffer;
+            aovBindings.push_back(aov);
+        }
+        resetImage = true;
+        // Actual NSI outputs are changed below, while render is stopped.
+        createOutputs = true;
+    }
+
     bool resetCameraPersp = false;
     GfMatrix4d projMatrix = renderPassState->GetProjectionMatrix();
     if (_projMatrix != projMatrix) {
@@ -123,8 +149,8 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
 
         resetCameraPersp = true;
         /* The output driver needs this to remap Z. */
-        _imageHandle->m_projM22 = _projMatrix[2][2];
-        _imageHandle->m_projM32 = _projMatrix[3][2];
+        _depthProj.M22 = _projMatrix[2][2];
+        _depthProj.M32 = _projMatrix[3][2];
     }
 
     // Create the camera's transform and the all NSI objects.
@@ -161,7 +187,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     if (resetImage) {
         if (_renderStatus == Running)
         {
-            StopRender();
+            _renderParam->StopRender();
         }
 
         // Update the resolution.
@@ -201,10 +227,10 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
 
         nsi.SetAttribute(ScreenHandle(), args);
 
-        if (_renderStatus == Running)
+        // Update outputs.
+        if( createOutputs )
         {
-            // Restart the render.
-            StartRender();
+            _CreateNSIOutputs(aovBindings);
         }
     }
 
@@ -239,7 +265,7 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     // Launch rendering or synchronize the all changes.
     if (_renderStatus == Stopped)
     {
-        StartRender();
+        _renderParam->StartRender();
         // Change the render status.
         _renderStatus = Running;
     }
@@ -247,33 +273,74 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
         _renderParam->SceneEdited())
     {
         // Tell 3Delight to update.
-        nsi.RenderControl(NSI::CStringPArg("action", "synchronize"));
+        _renderParam->SyncRender();
     }
 
     /* The renderer is now up to date on all changes. */
     _renderParam->ResetSceneEdited();
 
-    // Blit!
-    if (_imageHandle->_buffer.size()) {
-        _compositor.UpdateColor(_width, _height, _imageHandle->_buffer.data());
-        _compositor.UpdateDepth(_width, _height,
-            (uint8_t*)_imageHandle->_depth_buffer.data());
+    // Blit, only when no AOVs are specified.
+    if (_aovBindings.empty())
+    {
+        _colorBuffer.Resolve();
+        _depthBuffer.Resolve();
+        _compositor.UpdateColor(_width, _height, _colorBuffer.Map());
+        _colorBuffer.Unmap();
+        _compositor.UpdateDepth(_width, _height, _depthBuffer.Map());
+        _depthBuffer.Unmap();
         _compositor.Draw();
     }
 }
 
-void HdNSIRenderPass::StopRender() const
+void HdNSIRenderPass::_CreateNSIOutputs(
+    const HdRenderPassAovBindingVector &bindings)
 {
-    _renderParam->GetNSIContext().RenderControl(
-        NSI::CStringPArg("action", "stop"));
-}
+    NSI::Context &nsi = _renderParam->GetNSIContext();
 
-void HdNSIRenderPass::StartRender() const
-{
-    _renderParam->GetNSIContext().RenderControl((
-        NSI::CStringPArg("action", "start"),
-        NSI::IntegerArg("interactive", 1),
-        NSI::IntegerArg("progressive", 1)));
+    /* Delete the NSI nodes from the previous output specification. */
+    for( const std::string &h : _outputNodes )
+    {
+        nsi.Delete(h);
+    }
+    _outputNodes.clear();
+
+    const std::string &prefix = boost::lexical_cast<std::string>(this);
+    size_t i = 0;
+    for( const HdRenderPassAovBinding &aov : bindings )
+    {
+        /* Create an output layer. */
+        std::string layerHandle = prefix + "|outputLayer" + std::to_string(i);
+        nsi.Create(layerHandle, "outputlayer");
+        nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
+
+        /* Have the buffer set some of the attributes. */
+        static_cast<HdNSIRenderBuffer*>(aov.renderBuffer)
+            ->SetNSILayerAttributes(nsi, layerHandle, aov.aovName);
+
+        if( aov.aovName == HdAovTokens->depth )
+        {
+            /* Depth AOV needs extra data for the projection. */
+            nsi.SetAttribute(layerHandle,
+                NSI::PointerArg("projectdepth", &_depthProj));
+        }
+
+        /* Create an output driver. */
+        std::string driverHandle = prefix + "|outputDriver" + std::to_string(i);
+        nsi.Create(driverHandle, "outputdriver");
+        nsi.SetAttribute(driverHandle, (
+            NSI::StringArg("drivername", "HdNSI"),
+            NSI::StringArg("imagefilename", prefix)));
+
+        /* Connect everything together. */
+        nsi.Connect(driverHandle, "", layerHandle, "outputdrivers");
+        nsi.Connect(layerHandle, "", ScreenHandle(), "outputlayers");
+
+        /* Record the nodes so we can delete them on the next update. */
+        _outputNodes.push_back(layerHandle);
+        _outputNodes.push_back(driverHandle);
+
+        ++i;
+    }
 }
 
 std::string HdNSIRenderPass::ScreenHandle() const
@@ -290,16 +357,11 @@ void HdNSIRenderPass::SetOversampling() const
 
     if (_renderStatus == Running)
     {
-        StopRender();
+        _renderParam->StopRender();
     }
 
     nsi.SetAttribute(ScreenHandle(),
         NSI::IntegerArg("oversampling", s.Get<int>()));
-
-    if (_renderStatus == Running)
-    {
-        StartRender();
-    }
 }
 
 void HdNSIRenderPass::_CreateNSICamera()
@@ -347,55 +409,6 @@ void HdNSIRenderPass::_CreateNSICamera()
     nsi.Create(screenHandle, "screen");
     SetOversampling();
     nsi.Connect(screenHandle, "", _cameraShapeHandle, "screens");
-
-    // Create a outputlayer, the format of a color variable.
-    std::string layer1Handle = prefix + "|outputLayer1";
-    nsi.Create(layer1Handle, "outputlayer");
-    {
-        nsi.SetAttribute(layer1Handle, (
-            NSI::StringArg("variablename", "Ci"),
-            NSI::StringArg("layertype", "color"),
-            NSI::StringArg("scalarformat", "uint8"),
-            NSI::IntegerArg("withalpha", 1),
-            NSI::IntegerArg("dithering", 1),
-            NSI::IntegerArg("sortkey", 0),
-            NSI::StringArg("variablesource", "shader"),
-            NSI::PointerArg("outputhandle", _imageHandle)));
-    }
-    nsi.Connect(layer1Handle, "", screenHandle, "outputlayers");
-
-    // A second layer for depth.
-    std::string layer2Handle = prefix + "|outputLayer2";
-    nsi.Create(layer2Handle, "outputlayer");
-    {
-        nsi.SetAttribute(layer2Handle, (
-            NSI::StringArg("variablename", "z"),
-            NSI::StringArg("layertype", "scalar"),
-            NSI::StringArg("scalarformat", "float"),
-            NSI::StringArg("filter", "min"),
-            NSI::DoubleArg("filterwidth", 1.0),
-            NSI::IntegerArg("sortkey", 1),
-            NSI::PointerArg("outputhandle", _imageHandle)));
-    }
-    nsi.Connect(layer2Handle, "", screenHandle, "outputlayers");
-
-    // Create a displaydriver, the receiver of the computed pixels.
-    _outputDriverHandle = prefix + "|outputDriver1";
-    nsi.Create(_outputDriverHandle, "outputdriver");
-    {
-        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "HdNSI"));
-        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
-    }
-    nsi.Connect(_outputDriverHandle, "", layer1Handle, "outputdrivers");
-    nsi.Connect(_outputDriverHandle, "", layer2Handle, "outputdrivers");
-#ifdef NSI_DEBUG
-    std::string debugDriverHandle = prefix + "|debugDriver1";
-    {
-        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("drivername", "idisplay"));
-        nsi.SetAttribute(_outputDriverHandle, NSI::StringArg("imagefilename", prefix));
-    }
-    nsi.Connect(debugDriverHandle, "", layer1Handle, "outputdrivers");
-#endif
 }
 
 std::string HdNSIRenderPass::ExportNSIHeadLightShader()

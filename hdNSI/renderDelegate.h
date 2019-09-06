@@ -200,6 +200,9 @@ public:
     virtual HdRenderSettingDescriptorList
         GetRenderSettingDescriptors() const override;
 
+    virtual HdAovDescriptor GetDefaultAovDescriptor(
+        TfToken const& name) const override;
+
     void RemoveRenderPass(HdNSIRenderPass *renderPass);
 
     const std::string& GetDelight() const { return _delight; }

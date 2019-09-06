@@ -45,6 +45,7 @@
 #include "pxr/imaging/hdNSI/light.h"
 #include "pxr/imaging/hdNSI/material.h"
 //XXX: Add bprim types
+#include "pxr/imaging/hdNSI/renderBuffer.h"
 
 #include "delight.h"
 
@@ -74,6 +75,7 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_BPRIM_TYPES =
 {
+    HdPrimTypeTokens->renderBuffer
 };
 
 std::mutex HdNSIRenderDelegate::_mutexResourceRegistry;
@@ -266,13 +268,51 @@ void HdNSIRenderDelegate::SetRenderSetting(
     }
 
     _exportedSettings[key] = value;
-    _nsi->RenderControl(NSI::CStringPArg("action", "synchronize"));
+    _renderParam->SyncRender();
 }
 
 HdRenderSettingDescriptorList
 HdNSIRenderDelegate::GetRenderSettingDescriptors() const
 {
     return _settingDescriptors;
+}
+
+HdAovDescriptor HdNSIRenderDelegate::GetDefaultAovDescriptor(
+    TfToken const& name) const
+{
+    if (name == HdAovTokens->color)
+    {
+        return HdAovDescriptor(HdFormatUNorm8Vec4, true, VtValue());
+    }
+    else if (name == HdAovTokens->depth)
+    {
+        return HdAovDescriptor(HdFormatFloat32, true, VtValue(1.0f));
+    }
+    else if (name == HdAovTokens->linearDepth)
+    {
+        return HdAovDescriptor(HdFormatFloat32, true, VtValue(0.0f));
+    }
+    else if (name == HdAovTokens->normal ||
+             name == HdAovTokens->Neye)
+    {
+        return HdAovDescriptor(HdFormatFloat32Vec3, true, VtValue());
+    }
+    else if (name == HdAovTokens->primId ||
+             name == HdAovTokens->instanceId ||
+             name == HdAovTokens->elementId)
+    {
+        return HdAovDescriptor(HdFormatInt32, true, VtValue(-1));
+    }
+    else
+    {
+        HdParsedAovToken aovId(name);
+        if (aovId.isPrimvar)
+        {
+            return HdAovDescriptor(HdFormatFloat32Vec3, true, VtValue());
+        }
+    }
+
+    return HdAovDescriptor();
 }
 
 TfTokenVector const&
@@ -418,6 +458,10 @@ HdBprim *
 HdNSIRenderDelegate::CreateBprim(TfToken const& typeId,
                                     SdfPath const& bprimId)
 {
+    if (typeId == HdPrimTypeTokens->renderBuffer)
+    {
+        return new HdNSIRenderBuffer(bprimId);
+    }
     TF_CODING_ERROR("Unknown Bprim Type %s", typeId.GetText());
     return nullptr;
 }
@@ -425,6 +469,10 @@ HdNSIRenderDelegate::CreateBprim(TfToken const& typeId,
 HdBprim *
 HdNSIRenderDelegate::CreateFallbackBprim(TfToken const& typeId)
 {
+    if (typeId == HdPrimTypeTokens->renderBuffer)
+    {
+        return new HdNSIRenderBuffer(SdfPath::EmptyPath());
+    }
     TF_CODING_ERROR("Unknown Bprim Type %s", typeId.GetText());
     return nullptr;
 }

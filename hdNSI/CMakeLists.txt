@@ -45,6 +45,7 @@ pxr_plugin(hdNSI
         materialAssign
         primvars
         outputDriver
+        renderBuffer
 
     DISABLE_PRECOMPILED_HEADERS
 )

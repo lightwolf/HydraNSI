@@ -4,9 +4,20 @@
 #include <ndspy.h>
 #include <nsi_dynamic.hpp>
 
+#include "pxr/imaging/hdNSI/renderBuffer.h"
+
 class HdNSIOutputDriver
 {
 public:
+	/*
+		The elements of the projection matrix needed to compute an OpenGL like
+		depth.
+	*/
+	struct ProjData
+	{
+		double M22{-0.5}, M32{0.0};
+	};
+
 	class Handle
 	{
 	public:
@@ -14,16 +25,10 @@ public:
 		int _originalSizeX, _originalSizeY;
 		int _originX, _originY;
 
-		/*
-			The elements of the projection matrix needed to compute an
-			OpenGL like depth.
-		*/
-		double m_projM22{-0.5}, m_projM32{0.0};
+		/* Given only to the display which handles depth. */
+		ProjData *m_project{nullptr};
 
-		// Buffer for RGBA.
-		std::vector<uint8_t> _buffer;
-		// Buffer for Z.
-		std::vector<float> _depth_buffer;
+		PXR_INTERNAL_NS::HdNSIRenderBuffer *m_buffer;
 	};
 
 	static void Register(NSI::DynamicAPI &api);

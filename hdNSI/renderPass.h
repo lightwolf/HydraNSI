@@ -31,6 +31,7 @@
 #include "pxr/imaging/hd/renderPass.h"
 #include "pxr/imaging/hd/sprim.h"
 #include "pxr/imaging/hdNSI/outputDriver.h"
+#include "pxr/imaging/hdNSI/renderBuffer.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdx/compositor.h"
 
@@ -90,11 +91,23 @@ protected:
 
 private:
 
+    void _CreateNSIOutputs(const HdRenderPassAovBindingVector &bindings);
+
     // -----------------------------------------------------------------------
     // Internal API
 
 
-    HdNSIOutputDriver::Handle *_imageHandle;
+    // Needed by output system to get correct Z.
+    HdNSIOutputDriver::ProjData _depthProj;
+
+    // Handles to all nodes used to define outputs (layers, drivers).
+    std::vector<std::string> _outputNodes;
+
+    // AOV bindings for which the above output nodes were created.
+    HdRenderPassAovBindingVector _aovBindings;
+
+    // Default render buffers when none are provided.
+    HdNSIRenderBuffer _colorBuffer, _depthBuffer;
 
     // The width of the viewport we're rendering into.
     unsigned int _width;
@@ -106,9 +119,6 @@ private:
 
     // A handle to the render param.
     HdNSIRenderParam *_renderParam;
-
-    void StopRender() const;
-    void StartRender() const;
 
     std::string ScreenHandle() const;
     void SetOversampling() const;

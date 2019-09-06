@@ -91,6 +91,7 @@ HdNSIPointCloud::GetInitialDirtyBitsMask() const
     // that _PopulateRtPointCloud requests.
     int mask = HdChangeTracker::Clean
         | HdChangeTracker::InitRepr
+        | HdChangeTracker::DirtyPrimID
         | HdChangeTracker::DirtyPoints
         | HdChangeTracker::DirtyTopology
         | HdChangeTracker::DirtyTransform
@@ -356,6 +357,12 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
             nsi.SetAttributeAtTime(masterXformHandle, 0.0,
                 NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
         }
+    }
+
+    if (HdChangeTracker::IsPrimIdDirty(*dirtyBits, id))
+    {
+        nsi.SetAttribute(_masterShapeHandle,
+            NSI::IntegerArg("primId", GetPrimId()));
     }
 
     _material.Sync(
