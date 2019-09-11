@@ -161,7 +161,7 @@ private:
                          HdMeshReprDesc const &desc);
 
     // Utility function to create a NSI triangle mesh and populate topology.
-    bool _CreateNSIMesh(
+    void _CreateNSIMesh(
         HdNSIRenderParam *renderParam,
         NSI::Context &nsi);
     void _SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv);
@@ -188,17 +188,12 @@ private:
 
     // NSI handles.
     std::string _masterShapeHandle;
-
+    std::string _xformHandle;
+    std::string _instancesHandle;
     std::string _attrsHandle;
 
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
-
-    // From USD id to the NSI mesh node handles.
-    static std::map<SdfPath, std::string> _nsiMeshShapeHandles;
-
-    // From USD id to the NSI transforms node handles.
-    static std::multimap<SdfPath, std::string> _nsiMeshXformHandles;
 
     // Draw styles.
     bool _refined;

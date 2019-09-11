@@ -43,10 +43,6 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::map<SdfPath, std::string> HdNSIMesh::_nsiMeshShapeHandles; // static
-
-std::multimap<SdfPath, std::string> HdNSIMesh::_nsiMeshXformHandles; // static
-
 HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
@@ -68,27 +64,16 @@ HdNSIMesh::Finalize(HdRenderParam *renderParam)
     NSI::Context &nsi =
         static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
 
-    const SdfPath &id = GetId();
-
-    // Delete any instances of this mesh in the top-level NSI scene.
-    auto range = _nsiMeshXformHandles.equal_range(id);
-    for (auto itr = range.first; itr != range.second; ++ itr) {
-        const std::string &instanceXformHandle = itr->second;
-        nsi.Delete(instanceXformHandle);
-    }
-    _nsiMeshXformHandles.erase(id);
-
-    // Delete the prototype geometry.
-    if (_nsiMeshShapeHandles.count(id)) {
-        _nsiMeshShapeHandles.erase(id);
-        nsi.Delete(_masterShapeHandle);
-    }
-
+    nsi.Delete(_masterShapeHandle);
     _masterShapeHandle.clear();
 
-    // Delete the attributes node.
-    nsi.Delete(_attrsHandle);
+    nsi.Delete(_xformHandle);
+    _xformHandle.clear();
 
+    nsi.Delete(_instancesHandle);
+    _instancesHandle.clear();
+
+    nsi.Delete(_attrsHandle);
     _attrsHandle.clear();
 }
 
@@ -163,23 +148,18 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
     _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
-bool
+void
 HdNSIMesh::_CreateNSIMesh(
     HdNSIRenderParam *renderParam,
     NSI::Context &nsi)
 {
+    if (!_masterShapeHandle.empty())
+        return;
+
     const SdfPath &id = GetId();
-    _masterShapeHandle = id.GetString() + "|mesh1";
+    _masterShapeHandle = id.GetString() + "|geo";
 
-    // Create the new mesh.
-    bool newShape = false;
-
-    if (!_nsiMeshShapeHandles.count(id)) {
-        nsi.Create(_masterShapeHandle, "mesh");
-        _nsiMeshShapeHandles.insert(std::make_pair(id, _masterShapeHandle));
-
-        newShape = true;
-    }
+    nsi.Create(_masterShapeHandle, "mesh");
 
     // Set clockwisewinding for the mesh.
     if (_leftHanded != -1) {
@@ -187,22 +167,27 @@ HdNSIMesh::_CreateNSIMesh(
             NSI::IntegerArg("clockwisewinding", _leftHanded));
     }
 
-    // Create the master transform node.
-    const std::string &masterXformHandle = id.GetString() + "|transform1";
-
-    nsi.Create(masterXformHandle, "transform");
-    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-
-    _nsiMeshXformHandles.insert(std::make_pair(id, masterXformHandle));
+    _xformHandle = id.GetString();
+    nsi.Create(_xformHandle, "transform");
+    nsi.Connect(_masterShapeHandle, "", _xformHandle, "objects");
+    if (GetInstancerId().IsEmpty())
+    {
+        /* Just the one instance. */
+        nsi.Connect(_xformHandle, "", NSI_SCENE_ROOT, "objects");
+    }
+    else
+    {
+        /* Go through an instances node to have multiple instances. */
+        _instancesHandle = id.GetString() + "|instances";
+        nsi.Create(_instancesHandle, "instances");
+        nsi.Connect(_instancesHandle, "", NSI_SCENE_ROOT, "objects");
+        nsi.Connect(_xformHandle, "", _instancesHandle, "sourcemodels");
+    }
 
     // Create the attribute node.
-    _attrsHandle = id.GetString() + "|attributes1";
-
+    _attrsHandle = id.GetString() + "|attr";
     nsi.Create(_attrsHandle, "attributes");
-    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
-
-    return newShape;
+    nsi.Connect(_attrsHandle, "", _masterShapeHandle, "geometryattributes");
 }
 
 void
@@ -410,12 +395,11 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     // need to create or recreate the NSI mesh object.
     // _GetInitialDirtyBits() ensures that the topology is dirty the first time
     // this function is called, so that the NSI mesh is always created.
-    bool newMesh = false;
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id) ||
         doRefine != _refined) {
 
         // Create the new mesh node.
-        newMesh = _CreateNSIMesh(renderParam, nsi);
+        _CreateNSIMesh(renderParam, nsi);
 
         _refined = doRefine;
         // In both cases, the vertices will be (re-)populated below.
@@ -423,7 +407,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // If the refine level changed or the mesh was recreated, we need to pass
     // the refine level into the NSI subdiv object.
-    if (newMesh || HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
+    if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         const int refineLevel = _topology.GetRefineLevel();
 
         nsi.SetAttribute(_masterShapeHandle,
@@ -454,8 +438,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     // 3delight use it's own default normals
 
     // Populate/update points in the NSI mesh.
-    if (newMesh || 
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
         _SetNSIMeshAttributes(nsi, doRefine);
     }
 
@@ -472,63 +455,28 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     // XXX: The current instancer invalidation tracking makes it hard for
     // HdNSI to tell whether transforms will be dirty, so this code
     // pulls them every frame.
-    if (!GetInstancerId().IsEmpty()) {
+    if (!GetInstancerId().IsEmpty())
+    {
         // Retrieve instance transforms from the instancer.
         HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-        HdInstancer *instancer =
-            renderIndex.GetInstancer(GetInstancerId());
+        HdInstancer *instancer = renderIndex.GetInstancer(GetInstancerId());
         const VtMatrix4dArray &transforms =
             static_cast<HdNSIInstancer*>(instancer)->
             ComputeInstanceTransforms(GetId());
 
-        // Retrieve the all existed transforms.
-        std::set<std::string> existedXformHandles;
-        const auto range = _nsiMeshXformHandles.equal_range(id);
-        for (auto itr = range.first; itr != range.second; ++itr) {
-            existedXformHandles.insert(itr->second);
-        }
-
-        // Create and update the instance transform nodes.
-        for (size_t i = 0; i < transforms.size(); ++i ) {
-            std::ostringstream instanceXformHandleStream;
-            instanceXformHandleStream << id << "|instancetransform" << i;
-            const std::string &instanceXformHandle =
-                instanceXformHandleStream.str();
-
-            if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi.Create(instanceXformHandle, "transform");
-                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi.Connect(_masterShapeHandle, "",
-                    instanceXformHandle, "objects");
-                nsi.Connect(_attrsHandle, "",
-                    instanceXformHandle, "geometryattributes");
-            }
-
-            nsi.SetAttributeAtTime(instanceXformHandle, 0,
-                NSI::DoubleMatrixArg("transformationmatrix",
-                    transforms[i].GetArray()));
-        }
+        /* Hope GfMatrix4d* and double* are equivalent :) */
+        nsi.SetAttribute(_instancesHandle,
+            *NSI::Argument("transformationmatrices")
+            .SetType(NSITypeDoubleMatrix)
+            ->SetCount(transforms.size())
+            ->SetValuePointer(transforms.data()));
     }
-    // Otherwise, create our single instance (if necessary) and update
-    // the transform (if necessary).
-    else {
-        // Check if we have the master transform.
-        bool hasXform = (_nsiMeshXformHandles.count(id) > 0);
-        if (!hasXform) {
-            std::string masterXformHandle = id.GetString() + "|transform1";
 
-            nsi.Create(masterXformHandle, "transform");
-            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-        }
-
-        if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-            // Update the transform.
-            std::string masterXformHandle = id.GetString() + "|transform1";
-
-            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
-                NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
-        }
+    if (HdChangeTracker::IsTransformDirty(*dirtyBits, id))
+    {
+        nsi.SetAttribute(_xformHandle,
+            NSI::DoubleMatrixArg("transformationmatrix",
+                _transform.GetArray()));
     }
 
     if (HdChangeTracker::IsPrimIdDirty(*dirtyBits, id))
