@@ -15,15 +15,15 @@ This repository contains a render delegate for Hydra using the NSI technology.
 
 ## Background
 
-**Hydra** — Pixar USD (Universal Scene Description) introduced a model/API called Hydra (allegedly named after the multi-headed monster in Greek mythology). Hydra allows different sources of graphic data (indeed called "heads") to produce images of a 3D scene via rendering backends which receive live data updates (scene edits).
+**Hydra** — Pixar USD (Universal Scene Description) introduced a model/API called Hydra (allegedly named after the multi-headed monster in Greek mythology). Hydra allows different sources of graphic data (indeed called "heads") to produce images of a 3D scene via rendering delegates/backends which receive live data updates (scene edits).
 
 > https://github.com/PixarAnimationStudios/USD
 
 **NSI** — The Nodal Scene Interface (NSI) is a simple and flexible scene description API which is purposely designed to communicate with a render engine. It is used by the new 3Delight NSI renderer together with OSL (Open Shading Language) for shading. One of the goals of NSI is interactive rendering of editable scene descriptions: this feature, as well as many other, make NSI a perfect candidate for a Hydra rendering backend which we call HydraNSI (*hdNSI*). 
 
-> https://gitlab.com/3DelightOpenSource/HydraNSI/blob/master/nsi.pdf
+> https://3delight.com/download (The nsi.pdf specs are located in the doc folder)
 
-**HydraNSI** — Production-quality preview rendering of USD assets, in a viewer such as Hydra, is an appealing idea that allows for a centralised and standardised rendering application. HydraNSI is a Hydra plug-in that converts USD to NSI commands and allows to use 3Delight NSI as a rendering back-end with its rich feature and extensible platform.
+**HydraNSI** — Production-quality preview rendering of USD assets, in a Hydra-based viewer, is an appealing idea that allows for a centralised and standardised rendering application. HydraNSI is a Hydra plug-in that converts USD to NSI commands and allows to use 3Delight NSI as a rendering back-end with its rich feature and extensible platform.
 
 HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility *usdview*.
 
@@ -114,15 +114,13 @@ When reading Alembic files in usdview some variables that control the color and 
 
 We are looking for community contributions to implement the following:
 
-- add **usdShade** schema support for 3Delight OSL materials: [Issue #1](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/1)
-- add **usdLux** schema support for 3Delight OSL lights: [Issue #2](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/2)
-- add upcoming **usdVolume** schema support for 3Delight OpenVDB volumes: [Issue #3](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/3)
-- add OSL matching shaders for **UsdPreviewSurface**: [issue #4](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/4)
+- testing & bugfixing on all platforms
+- add experimental **usdVolume** schema support for 3Delight OpenVDB volumes: [Issue #3](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/3)
 
 
 ## Feedback & Contributions
 
-Feel free to log issues or submit pull requests on this repository. Contributors will added to the be credits.
+Feel free to log issues or submit your patched as pull requests on this repository. Contributors will be added to the be credits.
 
 If you need to get in touch with us e-mail [support@3delight.com](mailto:support@3delight.com)
 
@@ -131,9 +129,9 @@ If you need to get in touch with us e-mail [support@3delight.com](mailto:support
 
 This work was authored by:
 
-[J Cube Inc](http://j-cube.jp) — Marco Pantaleoni, Bo Zhou, Paolo Berto Durante
+[J Cube Inc](http://j-cube.jp) — Marco Pantaleoni, Bo Zhou, Davide Selmo, Paolo Berto Durante. 
 
-Copyright © 2018 Illumination Research Ptv Ltd.
+Copyright © 2019 Illumination Research Ptv Ltd.
 
 ### Contributors
 
