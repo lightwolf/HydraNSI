@@ -68,6 +68,20 @@ HdNSIRenderPass::~HdNSIRenderPass()
     nsi.RenderControl(NSI::CStringPArg("action", "wait"));
 }
 
+bool HdNSIRenderPass::IsConverged() const
+{
+    // The render has converged only if all the aov bindings have converged.
+    for (size_t i = 0; i < _aovBindings.size(); ++i)
+    {
+        if (_aovBindings[i].renderBuffer &&
+            !_aovBindings[i].renderBuffer->IsConverged())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
 {
     if (key == HdNSIRenderSettingsTokens->pixelSamples)
@@ -274,6 +288,16 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     {
         // Tell 3Delight to update.
         _renderParam->SyncRender();
+
+        // Mark the buffers as un-converged.
+        for (size_t i = 0; i < _aovBindings.size(); ++i)
+        {
+            if (_aovBindings[i].renderBuffer)
+            {
+                static_cast<HdNSIRenderBuffer*>(
+                    _aovBindings[i].renderBuffer)->SetConverged(false);
+            }
+        }
     }
 
     /* The renderer is now up to date on all changes. */
