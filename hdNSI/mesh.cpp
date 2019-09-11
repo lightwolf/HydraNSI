@@ -431,6 +431,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
         // Create and update the instance transform nodes.
         for (size_t i = 0; i < transforms.size(); ++i ) {
+            GfMatrix4d transformMat = _transform * GfMatrix4d(transforms[i]);
             std::ostringstream instanceXformHandleStream;
             instanceXformHandleStream << id << "|instancetransform" << i;
             const std::string &instanceXformHandle =
@@ -447,7 +448,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
             nsi.SetAttributeAtTime(instanceXformHandle, 0,
                 NSI::DoubleMatrixArg("transformationmatrix",
-                    transforms[i].GetArray()));
+                    transformMat.GetArray()));
         }
     }
     // Otherwise, create our single instance (if necessary) and update
