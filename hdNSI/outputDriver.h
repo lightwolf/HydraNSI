@@ -63,6 +63,9 @@ private:
 
 	// Display Driver - Close callback function.
 	static PtDspyError ImageClose(PtDspyImageHandle hImage);
+
+	// Display Driver - Render progress callback function.
+	static PtDspyError RenderProgress(PtDspyImageHandle hImage, float progress);
 };
 
 #endif

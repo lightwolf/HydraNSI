@@ -146,6 +146,13 @@ PtDspyError HdNSIOutputDriver::ImageQuery(
 			break;
 		}
 
+		case PkRenderProgress:
+		{
+			(*reinterpret_cast<PtDspyRenderProgressFuncPtr*>(data)) =
+				&HdNSIOutputDriver::RenderProgress;
+			break;
+		}
+
 		default:
 		{
 			return PkDspyErrorUnsupported;
@@ -225,4 +232,23 @@ PtDspyError HdNSIOutputDriver::ImageClose(PtDspyImageHandle hImage)
 	delete imageHandle;
 	return PkDspyErrorNone;
 }
+
+PtDspyError HdNSIOutputDriver::RenderProgress(
+	PtDspyImageHandle hImage, float progress)
+{
+	// Unfortunately sometimes `progress` does not reach 1.0f even if the
+	// render seems to have finished, so here we use a slightly lower value
+	// to test against.
+	if (progress > 0.999f)
+	{
+		Handle *imageHandle = reinterpret_cast<Handle *>(hImage);
+		if (!imageHandle) {
+			return PkDspyErrorStop;
+		}
+
+		imageHandle->m_buffer->SetConverged(true);
+	}
+	return PkDspyErrorNone;
+}
+
 // vim: set softtabstop=0 noexpandtab shiftwidth=4:
