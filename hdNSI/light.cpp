@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+#define CAMERA_VISIBILITY_PRIORITY 10
+
 PXR_NAMESPACE_OPEN_SCOPE
 
 HdNSILight::HdNSILight(
@@ -61,6 +63,20 @@ void HdNSILight::Sync(
 		{
 			float radius = sceneDelegate->GetLightParamValue(
 				GetId(), UsdLuxTokens->radius).Get<float>();
+			if (radius == 0.0f)
+			{
+				// Set to a small value - pick this to match
+				// radius used for a "point" light in 3DFM
+				radius = 5e-4;
+
+				// If it has no radius, it should be invisible to
+				// the camera
+				std::string attr_handle = xform_handle + "|attr";
+				nsi.SetAttribute(attr_handle, (
+						NSI::IntegerArg("visibility.camera", 0),
+						NSI::IntegerArg("visibility.camera.priority",
+										CAMERA_VISIBILITY_PRIORITY)));
+			}
 			nsi.SetAttribute(geo_handle, NSI::FloatArg("width", radius*2));
 		}
 		else if (m_typeId == HdPrimTypeTokens->distantLight)

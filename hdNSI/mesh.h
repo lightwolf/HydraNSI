@@ -178,6 +178,11 @@ private:
 
     Hd_VertexAdjacency _adjacency;
     VtVec3fArray _normals;
+    HdInterpolation _normalsInterpolation;
+    bool _adjacencyValid;
+    bool _computedNormalsValid;
+    bool _authoredNormals;
+    bool _smoothNormals;
 
     int _leftHanded;
 
