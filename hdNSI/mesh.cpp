@@ -38,6 +38,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <numeric>
 
 #include <nsi.hpp>
 
@@ -470,6 +471,15 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
             .SetType(NSITypeDoubleMatrix)
             ->SetCount(transforms.size())
             ->SetValuePointer(transforms.data()));
+
+        /* Add the instanceId attribute for that AOV. */
+        std::vector<int> instanceid(transforms.size());
+        std::iota(instanceid.begin(), instanceid.end(), 0);
+        nsi.SetAttribute(_instancesHandle,
+            *NSI::Argument("instanceId")
+            .SetType(NSITypeInteger)
+            ->SetCount(instanceid.size())
+            ->SetValuePointer(instanceid.data()));
     }
 
     if (HdChangeTracker::IsTransformDirty(*dirtyBits, id))
