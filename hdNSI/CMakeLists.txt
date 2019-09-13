@@ -46,6 +46,7 @@ pxr_plugin(hdNSI
         primvars
         outputDriver
         renderBuffer
+        rprimBase
 
     DISABLE_PRECOMPILED_HEADERS
 )

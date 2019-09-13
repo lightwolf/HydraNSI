@@ -40,13 +40,11 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::map<SdfPath, std::string> HdNSICurves::_nsiCurvesShapeHandles; // static
-std::multimap<SdfPath, std::string> HdNSICurves::_nsiCurvesXformHandles; // static
-
 HdNSICurves::HdNSICurves(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdBasisCurves(id, instancerId)
     , _basis(HdTokens->catmullRom)
+    , _base{"curves"}
     , _refined(false)
 {
 }
@@ -54,33 +52,7 @@ HdNSICurves::HdNSICurves(SdfPath const& id,
 void
 HdNSICurves::Finalize(HdRenderParam *renderParam)
 {
-    NSI::Context &nsi =
-        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
-
-    const SdfPath &id = GetId();
-
-    // Delete any instances of this curves in the top-level NSI scene.
-    if (_nsiCurvesXformHandles.count(id)) {
-        auto range = _nsiCurvesXformHandles.equal_range(id);
-        for (auto itr = range.first; itr != range.second; ++ itr) {
-            const std::string &handle = itr->second;
-            nsi.Delete(handle);
-        }
-    }
-    _nsiCurvesXformHandles.erase(id);
-
-    // Delete the attribute.
-    nsi.Delete(_attrsHandle);
-
-    _attrsHandle.clear();
-
-    // Delete the geometry.
-    if (_nsiCurvesShapeHandles.count(id)) {
-        _nsiCurvesShapeHandles.erase(id);
-        nsi.Delete(_masterShapeHandle);
-    }
-
-    _masterShapeHandle.clear();
+    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -150,46 +122,24 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
     auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
     NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
+    /* The base rprim class tracks this but does not update it itself. */
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, GetId()))
+    {
+        _UpdateVisibility(sceneDelegate, dirtyBits);
+    }
+
+    /* This creates the NSI nodes so it comes before other attributes. */
+    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+
     // Create NSI geometry objects.
     _PopulateRtCurves(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
 void
-HdNSICurves::_CreateNSICurves(
-    HdNSIRenderParam *renderParam,
-    NSI::Context &nsi)
-{
-    const SdfPath &id = GetId();
-    _masterShapeHandle = id.GetString() + "|curves1";
-
-    // Create the new curves.
-    // Scan the all CVC to decice the degree.
-    int minCvc = 999;
-    for (int cvc : _curveVertexCounts) {
-        minCvc = std::min(minCvc, cvc);
-    }
-    nsi.Create(_masterShapeHandle, minCvc >= 4 ? "cubiccurves" : "linearcurves");
-
-    // Create the master transform node.
-    const std::string &masterXformHandle = id.GetString() + "|transform1";
-
-    nsi.Create(masterXformHandle, "transform");
-    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-
-    _nsiCurvesXformHandles.insert(std::make_pair(id, masterXformHandle));
-
-    // Create the attribute node and connect shader to this.
-    _attrsHandle = id.GetString() + "|attributes1";
-
-    nsi.Create(_attrsHandle, "attributes");
-
-    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
-}
-
-void
 HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
 {
+    nsi.SetAttribute(_base.Shape(), NSI::IntegerArg("extrapolate", 1));
+
     NSI::ArgumentList attrs;
 
     // "nvertices"
@@ -211,17 +161,19 @@ HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
         ->SetValuePointer(_widths.cdata()));
 
     // "basis"
+    if (!_refined)
+        attrs.push(new NSI::StringArg("basis", "linear"));
     if (_basis == HdTokens->catmullRom)
         attrs.push(new NSI::StringArg("basis", "catmull-rom"));
     else if (_basis == HdTokens->bSpline)
         attrs.push(new NSI::StringArg("basis", "b-spline"));
     else {
         // HdTokens->bezier is not supported!
-        // use a spline as a fallback
-        attrs.push(new NSI::StringArg("basis", "b-spline"));
+        // use a catmull-rom as a fallback
+        attrs.push(new NSI::StringArg("basis", "catmull-rom"));
     }
 
-    nsi.SetAttribute(_masterShapeHandle, attrs);
+    nsi.SetAttribute(_base.Shape(), attrs);
 }
 
 void
@@ -275,14 +227,6 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         newCurves = true;
     }
 
-    if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-        _transform = sceneDelegate->GetTransform(id);
-    }
-
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        _UpdateVisibility(sceneDelegate, dirtyBits);
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
@@ -297,9 +241,6 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
 
         newCurves = true;
 
-        // Create the new curves node.
-        _CreateNSICurves(renderParam, nsi);
-
         _refined = doRefine;
         // In both cases, vertices/attributes will be (re-)populated below.
     }
@@ -310,90 +251,13 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         _SetNSICurvesAttributes(nsi);
     }
 
-    // Update visibility.
-    //
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
-            NSI::IntegerArg("visibility.priority", 1)));
-    }
-
-    ////////////////////////////////////////////////////////////////////////
-    // 4. Populate NSI instance objects.
-
-    // If the curves is instanced, create one new instance per transform.
-    // XXX: The current instancer invalidation tracking makes it hard for
-    // HdNSI to tell whether transforms will be dirty, so this code
-    // pulls them every frame.
-    if (!GetInstancerId().IsEmpty()) {
-        // Retrieve instance transforms from the instancer.
-        HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-        HdInstancer *instancer =
-            renderIndex.GetInstancer(GetInstancerId());
-        const VtMatrix4dArray &transforms =
-            static_cast<HdNSIInstancer*>(instancer)->
-            ComputeInstanceTransforms(GetId());
-
-        // Retrieve the all existed transforms.
-        std::set<std::string> existedXformHandles;
-        const auto range = _nsiCurvesXformHandles.equal_range(id);
-        for (auto itr = range.first; itr != range.second; ++itr) {
-            existedXformHandles.insert(itr->second);
-        }
-
-        // Create and update the instance transform nodes.
-        for (size_t i = 0; i < transforms.size(); ++i ) {
-            std::ostringstream instanceXformHandleStream;
-            instanceXformHandleStream << id << "|instancetransform" << i;
-            const std::string &instanceXformHandle =
-                instanceXformHandleStream.str();
-
-            if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi.Create(instanceXformHandle, "transform");
-                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
-            }
-
-            nsi.SetAttributeAtTime(instanceXformHandle, 0,
-                NSI::DoubleMatrixArg("transformationmatrix", transforms[i].GetArray()));
-        }
-    }
-    // Otherwise, create our single instance (if necessary) and update
-    // the transform (if necessary).
-    else {
-        // Check if we have the master transform.
-        bool hasXform = (_nsiCurvesXformHandles.count(id) > 0);
-        if (!hasXform) {
-            // Create the master transform.
-            std::string masterXformHandle = id.GetString() + "|transform1";
-
-            nsi.Create(masterXformHandle, "transform");
-            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-        }
-
-        if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-            // Update the transform.
-            std::string masterXformHandle = id.GetString() + "|transform1";
-
-            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
-                NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
-        }
-    }
-
-    if (HdChangeTracker::IsPrimIdDirty(*dirtyBits, id))
-    {
-        nsi.SetAttribute(_masterShapeHandle,
-            NSI::IntegerArg("primId", GetPrimId()));
-    }
-
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle);
+        _base.Shape());
 
     _primvars.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle, VtIntArray()); // _curveVertexIndices ?
+        _base.Shape(), VtIntArray()); // _curveVertexIndices ?
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

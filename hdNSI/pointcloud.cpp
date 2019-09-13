@@ -40,47 +40,17 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-std::map<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudShapeHandles; // static
-std::multimap<SdfPath, std::string> HdNSIPointCloud::_nsiPointCloudXformHandles; // static
-
 HdNSIPointCloud::HdNSIPointCloud(SdfPath const& id,
                                  SdfPath const& instancerId)
     : HdPoints(id, instancerId)
+    , _base{"particles"}
 {
 }
 
 void
 HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
 {
-    NSI::Context &nsi =
-        (static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit());
-
-    const SdfPath &id = GetId();
-
-    // Delete any instances of this pointcloud in the top-level NSI scene.
-    if (_nsiPointCloudXformHandles.count(id)) {
-        auto range = _nsiPointCloudXformHandles.equal_range(id);
-        for (auto itr = range.first; itr != range.second; ++itr) {
-            const std::string &instanceXformHandle = itr->second;
-            nsi.Delete(instanceXformHandle);
-        }
-        _nsiPointCloudXformHandles.erase(id);
-    }
-
-    // Ddele the attributes node.
-    nsi.Delete(_attrsHandle);
-
-    _attrsHandle.clear();
-
-    // Delete the geometry.
-    if (_nsiPointCloudShapeHandles.count(id)) {
-        _nsiPointCloudShapeHandles.erase(id);
-
-        nsi.Delete(_masterShapeHandle);
-
-    }
-
-    _masterShapeHandle.clear();
+    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -150,36 +120,17 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
     auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
     NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
+    /* The base rprim class tracks this but does not update it itself. */
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, GetId()))
+    {
+        _UpdateVisibility(sceneDelegate, dirtyBits);
+    }
+
+    /* This creates the NSI nodes so it comes before other attributes. */
+    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+
     // Create NSI geometry objects.
     _PopulateRtPointCloud(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
-}
-
-void
-HdNSIPointCloud::_CreateNSIPointCloud(
-    HdNSIRenderParam *renderParam,
-    NSI::Context &nsi)
-{
-    const SdfPath &id = GetId();
-    _masterShapeHandle = id.GetString() + "|pointcloud1";
-
-    // Create the new pointcloud.
-    nsi.Create(_masterShapeHandle, "particles");
-
-    // Create the master transform node.
-    const std::string &masterXformHandle = id.GetString() + "|transform1";
-
-    nsi.Create(masterXformHandle, "transform");
-    nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-    nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-
-    _nsiPointCloudXformHandles.insert(std::make_pair(id, masterXformHandle));
-
-    // Create tha attributes node.
-    _attrsHandle = id.GetString() + "|attributes1";
-
-    nsi.Create(_attrsHandle, "attributes");
-
-    nsi.Connect(_attrsHandle, "", masterXformHandle, "geometryattributes");
 }
 
 void
@@ -213,7 +164,7 @@ HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
             ->SetValuePointer(_normals.cdata()));
     }
 
-    nsi.SetAttribute(_masterShapeHandle, attrs);
+    nsi.SetAttribute(_base.Shape(), attrs);
 }
 
 void
@@ -259,14 +210,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         newPointCloud = true;
     }
 
-    if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-        _transform = sceneDelegate->GetTransform(id);
-    }
-
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        _UpdateVisibility(sceneDelegate, dirtyBits);
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
@@ -276,13 +219,6 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 3. Populate NSI prototype object.
 
-    if (newPointCloud) {
-        // Create the new pointcloud node.
-        _CreateNSIPointCloud(renderParam, nsi);
-
-        // attributes will be (re-)populated below.
-    }
-
     // Populate/update points in the NSI pointcloud.
     if (newPointCloud || 
         HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points) ||
@@ -290,88 +226,13 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
         _SetNSIPointCloudAttributes(nsi);
     }
 
-    // Update visibility.
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
-            NSI::IntegerArg("visibility.priority", 1)));
-    }
-
-    ////////////////////////////////////////////////////////////////////////
-    // 4. Populate NSI instance objects.
-
-    // If the pointcloud is instanced, create one new instance per transform.
-    // XXX: The current instancer invalidation tracking makes it hard for
-    // HdNSI to tell whether transforms will be dirty, so this code
-    // pulls them every frame.
-    if (!GetInstancerId().IsEmpty()) {
-        // Retrieve instance transforms from the instancer.
-        HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-        HdInstancer *instancer =
-            renderIndex.GetInstancer(GetInstancerId());
-        const VtMatrix4dArray &transforms =
-            static_cast<HdNSIInstancer*>(instancer)->
-            ComputeInstanceTransforms(GetId());
-
-        // Retrieve the all existed transforms.
-        std::set<std::string> existedXformHandles;
-        const auto range = _nsiPointCloudXformHandles.equal_range(id);
-        for (auto itr = range.first; itr != range.second; ++itr) {
-            existedXformHandles.insert(itr->second);
-        }
-
-        // Create and update the instance transform nodes.
-        for (size_t i = 0; i < transforms.size(); ++i ) {
-            std::ostringstream instanceXformHandleStream;
-            instanceXformHandleStream << id << "|instancetransform" << i;
-            const std::string &instanceXformHandle =
-                instanceXformHandleStream.str();
-
-            if (!existedXformHandles.count(instanceXformHandle)) {
-                nsi.Create(instanceXformHandle, "transform");
-                nsi.Connect(instanceXformHandle, "", NSI_SCENE_ROOT, "objects");
-                nsi.Connect(_masterShapeHandle, "", instanceXformHandle, "objects");
-                nsi.Connect(_attrsHandle, "", instanceXformHandle, "geometryattributes");
-            }
-
-            nsi.SetAttributeAtTime(instanceXformHandle, 0,
-                NSI::DoubleMatrixArg("transformationmatrix", transforms[i].GetArray()));
-        }
-    }
-    // Otherwise, create our single instance (if necessary) and update
-    // the transform (if necessary).
-    else {
-        // Check if we have the master transform.
-        bool hasXform = (_nsiPointCloudXformHandles.count(id) > 0);
-        if (!hasXform) {
-            std::string masterXformHandle = id.GetString() + "|transform1";
-
-            nsi.Create(masterXformHandle, "transform");
-            nsi.Connect(masterXformHandle, "", NSI_SCENE_ROOT, "objects");
-            nsi.Connect(_masterShapeHandle, "", masterXformHandle, "objects");
-        }
-
-        if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-            // Update the transform.
-            std::string masterXformHandle = id.GetString() + "|transform1";
-
-            nsi.SetAttributeAtTime(masterXformHandle, 0.0,
-                NSI::DoubleMatrixArg("transformationmatrix", _transform.GetArray()));
-        }
-    }
-
-    if (HdChangeTracker::IsPrimIdDirty(*dirtyBits, id))
-    {
-        nsi.SetAttribute(_masterShapeHandle,
-            NSI::IntegerArg("primId", GetPrimId()));
-    }
-
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle);
+        _base.Shape());
 
     _primvars.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle, VtIntArray());
+        _base.Shape(), VtIntArray());
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

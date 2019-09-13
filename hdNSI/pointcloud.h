@@ -35,6 +35,7 @@
 #include "pxr/base/gf/rotation.h"
 #include "pxr/imaging/hdNSI/materialAssign.h"
 #include "pxr/imaging/hdNSI/primvars.h"
+#include "pxr/imaging/hdNSI/rprimBase.h"
 
 #include <nsi_dynamic.hpp>
 
@@ -162,34 +163,20 @@ private:
                                HdPointsReprDesc const &desc);
 
     // Utility function to create a NSI triangle pointcloud and populate topology.
-    void _CreateNSIPointCloud(
-        HdNSIRenderParam *renderParam,
-        NSI::Context &nsi);
     void _SetNSIPointCloudAttributes(NSI::Context &nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we
     // only call const accessors keeping them around doesn't incur a buffer
     // copy.
-    GfMatrix4d _transform;
     VtVec3fArray _points;
     VtVec3fArray _normals;
     VtIntArray _pointsIds;
     VtFloatArray _widths;
 
-    // NSI handles.
-    std::string _masterShapeHandle;
-
-    std::string _attrsHandle;
-
+    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
-
-    // From USD id to the NSI particles node handles.
-    static std::map<SdfPath, std::string> _nsiPointCloudShapeHandles;
-
-    // From USD id to the NSI transforms node handles.
-    static std::multimap<SdfPath, std::string> _nsiPointCloudXformHandles;
 
     // This class does not support copying.
     HdNSIPointCloud(const HdNSIPointCloud&)             = delete;

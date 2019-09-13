@@ -26,7 +26,6 @@
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/mesh.h"
 
-#include "pxr/imaging/hdNSI/instancer.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/imaging/hdNSI/renderPass.h"
@@ -38,7 +37,6 @@
 
 #include <sstream>
 #include <iostream>
-#include <numeric>
 
 #include <nsi.hpp>
 
@@ -53,6 +51,7 @@ HdNSIMesh::HdNSIMesh(SdfPath const& id,
     , _authoredNormals(false)
     , _smoothNormals(false)
     , _leftHanded(-1)
+    , _base{"mesh"}
     , _refined(false)
     , _doubleSided(false)
     , _cullStyle(HdCullStyleDontCare)
@@ -62,20 +61,7 @@ HdNSIMesh::HdNSIMesh(SdfPath const& id,
 void
 HdNSIMesh::Finalize(HdRenderParam *renderParam)
 {
-    NSI::Context &nsi =
-        static_cast<HdNSIRenderParam*>(renderParam)->AcquireSceneForEdit();
-
-    nsi.Delete(_masterShapeHandle);
-    _masterShapeHandle.clear();
-
-    nsi.Delete(_xformHandle);
-    _xformHandle.clear();
-
-    nsi.Delete(_instancesHandle);
-    _instancesHandle.clear();
-
-    nsi.Delete(_attrsHandle);
-    _attrsHandle.clear();
+    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -145,50 +131,17 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
     auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
     NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
+    /* The base rprim class tracks this but does not update it itself. */
+    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, GetId()))
+    {
+        _UpdateVisibility(sceneDelegate, dirtyBits);
+    }
+
+    /* This creates the NSI nodes so it comes before other attributes. */
+    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+
     // Create NSI geometry objects.
     _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
-}
-
-void
-HdNSIMesh::_CreateNSIMesh(
-    HdNSIRenderParam *renderParam,
-    NSI::Context &nsi)
-{
-    if (!_masterShapeHandle.empty())
-        return;
-
-    const SdfPath &id = GetId();
-    _masterShapeHandle = id.GetString() + "|geo";
-
-    nsi.Create(_masterShapeHandle, "mesh");
-
-    // Set clockwisewinding for the mesh.
-    if (_leftHanded != -1) {
-        nsi.SetAttribute(_masterShapeHandle,
-            NSI::IntegerArg("clockwisewinding", _leftHanded));
-    }
-
-    _xformHandle = id.GetString();
-    nsi.Create(_xformHandle, "transform");
-    nsi.Connect(_masterShapeHandle, "", _xformHandle, "objects");
-    if (GetInstancerId().IsEmpty())
-    {
-        /* Just the one instance. */
-        nsi.Connect(_xformHandle, "", NSI_SCENE_ROOT, "objects");
-    }
-    else
-    {
-        /* Go through an instances node to have multiple instances. */
-        _instancesHandle = id.GetString() + "|instances";
-        nsi.Create(_instancesHandle, "instances");
-        nsi.Connect(_instancesHandle, "", NSI_SCENE_ROOT, "objects");
-        nsi.Connect(_xformHandle, "", _instancesHandle, "sourcemodels");
-    }
-
-    // Create the attribute node.
-    _attrsHandle = id.GetString() + "|attr";
-    nsi.Create(_attrsHandle, "attributes");
-    nsi.Connect(_attrsHandle, "", _masterShapeHandle, "geometryattributes");
 }
 
 void
@@ -201,7 +154,7 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
     asSubdiv |= (scheme == PxOsdOpenSubdivTokens->catmullClark);
 
     if (asSubdiv) {
-        nsi.SetAttribute(_masterShapeHandle,
+        nsi.SetAttribute(_base.Shape(),
             NSI::CStringPArg("subdivision.scheme", "catmull-clark"));
     }
 
@@ -244,6 +197,12 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
         }
     }
 
+    // Set clockwisewinding for the mesh.
+    if (_leftHanded != -1)
+    {
+        attrs.push(new NSI::IntegerArg("clockwisewinding", _leftHanded));
+    }
+
     // "nvertices"
     attrs.push(NSI::Argument::New("nvertices")
         ->SetType(NSITypeInteger)
@@ -278,7 +237,7 @@ HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
         }
     }
 
-    nsi.SetAttribute(_masterShapeHandle, attrs);
+    nsi.SetAttribute(_base.Shape(), attrs);
 }
 
 void
@@ -327,14 +286,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         _topology = HdMeshTopology(_topology,
             sceneDelegate->GetDisplayStyle(id).refineLevel);
-    }
-
-    if (HdChangeTracker::IsTransformDirty(*dirtyBits, id)) {
-        _transform = sceneDelegate->GetTransform(id);
-    }
-
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        _UpdateVisibility(sceneDelegate, dirtyBits);
     }
 
     if (HdChangeTracker::IsCullStyleDirty(*dirtyBits, id)) {
@@ -399,9 +350,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id) ||
         doRefine != _refined) {
 
-        // Create the new mesh node.
-        _CreateNSIMesh(renderParam, nsi);
-
         _refined = doRefine;
         // In both cases, the vertices will be (re-)populated below.
     }
@@ -411,7 +359,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
         const int refineLevel = _topology.GetRefineLevel();
 
-        nsi.SetAttribute(_masterShapeHandle,
+        nsi.SetAttribute(_base.Shape(),
             NSI::CStringPArg("subdivision.scheme",
                 refineLevel ? "catmull-clark" : ""));
     }
@@ -443,65 +391,13 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _SetNSIMeshAttributes(nsi, doRefine);
     }
 
-    // Update visibility.
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id)) {
-        nsi.SetAttribute(_attrsHandle, (NSI::IntegerArg("visibility", _sharedData.visible ? 1 : 0),
-            NSI::IntegerArg("visibility.priority", 1)));
-    }
-
-    ////////////////////////////////////////////////////////////////////////
-    // 4. Populate NSI instance objects.
-
-    // If the mesh is instanced, create one new instance per transform.
-    // XXX: The current instancer invalidation tracking makes it hard for
-    // HdNSI to tell whether transforms will be dirty, so this code
-    // pulls them every frame.
-    if (!GetInstancerId().IsEmpty())
-    {
-        // Retrieve instance transforms from the instancer.
-        HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-        HdInstancer *instancer = renderIndex.GetInstancer(GetInstancerId());
-        const VtMatrix4dArray &transforms =
-            static_cast<HdNSIInstancer*>(instancer)->
-            ComputeInstanceTransforms(GetId());
-
-        /* Hope GfMatrix4d* and double* are equivalent :) */
-        nsi.SetAttribute(_instancesHandle,
-            *NSI::Argument("transformationmatrices")
-            .SetType(NSITypeDoubleMatrix)
-            ->SetCount(transforms.size())
-            ->SetValuePointer(transforms.data()));
-
-        /* Add the instanceId attribute for that AOV. */
-        std::vector<int> instanceid(transforms.size());
-        std::iota(instanceid.begin(), instanceid.end(), 0);
-        nsi.SetAttribute(_instancesHandle,
-            *NSI::Argument("instanceId")
-            .SetType(NSITypeInteger)
-            ->SetCount(instanceid.size())
-            ->SetValuePointer(instanceid.data()));
-    }
-
-    if (HdChangeTracker::IsTransformDirty(*dirtyBits, id))
-    {
-        nsi.SetAttribute(_xformHandle,
-            NSI::DoubleMatrixArg("transformationmatrix",
-                _transform.GetArray()));
-    }
-
-    if (HdChangeTracker::IsPrimIdDirty(*dirtyBits, id))
-    {
-        nsi.SetAttribute(_masterShapeHandle,
-            NSI::IntegerArg("primId", GetPrimId()));
-    }
-
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle);
+        _base.Shape());
 
     _primvars.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _masterShapeHandle, _faceVertexIndices);
+        _base.Shape(), _faceVertexIndices);
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

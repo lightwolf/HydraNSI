@@ -34,6 +34,7 @@
 #include "pxr/base/gf/rotation.h"
 #include "pxr/imaging/hdNSI/materialAssign.h"
 #include "pxr/imaging/hdNSI/primvars.h"
+#include "pxr/imaging/hdNSI/rprimBase.h"
 
 #include <nsi.hpp>
 
@@ -161,9 +162,6 @@ private:
                            HdBasisCurvesReprDesc const &desc);
 
     // Utility function to create a NSI triangle curves and populate topology.
-    void _CreateNSICurves(
-        HdNSIRenderParam *renderParam,
-        NSI::Context &nsi);
     void _SetNSICurvesAttributes(NSI::Context &nsi);
 
 private:
@@ -171,26 +169,15 @@ private:
     // only call const accessors keeping them around doesn't incur a buffer
     // copy.
     HdBasisCurvesTopology _topology;
-    GfMatrix4d _transform;
     VtVec3fArray _points;
     VtIntArray _curveVertexCounts;
     VtIntArray _curveVertexIndices;
     VtFloatArray _widths;
     TfToken _basis;
 
-    // NSI handles.
-    std::string _masterShapeHandle;
-
-    std::string _attrsHandle;
-
+    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
-
-    // From USD id to the NSI curves node handles.
-    static std::map<SdfPath, std::string> _nsiCurvesShapeHandles;
-
-    // From USD id to the NSI transforms node handles.
-    static std::multimap<SdfPath, std::string> _nsiCurvesXformHandles;
 
     // Draw styles.
     bool _refined;

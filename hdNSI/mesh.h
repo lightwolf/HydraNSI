@@ -34,6 +34,7 @@
 #include "pxr/base/gf/rotation.h"
 #include "pxr/imaging/hdNSI/materialAssign.h"
 #include "pxr/imaging/hdNSI/primvars.h"
+#include "pxr/imaging/hdNSI/rprimBase.h"
 
 #include <nsi.hpp>
 
@@ -161,9 +162,6 @@ private:
                          HdMeshReprDesc const &desc);
 
     // Utility function to create a NSI triangle mesh and populate topology.
-    void _CreateNSIMesh(
-        HdNSIRenderParam *renderParam,
-        NSI::Context &nsi);
     void _SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv);
 
 private:
@@ -171,7 +169,6 @@ private:
     // only call const accessors keeping them around doesn't incur a buffer
     // copy.
     HdMeshTopology _topology;
-    GfMatrix4d _transform;
     VtVec3fArray _points;
     VtIntArray _faceVertexCounts;
     VtIntArray _faceVertexIndices;
@@ -186,12 +183,7 @@ private:
 
     int _leftHanded;
 
-    // NSI handles.
-    std::string _masterShapeHandle;
-    std::string _xformHandle;
-    std::string _instancesHandle;
-    std::string _attrsHandle;
-
+    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
 
