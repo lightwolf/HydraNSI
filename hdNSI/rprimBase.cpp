@@ -19,6 +19,8 @@ void HdNSIRprimBase::Sync(
 	/* Make sure the nodes are created. */
 	Create(nsi, rprim);
 
+	CheckPrimvars(sceneDelegate, dirtyBits, rprim);
+
 	SdfPath const& id = rprim.GetId();
 
 	/* Update instance transforms. */
@@ -131,6 +133,43 @@ void HdNSIRprimBase::Create(
 	_attrsHandle = id.GetString() + "|attr";
 	nsi.Create(_attrsHandle, "attributes");
 	nsi.Connect(_attrsHandle, "", _masterShapeHandle, "geometryattributes");
+}
+
+/*
+	This is a workaround for Hydra not having a nice way of letting us know if
+	some specific primvars exist without spitting out a lot of warnings.
+
+	What we do here is enumerate primvars and remove some dirty flags if the
+	primvar does not exist.
+*/
+void HdNSIRprimBase::CheckPrimvars(
+	HdSceneDelegate *sceneDelegate,
+	HdDirtyBits *dirtyBits,
+	const HdRprim &rprim)
+{
+	if (!_firstSync)
+		return;
+
+	_firstSync = false;
+
+	bool haveNormals = false, haveWidths = false;
+	for (int i = 0; i < HdInterpolationCount; ++i)
+	{
+		auto descriptors = rprim.GetPrimvarDescriptors(
+			sceneDelegate, (HdInterpolation)i);
+		for (const auto &d : descriptors)
+		{
+			if (d.name == HdTokens->normals)
+				haveNormals = true;
+			else if (d.name == HdTokens->widths)
+				haveWidths = true;
+		}
+	}
+
+	if (!haveNormals)
+		*dirtyBits &= ~HdDirtyBits(HdChangeTracker::DirtyNormals);
+	if (!haveWidths)
+		*dirtyBits &= ~HdDirtyBits(HdChangeTracker::DirtyWidths);
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

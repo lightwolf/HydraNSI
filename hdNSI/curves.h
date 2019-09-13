@@ -161,26 +161,10 @@ private:
                            HdDirtyBits *dirtyBits,
                            HdBasisCurvesReprDesc const &desc);
 
-    // Utility function to create a NSI triangle curves and populate topology.
-    void _SetNSICurvesAttributes(NSI::Context &nsi);
-
 private:
-    // Cached scene data. VtArrays are reference counted, so as long as we
-    // only call const accessors keeping them around doesn't incur a buffer
-    // copy.
-    HdBasisCurvesTopology _topology;
-    VtVec3fArray _points;
-    VtIntArray _curveVertexCounts;
-    VtIntArray _curveVertexIndices;
-    VtFloatArray _widths;
-    TfToken _basis;
-
     HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
-
-    // Draw styles.
-    bool _refined;
 
     // This class does not support copying.
     HdNSICurves(const HdNSICurves&)             = delete;

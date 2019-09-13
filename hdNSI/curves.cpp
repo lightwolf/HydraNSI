@@ -43,9 +43,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 HdNSICurves::HdNSICurves(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdBasisCurves(id, instancerId)
-    , _basis(HdTokens->catmullRom)
     , _base{"curves"}
-    , _refined(false)
 {
 }
 
@@ -72,6 +70,7 @@ HdNSICurves::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyDoubleSided
         | HdChangeTracker::DirtyDisplayStyle
         | HdChangeTracker::DirtySubdivTags
+        | HdChangeTracker::DirtyWidths
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
         | HdChangeTracker::DirtyInstanceIndex
@@ -131,49 +130,8 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
     /* This creates the NSI nodes so it comes before other attributes. */
     _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
-    // Create NSI geometry objects.
+    /* Update curve specific attributes. */
     _PopulateRtCurves(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
-}
-
-void
-HdNSICurves::_SetNSICurvesAttributes(NSI::Context &nsi)
-{
-    nsi.SetAttribute(_base.Shape(), NSI::IntegerArg("extrapolate", 1));
-
-    NSI::ArgumentList attrs;
-
-    // "nvertices"
-    attrs.push(NSI::Argument::New("nvertices")
-        ->SetType(NSITypeInteger)
-        ->SetCount(_curveVertexCounts.size())
-        ->SetValuePointer(_curveVertexCounts.cdata()));
-
-    // "P"
-    attrs.push(NSI::Argument::New("P")
-        ->SetType(NSITypePoint)
-        ->SetCount(_points.size())
-        ->SetValuePointer(_points.cdata()));
-
-   // "width"
-    attrs.push(NSI::Argument::New("width")
-        ->SetType(NSITypeFloat)
-        ->SetCount(_widths.size())
-        ->SetValuePointer(_widths.cdata()));
-
-    // "basis"
-    if (!_refined)
-        attrs.push(new NSI::StringArg("basis", "linear"));
-    if (_basis == HdTokens->catmullRom)
-        attrs.push(new NSI::StringArg("basis", "catmull-rom"));
-    else if (_basis == HdTokens->bSpline)
-        attrs.push(new NSI::StringArg("basis", "b-spline"));
-    else {
-        // HdTokens->bezier is not supported!
-        // use a catmull-rom as a fallback
-        attrs.push(new NSI::StringArg("basis", "catmull-rom"));
-    }
-
-    nsi.SetAttribute(_base.Shape(), attrs);
 }
 
 void
@@ -188,67 +146,66 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
 
     SdfPath const& id = GetId();
 
-    bool newCurves = false;
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points))
+    {
+        VtValue pointsVal = GetPrimvar(sceneDelegate, HdTokens->points);
+        const auto &points = pointsVal.Get<VtVec3fArray>();
 
-    ////////////////////////////////////////////////////////////////////////
-    // 1. Pull scene data.
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("P")
+            .SetType(NSITypePoint)
+            ->SetCount(points.size())
+            ->SetValuePointer(points.cdata()));
+    }
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        // Get the all points.
-        VtValue pointsVal = sceneDelegate->Get(id, HdTokens->points);
-        _points = pointsVal.Get<VtVec3fArray>();
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals))
+    {
+        VtValue normalsVal = GetPrimvar(sceneDelegate, HdTokens->normals);
+        const auto &normals = normalsVal.Get<VtVec3fArray>();
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("N")
+            .SetType(NSITypeNormal)
+            ->SetCount(normals.size())
+            ->SetValuePointer(normals.cdata()));
+    }
 
-        // Get the widths.
-        _widths.clear();
-
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths))
+    {
         VtValue widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
-        if (widthsVal.IsEmpty()) {
-            _widths.resize(_points.size());
-            std::fill(_widths.begin(), _widths.end(), 0.1f);
-        } else {
-            _widths = widthsVal.Get<VtFloatArray>();
-        }
-
-        newCurves = true;
+        const auto &widths = widthsVal.Get<VtFloatArray>();
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("width")
+            .SetType(NSITypeFloat)
+            ->SetCount(widths.size())
+            ->SetValuePointer(widths.cdata()));
     }
 
-    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {
-        const HdBasisCurvesTopology &srcTopology = GetBasisCurvesTopology(sceneDelegate);
-        _topology = HdBasisCurvesTopology(srcTopology.GetCurveType(),
-                          srcTopology.GetCurveBasis(),
-                          srcTopology.GetCurveWrap(),
-                          srcTopology.GetCurveVertexCounts(),
-                          srcTopology.GetCurveIndices());
+    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id))
+    {
+        const HdBasisCurvesTopology &topology =
+            GetBasisCurvesTopology(sceneDelegate);
 
-        _curveVertexCounts = _topology.GetCurveVertexCounts();
-        _curveVertexIndices = _topology.GetCurveIndices();
-        _basis = _topology.GetCurveBasis();
+        const VtIntArray &vertexCounts = topology.GetCurveVertexCounts();
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("nvertices")
+            .SetType(NSITypeInteger)
+            ->SetCount(vertexCounts.size())
+            ->SetValuePointer(vertexCounts.cdata()));
 
-        newCurves = true;
-    }
+        TfToken basis = topology.GetCurveBasis();
 
-    ////////////////////////////////////////////////////////////////////////
-    // 2. Resolve drawstyles
+        /* Default for unsupported basis, such as bezier. */
+        const char *basisName = "catmull-rom";
+        if (topology.GetCurveType() == HdTokens->linear)
+            basisName = "linear";
+        else if (basis == HdTokens->catmullRom)
+            basisName = "catmull-rom";
+        else if (basis == HdTokens->bSpline)
+            basisName = "b-spline";
 
-    int refineLevel = GetDisplayStyle(sceneDelegate).refineLevel;
-    bool doRefine = (refineLevel > 0);
-
-    ////////////////////////////////////////////////////////////////////////
-    // 3. Populate NSI prototype object.
-
-    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id) ||
-        doRefine != _refined) {
-
-        newCurves = true;
-
-        _refined = doRefine;
-        // In both cases, vertices/attributes will be (re-)populated below.
-    }
-
-    // Populate/update points in the NSI curves.
-    if (newCurves || 
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        _SetNSICurvesAttributes(nsi);
+        nsi.SetAttribute(_base.Shape(), (
+            NSI::StringArg("basis", basisName),
+            NSI::IntegerArg("extrapolate", 1)));
     }
 
     _material.Sync(

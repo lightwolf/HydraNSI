@@ -162,18 +162,7 @@ private:
                                HdDirtyBits *dirtyBits,
                                HdPointsReprDesc const &desc);
 
-    // Utility function to create a NSI triangle pointcloud and populate topology.
-    void _SetNSIPointCloudAttributes(NSI::Context &nsi);
-
 private:
-    // Cached scene data. VtArrays are reference counted, so as long as we
-    // only call const accessors keeping them around doesn't incur a buffer
-    // copy.
-    VtVec3fArray _points;
-    VtVec3fArray _normals;
-    VtIntArray _pointsIds;
-    VtFloatArray _widths;
-
     HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;

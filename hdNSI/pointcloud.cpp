@@ -70,6 +70,7 @@ HdNSIPointCloud::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyDoubleSided
         | HdChangeTracker::DirtyDisplayStyle
         | HdChangeTracker::DirtySubdivTags
+        | HdChangeTracker::DirtyWidths
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
         | HdChangeTracker::DirtyInstanceIndex
@@ -129,42 +130,8 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
     /* This creates the NSI nodes so it comes before other attributes. */
     _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
-    // Create NSI geometry objects.
+    /* Update particle specific attributes. */
     _PopulateRtPointCloud(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
-}
-
-void
-HdNSIPointCloud::_SetNSIPointCloudAttributes(NSI::Context &nsi)
-{
-    NSI::ArgumentList attrs;
-
-    // "P"
-    attrs.push(NSI::Argument::New("P")
-        ->SetType(NSITypePoint)
-        ->SetCount(_points.size())
-        ->SetValuePointer(_points.cdata()));
-
-   // "width"
-    attrs.push(NSI::Argument::New("width")
-        ->SetType(NSITypeFloat)
-        ->SetCount(_widths.size())
-        ->SetValuePointer(_widths.cdata()));
-
-    // "id"
-    attrs.push(NSI::Argument::New("id")
-        ->SetType(NSITypeInteger)
-        ->SetCount(_pointsIds.size())
-        ->SetValuePointer(_pointsIds.cdata()));
-
-    // "N"
-    if (_normals.size()) {
-        attrs.push(NSI::Argument::New("N")
-            ->SetType(NSITypeNormal)
-            ->SetCount(_normals.size())
-            ->SetValuePointer(_normals.cdata()));
-    }
-
-    nsi.SetAttribute(_base.Shape(), attrs);
 }
 
 void
@@ -179,51 +146,38 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
 
     SdfPath const& id = GetId();
 
-    bool newPointCloud = false;
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points))
+    {
+        VtValue pointsVal = GetPrimvar(sceneDelegate, HdTokens->points);
+        const auto &points = pointsVal.Get<VtVec3fArray>();
 
-    ////////////////////////////////////////////////////////////////////////
-    // 1. Pull scene data.
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        VtValue value = sceneDelegate->Get(id, HdTokens->points);
-        _points = value.Get<VtVec3fArray>();
-
-        // Set point id sequence.
-        _pointsIds.clear();
-        for (size_t i = 0; i < _points.size(); ++i) {
-            _pointsIds.push_back(i);
-        }
-
-        // Get widths from scene data (now are all set to same value: 1.0).
-        _widths.clear();
-
-        const VtValue &widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
-        if (!widthsVal.IsEmpty()) {
-            _widths = widthsVal.Get<VtFloatArray>();
-        }
-
-        if (_widths.empty()) {
-            _widths.resize(_points.size());
-            std::fill(_widths.begin(), _widths.end(), 0.1f);
-        }
-
-        newPointCloud = true;
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("P")
+            .SetType(NSITypePoint)
+            ->SetCount(points.size())
+            ->SetValuePointer(points.cdata()));
     }
 
-    ////////////////////////////////////////////////////////////////////////
-    // 2. Resolve drawstyles
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals))
+    {
+        VtValue normalsVal = GetPrimvar(sceneDelegate, HdTokens->normals);
+        const auto &normals = normalsVal.Get<VtVec3fArray>();
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("N")
+            .SetType(NSITypeNormal)
+            ->SetCount(normals.size())
+            ->SetValuePointer(normals.cdata()));
+    }
 
-    // XXX TODO: discs ?
-    // bool doDiscs = (desc.geomStyle == HdPointsGeomStyleDiscs);
-
-    ////////////////////////////////////////////////////////////////////////
-    // 3. Populate NSI prototype object.
-
-    // Populate/update points in the NSI pointcloud.
-    if (newPointCloud || 
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points) ||
-        HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths)) {
-        _SetNSIPointCloudAttributes(nsi);
+    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths))
+    {
+        VtValue widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
+        const auto &widths = widthsVal.Get<VtFloatArray>();
+        nsi.SetAttribute(_base.Shape(),
+            *NSI::Argument("width")
+            .SetType(NSITypeFloat)
+            ->SetCount(widths.size())
+            ->SetValuePointer(widths.cdata()));
     }
 
     _material.Sync(
