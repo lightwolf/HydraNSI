@@ -25,7 +25,7 @@ This repository contains a render delegate for Hydra using the NSI technology.
 
 **HydraNSI** — Production-quality preview rendering of USD assets, in a Hydra-based viewer, is an appealing idea that allows for a centralised and standardised rendering application. HydraNSI is a Hydra plug-in that converts USD to NSI commands and allows to use 3Delight NSI as a rendering back-end with its rich feature and extensible platform.
 
-HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility *usdview*.
+HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can naturally be used by any current and future application that implements the USD API as a data model, and which uses Hydra for visualization. As a practical example, it can be added to the USD viewing utility *usdview* or in SideFx's *Solaris*.
 
 ## Demo Videos
 
