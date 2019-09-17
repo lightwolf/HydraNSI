@@ -194,6 +194,7 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             NSI::StringArg("variablename", aovName.GetString()),
             NSI::StringArg("variablesource", "attribute"),
             NSI::StringArg("layertype", "scalar"),
+            NSI::FloatArg("backgroundvalue", -1.0f),
             NSI::StringArg("filter", "zmin"),
             NSI::DoubleArg("filterwidth", 1.0)));
     }
