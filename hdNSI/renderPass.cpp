@@ -68,6 +68,20 @@ HdNSIRenderPass::~HdNSIRenderPass()
     nsi.RenderControl(NSI::CStringPArg("action", "wait"));
 }
 
+bool HdNSIRenderPass::IsConverged() const
+{
+    /*
+        Propagate converged flag to all the render buffers. It's a little weird
+        to do this here but it works.
+    */
+    for( const auto &b : _aovBindings )
+    {
+        static_cast<HdNSIRenderBuffer*>(b.renderBuffer)->SetConverged(
+            _renderParam->IsConverged());
+    }
+    return _renderParam->IsConverged();
+}
+
 void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
 {
     if (key == HdNSIRenderSettingsTokens->pixelSamples)

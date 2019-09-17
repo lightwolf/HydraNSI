@@ -70,6 +70,8 @@ public:
     bool SceneEdited() const { return _sceneEdited; }
     void ResetSceneEdited() { _sceneEdited = false; }
 
+    bool IsConverged() const { return _isConverged; }
+
     void AddLight() { ++_numLights; }
     void RemoveLight() { --_numLights; }
     bool HasLights() const { return _numLights != 0; }
@@ -81,6 +83,8 @@ public:
             _rendering = true;
             GetNSIContext().RenderControl((
                 NSI::CStringPArg("action", "start"),
+                NSI::PointerArg("stoppedcallback", (void*)StatusCB),
+                NSI::PointerArg("stoppedcallbackdata", this),
                 NSI::IntegerArg("interactive", 1),
                 NSI::IntegerArg("progressive", 1)));
         }
@@ -112,6 +116,16 @@ public:
     }
 
 private:
+    static void StatusCB(void *data, NSIContext_t ctx, int status)
+    {
+        auto param = (HdNSIRenderParam*)data;
+        if (status == NSIRenderSynchronized)
+            param->_isConverged = true;
+        if (status == NSIRenderRestarted)
+            param->_isConverged = false;
+    }
+
+private:
     HdNSIRenderDelegate *_renderDelegate;
 
     /// A smart pointer to the NSI API.
@@ -119,6 +133,9 @@ private:
 
     /// true when the render is actually running
     bool _rendering{false};
+
+    /// True when the render buffers are fully in sync with the scene.
+    bool _isConverged{false};
 
     /// A flag to know if the scene has been edited.
     std::atomic<bool> _sceneEdited;

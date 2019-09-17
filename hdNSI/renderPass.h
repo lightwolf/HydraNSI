@@ -68,9 +68,7 @@ public:
     // -----------------------------------------------------------------------
     // HdRenderPass API
 
-    /// Determine whether the sample buffer has enough samples.
-    ///   \return True if the image has enough samples to be considered final.
-    virtual bool IsConverged() const override { return false; };
+    virtual bool IsConverged() const override;
 
     void RenderSettingChanged(const TfToken &key);
 
