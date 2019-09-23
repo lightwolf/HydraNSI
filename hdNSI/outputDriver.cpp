@@ -176,7 +176,7 @@ PtDspyError HdNSIOutputDriver::ImageData(
 	auto bufferFormat = imageHandle->m_buffer->GetFormat();
 	bool intConvert = PXR_INTERNAL_NS::HdFormatInt32 ==
 		HdGetComponentFormat(bufferFormat);
-	uint8_t *buffer = imageHandle->m_buffer->Map();
+	uint8_t *buffer = (uint8_t *)imageHandle->m_buffer->Map();
 
 	for (int y = yMin; y < yMaxPlusOne; ++ y)
 	{

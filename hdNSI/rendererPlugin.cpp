@@ -25,7 +25,7 @@
 //
 #include "pxr/imaging/hdNSI/rendererPlugin.h"
 
-#include "pxr/imaging/hdx/rendererPluginRegistry.h"
+#include "pxr/imaging/hd/rendererPluginRegistry.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
@@ -33,7 +33,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 // Register the NSI plugin with the renderer plugin system.
 TF_REGISTRY_FUNCTION(TfType)
 {
-    HdxRendererPluginRegistry::Define<HdNSIRendererPlugin>();
+    HdRendererPluginRegistry::Define<HdNSIRendererPlugin>();
 }
 
 HdRenderDelegate*

@@ -27,14 +27,14 @@
 #define HDNSI_RENDERER_PLUGIN_H
 
 #include "pxr/pxr.h"
-#include "pxr/imaging/hdx/rendererPlugin.h"
+#include "pxr/imaging/hd/rendererPlugin.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 
 ///
 /// \class HdNSIRendererPlugin
 ///
-/// A registered child of HdxRendererPlugin, this is the class that gets
+/// A registered child of HdRendererPlugin, this is the class that gets
 /// loaded when a hydra application asks to draw with a certain renderer.
 /// It supports rendering via creation/destruction of renderer-specific
 /// classes. The render delegate is the hydra-facing entrypoint into the
@@ -42,7 +42,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 /// prims (which translate scene data into drawable representations) and hydra
 /// renderpasses (which draw the scene to the framebuffer).
 ///
-class HdNSIRendererPlugin final : public HdxRendererPlugin {
+class HdNSIRendererPlugin final : public HdRendererPlugin {
 public:
     HdNSIRendererPlugin() = default;
     virtual ~HdNSIRendererPlugin() = default;
