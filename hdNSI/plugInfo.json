@@ -5,7 +5,7 @@
                 "Types": {
                     "HdNSIRendererPlugin": {
                         "bases": [
-                            "HdxRendererPlugin"
+                            "HdRendererPlugin"
                         ],
                         "displayName": "NSI",
                         "priority": 99

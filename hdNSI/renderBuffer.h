@@ -65,7 +65,7 @@ public:
     */
     virtual bool IsMultiSampled() const override { return false; }
 
-    virtual uint8_t* Map() override;
+    virtual void* Map() override;
     virtual void Unmap() override;
 
     virtual bool IsMapped() const override;

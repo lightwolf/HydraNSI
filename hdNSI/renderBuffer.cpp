@@ -108,7 +108,7 @@ bool HdNSIRenderBuffer::Allocate(
     return true;
 }
 
-uint8_t* HdNSIRenderBuffer::Map()
+void* HdNSIRenderBuffer::Map()
 {
     ++_mappers;
     return _buffer.data();
