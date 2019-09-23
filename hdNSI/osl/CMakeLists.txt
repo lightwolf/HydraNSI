@@ -1,6 +1,9 @@
 # This exports the OSL_RESOURCES list for use in the RESOURCE_FILES section of
 # the pxr_plugin function. It will put the compiled shaders in an osl
 # subdirectory.
+set(HDNSI_RESOURCES_SUBDIR "plugin/usd/hdNSI/resources")
+
+find_package(Renderman REQUIRED)
 
 set(OSL_SOURCES
 	UsdLuxLight.osl
@@ -22,17 +25,19 @@ foreach(shader ${OSL_SOURCES})
 
 	add_custom_command(
 		OUTPUT ${shader_name}.oso
-		COMMAND oslc -o ${shader_name}.oso -q ${shader_source}
-		DEPENDS ${shader_source})
+		COMMAND ${RENDERMAN_BINARY_DIR}/oslc -o ${shader_name}.oso -q ${shader_source}
+		DEPENDS ${shader_source}
+		VERBATIM
+	)
 
 	add_custom_target(${shader_name}
 		ALL
-		DEPENDS ${shader_name}.oso)
+		DEPENDS ${shader_name}.oso
+	)
 
-	list(APPEND OSL_RESOURCES
-		${CMAKE_CURRENT_BINARY_DIR}/${shader_name}.oso:osl/${shader_name}.oso)
+	install(
+	    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${shader_name}.oso
+		DESTINATION ${HDNSI_RESOURCES_SUBDIR}/osl
+	)
 endforeach()
-
-set(OSL_RESOURCES ${OSL_RESOURCES} PARENT_SCOPE)
-
 
