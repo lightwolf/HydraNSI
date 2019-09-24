@@ -126,11 +126,7 @@ HdNSIInstancer::ComputeInstanceTransforms(SdfPath const &prototypeId)
     // If any transform isn't provided, it's assumed to be the identity.
 
     GfMatrix4d instancerTransform =
-#if PXR_MAJOR_VERSION <= 0 && PXR_MINOR_VERSION <= 19 && PXR_PATCH_VERSION < 5
-        GetDelegate()->GetInstancerTransform(GetId(), prototypeId);
-#else
         GetDelegate()->GetInstancerTransform(GetId());
-#endif
     VtIntArray instanceIndices =
         GetDelegate()->GetInstanceIndices(GetId(), prototypeId);
 
