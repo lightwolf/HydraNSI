@@ -87,7 +87,7 @@ void HdNSIMaterial::ExportNetworks(
 	{
 		if (e.second.nodes.empty())
 			continue;
-		if (e.first.GetString() != "bxdf")
+		if (e.first != HdMaterialTerminalTokens->surface)
 			continue;
 
 		for (const HdMaterialNode &node : e.second.nodes)
@@ -104,7 +104,7 @@ void HdNSIMaterial::ExportNetworks(
 				EscapeOSLKeyword(r.outputName.GetString()));
 		}
 
-		if (e.first.GetString() == "bxdf")
+		if (e.first == HdMaterialTerminalTokens->surface)
 		{
 			/*
 				Assume the last node is the head of the network. This should
