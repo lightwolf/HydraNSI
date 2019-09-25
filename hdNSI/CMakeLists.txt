@@ -29,7 +29,6 @@ pxr_plugin(hdNSI
         rendererPlugin
         renderDelegate
         renderPass
-        sampler
         tokens
 
     PUBLIC_HEADERS

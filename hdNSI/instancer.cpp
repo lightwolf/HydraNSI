@@ -27,9 +27,10 @@
 
 #include "pxr/imaging/hdNSI/instancer.h"
 
-#include "pxr/imaging/hdNSI/sampler.h"
+#include "pxr/imaging/hdNSI/primvars.h"
 #include "pxr/imaging/hd/sceneDelegate.h"
 
+#include "pxr/base/gf/vec2f.h"
 #include "pxr/base/gf/vec3f.h"
 #include "pxr/base/gf/vec4f.h"
 #include "pxr/base/gf/matrix4d.h"
@@ -59,10 +60,6 @@ HdNSIInstancer::HdNSIInstancer(HdSceneDelegate* delegate,
 
 HdNSIInstancer::~HdNSIInstancer()
 {
-    TF_FOR_ALL(it, _primvarMap) {
-        delete it->second;
-    }
-    _primvarMap.clear();
 }
 
 void
@@ -94,12 +91,12 @@ HdNSIInstancer::_SyncPrimvars()
             for (HdPrimvarDescriptor const& pv: primvars) {
                 if (HdChangeTracker::IsPrimvarDirty(dirtyBits, id, pv.name)) {
                     VtValue value = GetDelegate()->Get(id, pv.name);
-                    if (!value.IsEmpty()) {
-                        if (_primvarMap.count(pv.name) > 0) {
-                            delete _primvarMap[pv.name];
-                        }
-                        _primvarMap[pv.name] =
-                            new HdVtBufferSource(pv.name, value);
+                    if (!value.IsEmpty())
+                    {
+                        CachedPv cpv;
+                        cpv.descriptor = pv;
+                        cpv.value = value;
+                        _primvarMap[pv.name] = cpv;
                     }
                 }
             }
@@ -136,52 +133,69 @@ HdNSIInstancer::ComputeInstanceTransforms(SdfPath const &prototypeId)
     }
 
     // "translate" holds a translation vector for each index.
-    if (_primvarMap.count(_tokens->translate) > 0) {
-        HdNSIBufferSampler sampler(*_primvarMap[_tokens->translate]);
-        for (size_t i = 0; i < instanceIndices.size(); ++i) {
-            GfVec3f translate;
-            if (sampler.Sample(instanceIndices[i], &translate)) {
+    if (_primvarMap.count(_tokens->translate) > 0)
+    {
+        const VtVec3fArray values =
+            _primvarMap[_tokens->translate].value.Get<VtVec3fArray>();
+        for (size_t i = 0; i < instanceIndices.size(); ++i)
+        {
+            if (size_t(instanceIndices[i]) < values.size())
+            {
+                const auto &v = values[instanceIndices[i]];
                 GfMatrix4d translateMat(1);
-                translateMat.SetTranslate(GfVec3d(translate));
+                translateMat.SetTranslate(GfVec3d(v));
                 transforms[i] = translateMat * transforms[i];
             }
         }
     }
 
     // "rotate" holds a quaternion in <real, i, j, k> format for each index.
-    if (_primvarMap.count(_tokens->rotate) > 0) {
-        HdNSIBufferSampler sampler(*_primvarMap[_tokens->rotate]);
-        for (size_t i = 0; i < instanceIndices.size(); ++i) {
-            GfVec4f quat;
-            if (sampler.Sample(instanceIndices[i], &quat)) {
+    if (_primvarMap.count(_tokens->rotate) > 0)
+    {
+        const VtVec4fArray values =
+            _primvarMap[_tokens->rotate].value.Get<VtVec4fArray>();
+        for (size_t i = 0; i < instanceIndices.size(); ++i)
+        {
+            if (size_t(instanceIndices[i]) < values.size())
+            {
+                const auto &v = values[instanceIndices[i]];
                 GfMatrix4d rotateMat(1);
                 rotateMat.SetRotate(GfRotation(GfQuaternion(
-                    quat[0], GfVec3d(quat[1], quat[2], quat[3]))));
+                    v[0], GfVec3d(v[1], v[2], v[3]))));
                 transforms[i] = rotateMat * transforms[i];
             }
         }
     }
 
     // "scale" holds an axis-aligned scale vector for each index.
-    if (_primvarMap.count(_tokens->scale) > 0) {
-        HdNSIBufferSampler sampler(*_primvarMap[_tokens->scale]);
-        for (size_t i = 0; i < instanceIndices.size(); ++i) {
-            GfVec3f scale;
-            if (sampler.Sample(instanceIndices[i], &scale)) {
+    if (_primvarMap.count(_tokens->scale) > 0)
+    {
+        const VtVec3fArray values =
+            _primvarMap[_tokens->scale].value.Get<VtVec3fArray>();
+        for (size_t i = 0; i < instanceIndices.size(); ++i)
+        {
+            if (size_t(instanceIndices[i]) < values.size())
+            {
+                const auto &v = values[instanceIndices[i]];
                 GfMatrix4d scaleMat(1);
-                scaleMat.SetScale(GfVec3d(scale));
+                scaleMat.SetScale(GfVec3d(v));
                 transforms[i] = scaleMat * transforms[i];
             }
         }
     }
 
     // "instanceTransform" holds a 4x4 transform matrix for each index.
-    if (_primvarMap.count(_tokens->instanceTransform) > 0) {
-        HdNSIBufferSampler sampler(*_primvarMap[_tokens->instanceTransform]);
-        for (size_t i = 0; i < instanceIndices.size(); ++i) {
-            GfMatrix4d instanceTransform;
-            if (sampler.Sample(instanceIndices[i], &instanceTransform)) {
-                transforms[i] = instanceTransform * transforms[i];
+    if (_primvarMap.count(_tokens->instanceTransform) > 0)
+    {
+        const VtMatrix4dArray values =
+            _primvarMap[_tokens->instanceTransform].value
+            .Get<VtMatrix4dArray>();
+        for (size_t i = 0; i < instanceIndices.size(); ++i)
+        {
+            if (size_t(instanceIndices[i]) < values.size())
+            {
+                const auto &v = values[instanceIndices[i]];
+                transforms[i] = v * transforms[i];
             }
         }
     }
@@ -213,6 +227,88 @@ HdNSIInstancer::ComputeInstanceTransforms(SdfPath const &prototypeId)
         }
     }
     return final;
+}
+
+/*
+    Select some items from an array according to indices in another array.
+*/
+template<typename ArrayT>
+ArrayT SelectArrayItems(const VtIntArray indices, const ArrayT data)
+{
+    ArrayT newData;
+    newData.resize(indices.size());
+    for (size_t i = 0; i < indices.size(); ++i)
+    {
+        if (size_t(indices[i]) < data.size())
+        {
+            newData[i] = data[indices[i]];
+        }
+    }
+    return newData;
+}
+
+/*
+    This exports all instance primvars which are not transform related, for a
+    given prototype.
+*/
+void HdNSIInstancer::ExportInstancePrimvars(
+    const SdfPath &prototypeId,
+	HdNSIRenderParam *renderParam,
+    const std::string &instancesHandle)
+{
+    HD_TRACE_FUNCTION();
+    HF_MALLOC_TAG_FUNCTION();
+
+    _SyncPrimvars();
+
+    VtIntArray indices =
+        GetDelegate()->GetInstanceIndices(GetId(), prototypeId);
+
+    for (const auto &item : _primvarMap)
+    {
+        /* Skip the transforms which are processed separately. */
+        if (item.first == _tokens->translate ||
+            item.first == _tokens->rotate ||
+            item.first == _tokens->scale ||
+            item.first == _tokens->instanceTransform )
+        {
+            continue;
+        }
+
+        VtValue v = item.second.value;
+        if (v.IsEmpty())
+            continue;
+
+	    NSI::Context &nsi = renderParam->AcquireSceneForEdit();
+        VtValue newv;
+        if (v.IsHolding<VtArray<TfToken>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<TfToken>>());
+        }
+        else if (v.IsHolding<VtArray<std::string>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<std::string>>());
+        }
+        else if (v.IsHolding<VtArray<float>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<float>>());
+        }
+        else if (v.IsHolding<VtArray<GfVec2f>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<GfVec2f>>());
+        }
+        else if (v.IsHolding<VtArray<GfVec3f>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<GfVec3f>>());
+        }
+        else if (v.IsHolding<VtArray<int>>())
+        {
+            newv = SelectArrayItems(indices, v.Get<VtArray<int>>());
+        }
+
+        HdNSIPrimvars::SetAttributeFromValue(
+            nsi, instancesHandle, item.second.descriptor, newv, 0);
+    }
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

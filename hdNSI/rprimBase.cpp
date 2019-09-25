@@ -29,10 +29,9 @@ void HdNSIRprimBase::Sync(
 	{
 		/* Retrieve instance transforms from the instancer. */
 		HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-		HdInstancer *instancer = renderIndex.GetInstancer(
-			rprim.GetInstancerId());
-		const VtMatrix4dArray &transforms =
-			static_cast<HdNSIInstancer*>(instancer)->
+		HdNSIInstancer *instancer = static_cast<HdNSIInstancer*>(
+			renderIndex.GetInstancer(rprim.GetInstancerId()));
+		const VtMatrix4dArray &transforms = instancer->
 			ComputeInstanceTransforms(id);
 
 		/* Hope GfMatrix4d* and double* are equivalent :) */
@@ -50,6 +49,9 @@ void HdNSIRprimBase::Sync(
             .SetType(NSITypeInteger)
             ->SetCount(instanceid.size())
             ->SetValuePointer(instanceid.data()));
+
+		/* Export generic instance primvars. */
+		instancer->ExportInstancePrimvars(id, renderParam, _instancesHandle);
 	}
 
 	/* The transform of the rprim itself. */

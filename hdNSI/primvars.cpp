@@ -69,6 +69,64 @@ NSIType_t RoleTo3fType(const TfToken &role)
 }
 }
 
+bool HdNSIPrimvars::SetAttributeFromValue(
+	NSI::Context &nsi,
+	const std::string &nodeHandle,
+	const HdPrimvarDescriptor &primvar,
+	const VtValue &value,
+	int flags)
+{
+	const std::string &argName = primvar.name.GetString();
+
+	if (value.IsHolding<TfToken>())
+	{
+		nsi.SetAttribute(nodeHandle, NSI::StringArg(argName,
+			value.Get<TfToken>().GetString()));
+	}
+	else if (value.IsHolding<std::string>())
+	{
+		nsi.SetAttribute(nodeHandle, NSI::StringArg(argName,
+			value.Get<std::string>()));
+	}
+	else if (value.IsHolding<VtArray<float>>())
+	{
+		const auto &v_array = value.Get<VtArray<float>>();
+		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
+			.SetType(NSITypeFloat)
+			->SetCount(v_array.size())
+			->SetFlags(flags)
+			->SetValuePointer(v_array.cdata()));
+	}
+	else if (value.IsHolding<VtArray<GfVec2f>>())
+	{
+		const auto &v_array = value.Get<VtArray<GfVec2f>>();
+		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
+			.SetArrayType(NSITypeFloat, 2)
+			->SetCount(v_array.size())
+			->SetFlags(flags)
+			->SetValuePointer(v_array.cdata()->data()));
+	}
+	else if (value.IsHolding<VtArray<GfVec3f>>())
+	{
+		const auto &v_array = value.Get<VtArray<GfVec3f>>();
+		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
+			.SetType(RoleTo3fType(primvar.role))
+			->SetCount(v_array.size())
+			->SetFlags(flags)
+			->SetValuePointer(v_array.cdata()->data()));
+	}
+	else if (value.IsHolding<int>())
+	{
+		nsi.SetAttribute(nodeHandle, NSI::IntegerArg(argName,
+			value.Get<int>()));
+	}
+	else
+	{
+		return false;
+	}
+	return true;
+}
+
 void HdNSIPrimvars::SetOnePrimvar(
 	HdSceneDelegate *sceneDelegate,
 	NSI::Context &nsi,
@@ -90,48 +148,9 @@ void HdNSIPrimvars::SetOnePrimvar(
 	{
 		flags |= NSIParamInterpolateLinear;
 	}
-	const std::string &argName = primvar.name.GetString();
 
-	if (v.IsHolding<TfToken>())
-	{
-		nsi.SetAttribute(geoHandle, NSI::StringArg(argName,
-			v.Get<TfToken>().GetString()));
-	}
-	else if (v.IsHolding<VtArray<float>>())
-	{
-		const auto &v_array = v.Get<VtArray<float>>();
-		nsi.SetAttribute(geoHandle, *NSI::Argument(argName)
-			.SetType(NSITypeFloat)
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()));
-	}
-	else if (v.IsHolding<VtArray<GfVec2f>>())
-	{
-		const auto &v_array = v.Get<VtArray<GfVec2f>>();
-		nsi.SetAttribute(geoHandle, *NSI::Argument(argName)
-			.SetArrayType(NSITypeFloat, 2)
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()->data()));
-	}
-	else if (v.IsHolding<VtArray<GfVec3f>>())
-	{
-		const auto &v_array = v.Get<VtArray<GfVec3f>>();
-		nsi.SetAttribute(geoHandle, *NSI::Argument(argName)
-			.SetType(RoleTo3fType(primvar.role))
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()->data()));
-	}
-	else if (v.IsHolding<int>())
-	{
-		nsi.SetAttribute(geoHandle, NSI::IntegerArg(argName, v.Get<int>()));
-	}
-	else
-	{
+	if (!SetAttributeFromValue(nsi, geoHandle, primvar, v, flags))
 		return;
-	}
 
 	/* Output indices if needed. */
 	if (primvar.interpolation == HdInterpolationVertex && !vertexIndices.empty())

@@ -29,10 +29,11 @@
 #include "pxr/pxr.h"
 
 #include "pxr/imaging/hd/instancer.h"
-#include "pxr/imaging/hd/vtBufferSource.h"
-
+#include "pxr/imaging/hd/sceneDelegate.h"
+#include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/base/tf/hashmap.h"
 #include "pxr/base/tf/token.h"
+#include "pxr/base/vt/value.h"
 
 #include <mutex>
 
@@ -72,6 +73,11 @@ public:
     ///   \return One transform per instance, to apply when drawing.
     VtMatrix4dArray ComputeInstanceTransforms(SdfPath const &prototypeId);
 
+    void ExportInstancePrimvars(
+        const SdfPath &prototypeId,
+		HdNSIRenderParam *renderParam,
+        const std::string &instancesHandle);
+
 private:
     // Checks the change tracker to determine whether instance primvars are
     // dirty, and if so pulls them. Since primvars can only be pulled once,
@@ -86,11 +92,16 @@ private:
     // Mutex guard for _SyncPrimvars().
     std::mutex _instanceLock;
 
+    struct CachedPv
+    {
+        HdPrimvarDescriptor descriptor;
+        VtValue value;
+    };
+
     // Map of the latest primvar data for this instancer, keyed by
-    // primvar name. Primvar values are VtValue, an any-type; they are
-    // interpreted at consumption time (here, in ComputeInstanceTransforms).
+    // primvar name.
     TfHashMap<TfToken,
-              HdVtBufferSource*,
+              CachedPv,
               TfToken::HashFunctor> _primvarMap;
 };
 

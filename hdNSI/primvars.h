@@ -26,6 +26,13 @@ public:
 		const std::string &geoHandle,
 		const VtIntArray &vertexIndices );
 
+	static bool SetAttributeFromValue(
+		NSI::Context &nsi,
+		const std::string &nodeHandle,
+		const HdPrimvarDescriptor &primvar,
+		const VtValue &value,
+		int flags);
+
 private:
 	void SetOnePrimvar(
 		HdSceneDelegate *sceneDelegate,
