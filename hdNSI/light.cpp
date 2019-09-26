@@ -181,7 +181,7 @@ void HdNSILight::DeleteNodes(
 	HdNSIRenderParam *renderParam,
 	NSI::Context &i_nsi)
 {
-	if (m_nodes_created)
+	if (!m_nodes_created)
 		return;
 
 	std::string xform_handle = GetId().GetString();
