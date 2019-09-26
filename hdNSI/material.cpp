@@ -121,6 +121,20 @@ void HdNSIMaterial::ExportNetworks(
 	}
 }
 
+namespace
+{
+/* Changes "<UDIM>" to "UDIM" in the path so both will be recognized. */
+std::string FixUDIM(const std::string &path)
+{
+	auto p = path.rfind("<UDIM>");
+	if (p == std::string::npos)
+		return path;
+	std::string newpath(path);
+	newpath.replace(p, 6, "UDIM");
+	return newpath;
+}
+}
+
 void HdNSIMaterial::ExportNode(
 	NSI::Context &nsi,
 	HdNSIRenderParam *renderParam,
@@ -166,6 +180,7 @@ void HdNSIMaterial::ExportNode(
 		else if (v.IsHolding<SdfAssetPath>())
 		{
 			std::string path = v.Get<SdfAssetPath>().GetResolvedPath();
+			path = FixUDIM(path);
 			args.Add(new NSI::StringArg(name, path));
 			/* Assume the asset is a texture for now. */
 			args.Add(new NSI::StringArg(name + ".meta.colorspace", "auto"));
