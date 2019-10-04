@@ -194,6 +194,10 @@ public:
 
     virtual TfToken GetMaterialBindingPurpose() const override;
 
+    virtual TfToken GetMaterialNetworkSelector() const override;
+
+    virtual TfTokenVector GetShaderSourceTypes() const override;
+
     virtual void SetRenderSetting(
         TfToken const& key, VtValue const& value) override;
 

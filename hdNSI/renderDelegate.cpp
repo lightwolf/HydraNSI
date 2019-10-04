@@ -26,6 +26,7 @@
 #include "pxr/base/plug/plugin.h"
 #include "pxr/base/plug/thisPlugin.h"
 #include "pxr/base/tf/getenv.h"
+#include "pxr/base/tf/fileUtils.h"
 #include "pxr/imaging/glf/glew.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 
@@ -245,6 +246,17 @@ TfToken HdNSIRenderDelegate::GetMaterialBindingPurpose() const
 {
     /* Need this to get Material delegates instead of HydraPbsSurface. */
     return HdTokens->full;
+}
+
+TfToken HdNSIRenderDelegate::GetMaterialNetworkSelector() const
+{
+    static const TfToken nsi{"nsi"};
+    return nsi;
+}
+
+TfTokenVector HdNSIRenderDelegate::GetShaderSourceTypes() const
+{
+    return HdRenderDelegate::GetShaderSourceTypes();
 }
 
 void HdNSIRenderDelegate::SetRenderSetting(
@@ -492,11 +504,18 @@ void HdNSIRenderDelegate::RemoveRenderPass(HdNSIRenderPass *renderPass)
 
 const std::string HdNSIRenderDelegate::FindShader(const std::string &id) const
 {
-    /*
-        This eventually needs to be more elaborate. For now, only load our own
-        shaders to support the UsdPreviewSurface.
-    */
-    return TfStringCatPaths(_shaders_path, id) + ".oso";
+    /* First, try our own shaders. */
+    std::string path = TfStringCatPaths(_shaders_path, id);
+    if (TfIsFile(path + ".oso", true))
+        return path;
+
+    /* Try the ones shipped with the renderer. */
+    path = TfStringCatPaths(TfStringCatPaths(_delight, "osl"), id);
+    if (TfIsFile(path + ".oso", true))
+        return path;
+
+    /* Nothing found. Return the id. Could be useful for debugging. */
+    return id;
 }
 
 void HdNSIRenderDelegate::SetShadingSamples() const
