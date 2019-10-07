@@ -158,6 +158,10 @@ void HdNSIMaterial::ExportNode(
 		{
 			args.Add(new NSI::StringArg(name, v.Get<TfToken>().GetString()));
 		}
+		else if (v.IsHolding<std::string>())
+		{
+			args.Add(new NSI::StringArg(name, v.Get<std::string>()));
+		}
 		else if (v.IsHolding<float>())
 		{
 			args.Add(new NSI::FloatArg(name, v.Get<float>()));
@@ -184,6 +188,20 @@ void HdNSIMaterial::ExportNode(
 			args.Add(new NSI::StringArg(name, path));
 			/* Assume the asset is a texture for now. */
 			args.Add(new NSI::StringArg(name + ".meta.colorspace", "auto"));
+		}
+		else if (v.IsHolding<VtArray<float>>())
+		{
+			const auto &v_array = v.Get<VtArray<float>>();
+			args.Add(NSI::Argument::New(name)
+				->SetArrayType(NSITypeFloat, v_array.size())
+				->SetValuePointer(v_array.cdata()));
+		}
+		else if (v.IsHolding<VtArray<GfVec3f>>())
+		{
+			const auto &v_array = v.Get<VtArray<GfVec3f>>();
+			args.Add(NSI::Argument::New(name)
+				->SetArrayType(NSITypeColor, v_array.size())
+				->SetValuePointer(v_array.cdata()->data()));
 		}
 	}
 	nsi.SetAttribute(node_handle, args);
