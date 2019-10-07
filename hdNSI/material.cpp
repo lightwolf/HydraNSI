@@ -3,6 +3,8 @@
 #include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/usd/sdf/assetPath.h"
 
+#include <cstring>
+
 PXR_NAMESPACE_OPEN_SCOPE
 
 
@@ -133,6 +135,109 @@ std::string FixUDIM(const std::string &path)
 	newpath.replace(p, 6, "UDIM");
 	return newpath;
 }
+
+/*
+	Returns true if the given parameter name ends with some specific suffix and
+	the node also has a parameter with the same root and a second suffix.
+*/
+bool HasRampParam(
+	const HdMaterialNode &node,
+	const std::string &basename,
+	const char *old_suffix,
+	const char *new_suffix)
+{
+	size_t l = strlen(old_suffix);
+	if (basename.size() <= l)
+		return false;
+
+	if (0 != std::strcmp(basename.c_str() + basename.size() - l, old_suffix))
+		return false;
+
+	std::string newname = basename.substr(0, basename.size() - l);
+	newname += new_suffix;
+
+	/*
+		I'm not entirely certain about TfToken creation performance so we'll
+		just directly compare to all parameter names for now. This is not great
+		but it is a known amount of "not great" I can live with.
+	*/
+	for (auto &p : node.parameters)
+	{
+		if (p.first == newname)
+			return true;
+	}
+	return false;
+}
+
+/*
+	Special handling for ramp parameters coming from Houdini. This can either
+	rename them, skip them, or output them in here differently. For a color
+	ramp with a base name of 'foo', the Houdini default shader translator
+	provides us with:
+
+	int foo -> number of control points
+	string foo_basis -> interpolation type
+	float[n] foo_keys -> the control point locations
+	color[n] foo_values -> the control point values
+
+	We must remap this to what our shaders usually expect:
+	int[] foo_Interp -> interpolation type (can be a single value)
+	float[n] foo_Position -> same as foo_keys above
+	color[n] foo_ColorValue -> same as foo_values above
+
+	In an ideal world, this would be driven by shader metadata. For now, I'm
+	just checking parameter names.
+
+	FIXME: This does not cover connections.
+
+	This returns true if the regular output should be skipped.
+*/
+bool RampFixup(
+	std::string &name,
+	const VtValue &v,
+	NSI::ArgumentList &args,
+	const HdMaterialNode &node)
+{
+	if (v.IsHolding<int>() && HasRampParam(node, name, "", "_keys"))
+	{
+		/* Skip this one. We get the count from the array lengths. */
+		return true;
+	}
+
+	if (HasRampParam(node, name, "_basis", "_keys"))
+	{
+		/* Remap to an integer and output it here. */
+		int interp = 4; /* hopefully smoothstep */
+		std::string mode = v.Get<std::string>();
+		if (mode == "constant")
+			interp = 0;
+		else if (mode == "linear")
+			interp = 1;
+		/* FIXME: Support more modes. Fix the shaders. */
+
+		name = name.substr(0, name.size() - 6) + "_Interp";
+		args.Add(NSI::Argument::New(name)
+			->SetArrayType(NSITypeInteger, 1)
+			->CopyValue(&interp, sizeof(interp)));
+		return true;
+	}
+
+	if (HasRampParam(node, name, "_keys", "_basis"))
+	{
+		/* Rename it. Let standard output handle the value. */
+		name = name.substr(0, name.size() - 5) + "_Position";
+		return false;
+	}
+
+	if (HasRampParam(node, name, "_values", "_basis"))
+	{
+		/* Rename it. Let standard output handle the value. */
+		name = name.substr(0, name.size() - 7) + "_ColorValue";
+		return false;
+	}
+
+	return false;
+}
 }
 
 void HdNSIMaterial::ExportNode(
@@ -152,8 +257,14 @@ void HdNSIMaterial::ExportNode(
 	args.Add(new NSI::StringArg("shaderfilename", shader));
 	for (auto &p : node.parameters)
 	{
-		const std::string name = EscapeOSLKeyword(p.first.GetString());
+		std::string name = p.first.GetString();
 		const VtValue &v = p.second;
+
+		if (RampFixup(name, v, args, node))
+			continue;
+
+		name = EscapeOSLKeyword(name);
+
 		if (v.IsHolding<TfToken>())
 		{
 			args.Add(new NSI::StringArg(name, v.Get<TfToken>().GetString()));
