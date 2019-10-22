@@ -337,10 +337,13 @@ void HdNSIMaterial::DeleteShaderNodes(NSI::Context &nsi)
 
 	For example, UsdPreviewSurface's 'normal' attribute gets exported to the
 	'normal_' shader paramter. 
+
+	We also include 'normalize' as overwriting that function with a parameter
+	makes for really painful shader writing.
 */
 std::string HdNSIMaterial::EscapeOSLKeyword(const std::string &name)
 {
-	if (name == "color" || name == "normal")
+	if (name == "color" || name == "normal" | name == "normalize")
 		return name + "_";
 	return name;
 }

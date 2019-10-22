@@ -4,6 +4,7 @@
 #include "pxr/imaging/hd/sceneDelegate.h"
 #include "pxr/imaging/hdNSI/renderDelegate.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
+#include "pxr/usd/sdf/assetPath.h"
 #include "pxr/usd/usdLux/blackbody.h"
 #include "pxr/usd/usdLux/tokens.h"
 
@@ -231,11 +232,34 @@ void HdNSILight::SetShaderParams(
 			UsdLuxBlackbodyTemperatureAsRgb(colorTemperature));
 	}
 
+	/* Same name remapping as HdNSIMaterial::EscapeOSLKeyword(). */
 	i_nsi.SetAttribute(shader_handle, (
 		NSI::ColorArg("color_", emission.data()),
-		NSI::IntegerArg("normalize", normalize),
+		NSI::IntegerArg("normalize_", normalize),
 		NSI::FloatArg("diffuse", diffuse),
 		NSI::FloatArg("specular", specular)));
+
+	if (m_typeId == HdPrimTypeTokens->domeLight)
+	{
+		VtValue tex_v = sceneDelegate->GetLightParamValue(
+			GetId(), UsdLuxTokens->textureFile);
+		if (tex_v.IsHolding<SdfAssetPath>())
+		{
+			std::string path = tex_v.Get<SdfAssetPath>().GetResolvedPath();
+			i_nsi.SetAttribute(shader_handle, (
+				NSI::StringArg("texturefile", path),
+				NSI::StringArg("texturefile.meta.colorspace", "auto")));
+		}
+
+		VtValue format_v = sceneDelegate->GetLightParamValue(
+			GetId(), UsdLuxTokens->textureFormat);
+		if (format_v.IsHolding<TfToken>())
+		{
+			TfToken format = format_v.Get<TfToken>();
+			i_nsi.SetAttribute(shader_handle,
+				NSI::StringArg("textureformat", format.GetString()));
+		}
+	}
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

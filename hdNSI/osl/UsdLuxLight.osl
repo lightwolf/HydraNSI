@@ -5,9 +5,11 @@ surface UsdLuxLight(
 		this shader to be used in a network.
 	*/
 	color color_ = color(1),
-	int normalize = 0,
+	int normalize_ = 0,
 	float diffuse = 1,
-	float specular = 1)
+	float specular = 1,
+	string texturefile = "",
+	string textureformat = "")
 {
 	Ci = 0;
 
@@ -26,7 +28,7 @@ surface UsdLuxLight(
 
 	color result = color_;
 
-	if (normalize)
+	if (normalize_)
 	{
 		result /= surfacearea();
 	}
@@ -38,6 +40,20 @@ surface UsdLuxLight(
 	if (raytype("specular"))
 	{
 		result *= specular;
+	}
+
+	if (texturefile != "" && textureformat != "")
+	{
+		/* only support lat/long so far */
+		vector In = normalize(I);
+		float vx = In[0];
+		float vy = In[1];
+		float vz = In[2];
+		/* s is in [-0.25, 0.75] but texture() periodic wrap handles that. */
+		float s = atan2(vz, vx) / (2.0 * M_PI) + 0.25;
+		float t = atan2(vy, sqrt(vx*vx + vz*vz)) / M_PI + 0.5;
+
+		result *= texture(texturefile, s, t, "swrap", "periodic", "twrap", "clamp");
 	}
 
 	Ci += result * emission();
