@@ -50,11 +50,7 @@ HdNSIMesh::HdNSIMesh(SdfPath const& id,
     , _computedNormalsValid(false)
     , _authoredNormals(false)
     , _smoothNormals(false)
-    , _leftHanded(-1)
     , _base{"mesh"}
-    , _refined(false)
-    , _doubleSided(false)
-    , _cullStyle(HdCullStyleDontCare)
 {
 }
 
@@ -145,63 +141,9 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
 }
 
 void
-HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv)
+HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi)
 {
     NSI::ArgumentList attrs;
-
-    // Set if this mesh is subdivision.
-    const TfToken &scheme = _topology.GetScheme();
-    asSubdiv |= (scheme == PxOsdOpenSubdivTokens->catmullClark);
-
-    if (asSubdiv) {
-        nsi.SetAttribute(_base.Shape(),
-            NSI::CStringPArg("subdivision.scheme", "catmull-clark"));
-    }
-
-    // Subdivision-related attributes.
-    VtIntArray cornerIndices;
-    VtFloatArray cornerSharpness;
-
-    VtIntArray creaseIndices;
-    VtFloatArray creaseSharpness;
-
-    if (asSubdiv) {
-        const PxOsdSubdivTags &subdivTags = _topology.GetSubdivTags();
-
-        cornerIndices = subdivTags.GetCornerIndices();
-        cornerSharpness = subdivTags.GetCornerWeights();
-        if (cornerIndices.size() && cornerSharpness.size()) {
-            attrs.push(NSI::Argument::New("subdivision.cornervertices")
-                ->SetType(NSITypeInteger)
-                ->SetCount(cornerIndices.size())
-                ->SetValuePointer(cornerIndices.data()));
-
-            attrs.push(NSI::Argument::New("subdivision.cornersharpness")
-                ->SetType(NSITypeFloat)
-                ->SetCount(cornerSharpness.size())
-                ->SetValuePointer(cornerSharpness.data()));
-        }
-
-        creaseIndices = subdivTags.GetCreaseIndices();
-        creaseSharpness = subdivTags.GetCreaseWeights();
-        if (creaseIndices.size() && creaseSharpness.size()) {
-            attrs.push(NSI::Argument::New("subdivision.creasevertices")
-                ->SetType(NSITypeInteger)
-                ->SetCount(creaseIndices.size())
-                ->SetValuePointer(creaseIndices.data()));
-
-            attrs.push(NSI::Argument::New("subdivision.creasesharpness")
-                ->SetType(NSITypeFloat)
-                ->SetCount(creaseSharpness.size())
-                ->SetValuePointer(creaseSharpness.data()));
-        }
-    }
-
-    // Set clockwisewinding for the mesh.
-    if (_leftHanded != -1)
-    {
-        attrs.push(new NSI::IntegerArg("clockwisewinding", _leftHanded));
-    }
 
     // "nvertices"
     attrs.push(NSI::Argument::New("nvertices")
@@ -261,38 +203,69 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         _computedNormalsValid = false;
     }
 
-    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id)) {
-        // When pulling a new topology, we don't want to overwrite the
-        // refine level or subdiv tags, which are provided separately by the
-        // scene delegate, so we save and restore them.
-        PxOsdSubdivTags subdivTags = _topology.GetSubdivTags();
-        int refineLevel = _topology.GetRefineLevel();
-        _topology = HdMeshTopology(GetMeshTopology(sceneDelegate), refineLevel);
-        _topology.SetSubdivTags(subdivTags);
+    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id))
+    {
+        /*
+            Note that the refine level comes from
+            HdSceneDelegate::GetDisplayStyle() and the subdiv tags from
+            HdSceneDelegate::GetSubdivTags(). They both have their own dirty
+            bits. So the value we get here with topology should not be used.
+        */
+        _topology = GetMeshTopology(sceneDelegate);
 
         _faceVertexCounts = _topology.GetFaceVertexCounts();
         _faceVertexIndices = _topology.GetFaceVertexIndices();
         _adjacencyValid = false;
         _computedNormalsValid = false;
 
-        if (_topology.GetOrientation() == HdTokens->leftHanded) {
-            _leftHanded = 1;
-        }
-    }
-    if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id) &&
-        _topology.GetRefineLevel() > 0) {
-        _topology.SetSubdivTags(sceneDelegate->GetSubdivTags(id));
-    }
-    if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
-        _topology = HdMeshTopology(_topology,
-            sceneDelegate->GetDisplayStyle(id).refineLevel);
+        /* Set winding order. */
+        nsi.SetAttribute(_base.Shape(), NSI::IntegerArg("clockwisewinding",
+            _topology.GetOrientation() == HdTokens->leftHanded ? 1 : 0));
+
+        /* Enable (or not) subdivision. */
+        bool subdiv =
+            _topology.GetScheme() == PxOsdOpenSubdivTokens->catmullClark;
+        nsi.SetAttribute(_base.Shape(), NSI::CStringPArg("subdivision.scheme",
+                subdiv ? "catmull-clark" : ""));
     }
 
-    if (HdChangeTracker::IsCullStyleDirty(*dirtyBits, id)) {
-        _cullStyle = GetCullStyle(sceneDelegate);
-    }
-    if (HdChangeTracker::IsDoubleSidedDirty(*dirtyBits, id)) {
-        _doubleSided = IsDoubleSided(sceneDelegate);
+    if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id))
+    {
+        NSI::ArgumentList attrs;
+        PxOsdSubdivTags subdivTags = sceneDelegate->GetSubdivTags(id);
+
+        const VtIntArray &cornerIndices = subdivTags.GetCornerIndices();
+        const VtFloatArray &cornerSharpness = subdivTags.GetCornerWeights();
+        if (!cornerIndices.empty() && !cornerSharpness.empty())
+        {
+            attrs.push(NSI::Argument::New("subdivision.cornervertices")
+                ->SetType(NSITypeInteger)
+                ->SetCount(cornerIndices.size())
+                ->SetValuePointer(cornerIndices.data()));
+            attrs.push(NSI::Argument::New("subdivision.cornersharpness")
+                ->SetType(NSITypeFloat)
+                ->SetCount(cornerSharpness.size())
+                ->SetValuePointer(cornerSharpness.data()));
+        }
+
+        const VtIntArray &creaseIndices = subdivTags.GetCreaseIndices();
+        const VtFloatArray &creaseSharpness = subdivTags.GetCreaseWeights();
+        if (!creaseIndices.empty() && !creaseSharpness.empty())
+        {
+            attrs.push(NSI::Argument::New("subdivision.creasevertices")
+                ->SetType(NSITypeInteger)
+                ->SetCount(creaseIndices.size())
+                ->SetValuePointer(creaseIndices.data()));
+            attrs.push(NSI::Argument::New("subdivision.creasesharpness")
+                ->SetType(NSITypeFloat)
+                ->SetCount(creaseSharpness.size())
+                ->SetValuePointer(creaseSharpness.data()));
+        }
+
+        if (!attrs.empty())
+        {
+            nsi.SetAttribute(_base.Shape(), attrs);
+        }
     }
 
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals)) {
@@ -317,18 +290,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
-    // The repr defines a set of geometry styles for drawing the mesh
-    // (see hd/enums.h). We're ignoring points and wireframe for now, so
-    // HdMeshGeomStyleSurf maps to subdivs and everything else maps to
-    // HdMeshGeomStyleHull (coarse triangulated mesh).
-    bool doRefine = (desc.geomStyle == HdMeshGeomStyleSurf);
-
-    // If the subdivision scheme is "none", force us to not refine.
-    doRefine = doRefine && (_topology.GetScheme() != PxOsdOpenSubdivTokens->none);
-
-    // If the refine level is 0, triangulate instead of subdividing.
-    doRefine = doRefine && (_topology.GetRefineLevel() > 0);
-
     // The repr defines whether we should compute smooth normals for this mesh:
     // per-vertex normals taken as an average of adjacent faces, and
     // interpolated smoothly across faces.
@@ -336,33 +297,17 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // If the subdivision scheme is "none" or "bilinear", force us not to use
     // smooth normals.
+#if 0
     _smoothNormals = _smoothNormals &&
         (_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
         (_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
+#endif
+    /* Don't compute smooth normals on a subdiv. They are implicitly smooth. */
+    _smoothNormals = _smoothNormals &&
+        _topology.GetScheme() != PxOsdOpenSubdivTokens->catmullClark;
 
     ////////////////////////////////////////////////////////////////////////
     // 3. Populate NSI prototype object.
-
-    // If the topology has changed, or the value of doRefine has changed, we
-    // need to create or recreate the NSI mesh object.
-    // _GetInitialDirtyBits() ensures that the topology is dirty the first time
-    // this function is called, so that the NSI mesh is always created.
-    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id) ||
-        doRefine != _refined) {
-
-        _refined = doRefine;
-        // In both cases, the vertices will be (re-)populated below.
-    }
-
-    // If the refine level changed or the mesh was recreated, we need to pass
-    // the refine level into the NSI subdiv object.
-    if (HdChangeTracker::IsDisplayStyleDirty(*dirtyBits, id)) {
-        const int refineLevel = _topology.GetRefineLevel();
-
-        nsi.SetAttribute(_base.Shape(),
-            NSI::CStringPArg("subdivision.scheme",
-                refineLevel ? "catmull-clark" : ""));
-    }
 
     // Update normals
     if (!_authoredNormals && _smoothNormals) {
@@ -388,7 +333,7 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     // Populate/update points in the NSI mesh.
     if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        _SetNSIMeshAttributes(nsi, doRefine);
+        _SetNSIMeshAttributes(nsi);
     }
 
     _material.Sync(

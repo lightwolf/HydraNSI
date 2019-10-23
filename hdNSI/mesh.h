@@ -162,7 +162,7 @@ private:
                          HdMeshReprDesc const &desc);
 
     // Utility function to create a NSI triangle mesh and populate topology.
-    void _SetNSIMeshAttributes(NSI::Context &nsi, bool asSubdiv);
+    void _SetNSIMeshAttributes(NSI::Context &nsi);
 
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we
@@ -181,16 +181,9 @@ private:
     bool _authoredNormals;
     bool _smoothNormals;
 
-    int _leftHanded;
-
     HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars;
-
-    // Draw styles.
-    bool _refined;
-    bool _doubleSided;
-    HdCullStyle _cullStyle;
 
     // This class does not support copying.
     HdNSIMesh(const HdNSIMesh&)             = delete;
