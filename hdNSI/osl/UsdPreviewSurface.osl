@@ -13,7 +13,41 @@ shader UsdPreviewSurface(
 	float displacement = 0,
 	float occlusion = 1)
 {
-	Ci = opacity * diffuseColor * diffuse(N);
+	color diff = diffuseColor;
+	color spec = 0;
+	float ccspec = 0;
+
+	{
+		float cos_theta = abs(dot(normalize(-I), normalize(N)));
+		float schlick = pow(max(0.0, 1.0 - cos_theta), 5);
+		float R0 = (1.0 - ior) / (1.0 + ior);
+		R0 *= R0;
+		ccspec = R0 + (1.0 - R0) * schlick;
+
+		if( useSpecularWorkflow )
+		{
+			spec = mix(specularColor, color(1), schlick);
+		}
+		else
+		{
+			color albedo = mix(color(1.0), diffuseColor, metallic);
+
+			/*
+				The documentation says we should apply albedo both at 0 and 90
+				degrees, as in:
+					spec = albedo * ccspec;
+				But what hdStorm actually does is apply albedo only at 0
+				degrees. I think it makes more sense too. So do that.
+			*/
+			spec = mix(R0 * albedo, color(1.0), schlick);
+
+			diff *= 1.0 - metallic;
+		}
+	}
+
+	Ci = spec * microfacet("ggx", N, roughness * roughness, ior, 0);
+	Ci += diff * diffuse(N);
+	Ci += ccspec * clearcoat * microfacet("ggx", N, clearcoatRoughness * clearcoatRoughness, ior, 0);
 	Ci += (1 - opacity) * transparent();
 	Ci += emissiveColor * emission();
 }
