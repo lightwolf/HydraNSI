@@ -298,7 +298,8 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     {
         _colorBuffer.Resolve();
         _depthBuffer.Resolve();
-        _compositor.UpdateColor(_width, _height, (uint8_t *)_colorBuffer.Map());
+        _compositor.UpdateColor(
+            _width, _height, _colorBuffer.GetFormat(), _colorBuffer.Map());
         _colorBuffer.Unmap();
         _compositor.UpdateDepth(_width, _height, (uint8_t *)_depthBuffer.Map());
         _depthBuffer.Unmap();
