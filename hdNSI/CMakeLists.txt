@@ -21,31 +21,26 @@ pxr_plugin(hdNSI
         ${TBB_INCLUDE_DIRS}
         ${NSI_INCLUDE_DIR}
 
-    PUBLIC_CLASSES
-        instancer
-        mesh
-        pointcloud
-        curves
-        rendererPlugin
-        renderDelegate
-        renderPass
-        tokens
-
-    PUBLIC_HEADERS
-        renderParam.h
-
     RESOURCE_FILES
         plugInfo.json
         ${OSL_RESOURCES}
 
     PRIVATE_CLASSES
+        curves
+        instancer
         light
         material
         materialAssign
+        mesh
+        pointcloud
         primvars
         outputDriver
         renderBuffer
+        renderDelegate
+        rendererPlugin
+        renderPass
         rprimBase
+        tokens
 
     DISABLE_PRECOMPILED_HEADERS
 )
