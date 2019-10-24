@@ -25,6 +25,9 @@ pxr_plugin(hdNSI
         plugInfo.json
         ${OSL_RESOURCES}
 
+    PRIVATE_HEADERS
+        renderParam.h
+
     PRIVATE_CLASSES
         curves
         instancer
