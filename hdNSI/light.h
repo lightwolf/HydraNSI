@@ -38,6 +38,12 @@ private:
 		NSI::Context &i_nsi,
 		HdSceneDelegate *sceneDelegate);
 
+	void GenCylinder(
+		NSI::Context &i_nsi,
+		const std::string &i_geo,
+		float i_length,
+		float i_radius);
+
 private:
 	const TfToken m_typeId;
 	bool m_nodes_created;

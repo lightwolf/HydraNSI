@@ -87,6 +87,14 @@ void HdNSILight::Sync(
 			float angle = angle_v.Get<float>();
 			nsi.SetAttribute(geo_handle, NSI::DoubleArg("angle", angle));
 		}
+		else if (m_typeId == HdPrimTypeTokens->cylinderLight)
+		{
+			float length = sceneDelegate->GetLightParamValue(
+				GetId(), UsdLuxTokens->length).Get<float>();
+			float radius = sceneDelegate->GetLightParamValue(
+				GetId(), UsdLuxTokens->radius).Get<float>();
+			GenCylinder(nsi, geo_handle, length, radius);
+		}
 		else if (m_typeId == HdPrimTypeTokens->rectLight)
 		{
 			float width = sceneDelegate->GetLightParamValue(
@@ -150,6 +158,11 @@ void HdNSILight::CreateNodes(
 	else if (m_typeId == HdPrimTypeTokens->domeLight)
 	{
 		i_nsi.Create(geo_handle, "environment");
+	}
+	else if (m_typeId == HdPrimTypeTokens->cylinderLight)
+	{
+		i_nsi.Create(geo_handle, "mesh");
+		/* P depends on radius/length so is set elsewhere. */
 	}
 	else if (m_typeId == HdPrimTypeTokens->rectLight)
 	{
@@ -260,6 +273,62 @@ void HdNSILight::SetShaderParams(
 				NSI::StringArg("textureformat", format.GetString()));
 		}
 	}
+}
+
+/*
+	Generate the cylinder light geo. UsdLuxCylinderLight says:
+	- The cylinder is centered at the origin and has its major axis on the X
+	  axis.
+	- The cylinder does not emit light from the flat end-caps.
+
+	We don't have a native cylinder so we create one with a subdiv mesh for
+	now.
+*/
+void HdNSILight::GenCylinder(
+	NSI::Context &i_nsi,
+	const std::string &i_geo,
+	float i_length,
+	float i_radius)
+{
+	constexpr float PI = std::acos(-1);
+	constexpr int lsteps = 1;
+	constexpr int rsteps = 4;
+
+	float P[rsteps][lsteps + 1][3];
+	for (int i = 0; i < rsteps; ++i)
+	{
+		float angle = float(i) / float(rsteps) * (2.0f * PI);
+		float y = i_radius * std::cos(angle);
+		float z = i_radius * std::sin(angle);
+		for (int j = 0; j < lsteps + 1; ++j)
+		{
+			float x = i_length * (-0.5f + float(j) / float(lsteps));
+			P[i][j][0] = x;
+			P[i][j][1] = y;
+			P[i][j][2] = z;
+		}
+	}
+
+	int nvertices[rsteps][lsteps];
+	int indices[rsteps][lsteps][4];
+	for (int i = 0; i < rsteps; ++i)
+	{
+		int ni = (i + 1) % rsteps;
+		for (int j = 0; j < lsteps; ++j)
+		{
+			nvertices[i][j] = 4;
+			indices[i][j][0] = ni * (lsteps + 1) + j + 0;
+			indices[i][j][1] = ni * (lsteps + 1) + j + 1;
+			indices[i][j][2] = i * (lsteps + 1) + j + 1;
+			indices[i][j][3] = i * (lsteps + 1) + j + 0;
+		}
+	}
+
+	i_nsi.SetAttribute(i_geo, (
+		NSI::StringArg("subdivision.scheme", "catmull-clark"),
+		NSI::PointsArg("P", &P[0][0][0], rsteps * (lsteps + 1)),
+		NSI::IntegersArg("nvertices", &nvertices[0][0], rsteps * lsteps),
+		NSI::IntegersArg("P.indices", &indices[0][0][0], rsteps * lsteps * 4)));
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
