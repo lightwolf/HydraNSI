@@ -174,6 +174,8 @@ void HdNSILight::CreateNodes(
 
 	i_nsi.Create(attr_handle, "attributes");
 	i_nsi.Connect(attr_handle, "", geo_handle, "geometryattributes");
+	/* Make lights invisible to camera. */
+	i_nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility.camera", 0));
 
 	i_nsi.Create(shader_handle, "shader");
 	i_nsi.Connect(shader_handle, "", attr_handle, "surfaceshader");
