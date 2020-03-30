@@ -189,13 +189,14 @@ PtDspyError HdNSIOutputDriver::ImageData(
 		if (imageHandle->m_project)
 		{
 			const auto &pd = *imageHandle->m_project;
-			/* Hydra expects a post-projection depth. */
+			/* Hydra expects a post-projection depth, which is nonlinear in
+			   [-1, 1], remapped to [0,1] */
 			for (int x = xMin; x < xMaxPlusOne; ++x)
 			{
 				int i = x - xMin;
 				float Ze = - ((const float*)buf_in)[i];
 				float nd = (pd.M22 * Ze + pd.M32) / -Ze;
-				((float*)buf_out)[i] = nd;
+				((float*)buf_out)[i] = (nd + 1.0f) * 0.5f;
 			}
 		}
 		else if (intConvert)

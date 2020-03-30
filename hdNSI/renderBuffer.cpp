@@ -164,7 +164,7 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             NSI::StringArg("variablesource", "shader")));
 	}
 	else if( aovName == HdAovTokens->depth ||
-             aovName == HdAovTokens->linearDepth )
+             aovName == HdAovTokens->cameraDepth )
 	{
 		nsi.SetAttribute(layerHandle, (
             NSI::StringArg("variablename", "z"),
