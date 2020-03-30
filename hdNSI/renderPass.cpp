@@ -344,7 +344,7 @@ void HdNSIRenderPass::_CreateNSIOutputs(
         nsi.Create(driverHandle, "outputdriver");
         nsi.SetAttribute(driverHandle, (
             NSI::StringArg("drivername", "HdNSI"),
-            NSI::StringArg("imagefilename", prefix)));
+            NSI::StringArg("imagefilename", aov.aovName.GetString())));
 
         /* Connect everything together. */
         nsi.Connect(driverHandle, "", layerHandle, "outputdrivers");
