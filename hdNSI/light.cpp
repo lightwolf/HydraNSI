@@ -292,7 +292,7 @@ void HdNSILight::GenCylinder(
 	float i_length,
 	float i_radius)
 {
-	constexpr float PI = std::acos(-1);
+	const float PI = std::acos(-1);
 	constexpr int lsteps = 1;
 	constexpr int rsteps = 4;
 
