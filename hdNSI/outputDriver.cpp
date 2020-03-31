@@ -196,7 +196,11 @@ PtDspyError HdNSIOutputDriver::ImageData(
 				int i = x - xMin;
 				float Ze = - ((const float*)buf_in)[i];
 				float nd = (pd.M22 * Ze + pd.M32) / -Ze;
+#if defined(PXR_VERSION) && PXR_VERSION <= 1911
+				((float*)buf_out)[i] = nd;
+#else
 				((float*)buf_out)[i] = (nd + 1.0f) * 0.5f;
+#endif
 			}
 		}
 		else if (intConvert)

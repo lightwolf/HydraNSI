@@ -300,7 +300,11 @@ HdAovDescriptor HdNSIRenderDelegate::GetDefaultAovDescriptor(
     {
         return HdAovDescriptor(HdFormatFloat32, true, VtValue(1.0f));
     }
+#if defined(PXR_VERSION) && PXR_VERSION <= 1911
+    else if (name == HdAovTokens->linearDepth)
+#else
     else if (name == HdAovTokens->cameraDepth)
+#endif
     {
         return HdAovDescriptor(HdFormatFloat32, true, VtValue(0.0f));
     }
