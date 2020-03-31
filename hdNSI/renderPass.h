@@ -33,7 +33,11 @@
 #include "pxr/imaging/hdNSI/outputDriver.h"
 #include "pxr/imaging/hdNSI/renderBuffer.h"
 #include "pxr/imaging/hdNSI/renderParam.h"
+#if defined(PXR_VERSION) && PXR_VERSION <= 2002
 #include "pxr/imaging/hdx/compositor.h"
+#else
+#include "pxr/imaging/hdx/fullscreenShader.h"
+#endif
 
 #include "pxr/base/gf/matrix3d.h"
 #include "pxr/base/gf/matrix4d.h"
@@ -155,7 +159,11 @@ private:
     GfMatrix4d _projMatrix;
 
     // Compositor to copy pixels to viewport.
+#if defined(PXR_VERSION) && PXR_VERSION <= 2002
     HdxCompositor _compositor;
+#else
+    HdxFullscreenShader _compositor;
+#endif
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE
