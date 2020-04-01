@@ -4,11 +4,17 @@
             "Info": {
                 "Types": {
                     "HdNSIRendererPlugin": {
-                        "bases": [
-                            "HdRendererPlugin"
-                        ],
+                        "bases": ["HdRendererPlugin"],
                         "displayName": "NSI",
                         "priority": 99
+                    },
+                    "HdNSIDiscoveryPlugin": {
+                        "bases": ["NdrDiscoveryPlugin"],
+                        "displayName": "NSI osl Discovery"
+                    },
+                    "HdNSIOsoParserPlugin": {
+                        "bases": ["NdrParserPlugin"],
+                        "displayName": "NSI osl Parser"
                     }
                 }
             },

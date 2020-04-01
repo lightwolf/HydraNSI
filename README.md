@@ -36,7 +36,7 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 
 
 ## Building
-> This code was tested with Pixar USD version **19.10**.
+> This code supports Pixar USD version **19.11** or later.
 > The minimum 3Delight NSI version needed is **1.6.4**.
 
 Once  you are able to build Pixar USD, building HydraNSI is very easy:

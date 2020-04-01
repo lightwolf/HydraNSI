@@ -30,6 +30,7 @@ pxr_plugin(hdNSI
 
     PRIVATE_CLASSES
         curves
+        discoveryPlugin
         instancer
         light
         material
@@ -37,6 +38,7 @@ pxr_plugin(hdNSI
         mesh
         pointcloud
         primvars
+        osoParserPlugin
         outputDriver
         renderBuffer
         renderDelegate
