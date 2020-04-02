@@ -89,8 +89,24 @@ void HdNSIMaterial::ExportNetworks(
 	{
 		if (e.second.nodes.empty())
 			continue;
-		if (e.first != HdMaterialTerminalTokens->surface)
-			continue;
+
+		const char *nsi_terminal = "";
+		if (e.first == HdMaterialTerminalTokens->surface)
+		{
+			nsi_terminal = "surfaceshader";
+		}
+		else if (e.first == HdMaterialTerminalTokens->displacement)
+		{
+			nsi_terminal = "displacementshader";
+		}
+		else if (e.first == HdMaterialTerminalTokens->volume)
+		{
+			nsi_terminal = "volumeshader";
+		}
+		else
+		{
+			continue; /* unsupported */
+		}
 
 		for (const HdMaterialNode &node : e.second.nodes)
 		{
@@ -106,20 +122,15 @@ void HdNSIMaterial::ExportNetworks(
 				EscapeOSLKeyword(r.outputName.GetString()));
 		}
 
-		if (e.first == HdMaterialTerminalTokens->surface)
-		{
-			/*
-				Assume the last node is the head of the network. This should
-				always be true from the way the network is parsed in
-				UsdImagingMaterialAdapter. I could not find a way to get the
-				actual value of the material's "outputs:surface", etc through
-				the Hydra API.
-			*/
-			nsi.Connect(
-				e.second.nodes.back().path.GetString(), "",
-				mat_handle, "surfaceshader");
-
-		}
+		/*
+			Assume the last node is the head of the network. This should always
+			be true from the way the network is parsed in
+			UsdImagingMaterialAdapter. I could not find a way to get the actual
+			value of the material's "outputs:surface", etc through Hydra.
+		*/
+		nsi.Connect(
+			e.second.nodes.back().path.GetString(), "",
+			mat_handle, nsi_terminal);
 	}
 }
 
