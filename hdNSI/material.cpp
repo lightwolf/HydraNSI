@@ -7,6 +7,17 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+TF_DEFINE_PRIVATE_TOKENS(
+	_tokens,
+	(vdbVolume)
+	/* Special volume parameters. */
+	((densitygrid, "densitygrid"))
+	((colorgrid, "colorgrid"))
+	((temperaturegrid, "temperaturegrid"))
+	((emissionintensitygrid, "emissionintensitygrid"))
+	((velocitygrid, "velocitygrid"))
+	((velocityscale, "velocityscale"))
+);
 
 HdNSIMaterial::HdNSIMaterial(
 	const SdfPath &sprimId)
@@ -71,6 +82,36 @@ HdDirtyBits HdNSIMaterial::GetInitialDirtyBitsMask() const
 	return AllDirty;
 }
 
+std::weak_ptr<HdNSIMaterial::VolumeCallbacks>
+HdNSIMaterial::GetVolumeCallbacks()
+{
+	std::lock_guard<std::mutex> guard{m_volume_callbacks_mutex};
+	if (!m_volume_callbacks)
+	{
+		m_volume_callbacks.reset(new VolumeCallbacks);
+	}
+	return m_volume_callbacks;
+}
+
+/**
+	\returns
+		The list of special vdbVolume parameters which should actually be
+		volume node parameter.
+*/
+const std::array<TfToken, 6>& HdNSIMaterial::VolumeNodeParameters()
+{
+	static std::array<TfToken, 6> p
+	{
+		_tokens->densitygrid,
+		_tokens->colorgrid,
+		_tokens->temperaturegrid,
+		_tokens->emissionintensitygrid,
+		_tokens->velocitygrid,
+		_tokens->velocityscale
+	};
+	return p;
+}
+
 void HdNSIMaterial::ExportNetworks(
 	NSI::Context &nsi,
 	HdNSIRenderParam *renderParam,
@@ -102,6 +143,7 @@ void HdNSIMaterial::ExportNetworks(
 		else if (e.first == HdMaterialTerminalTokens->volume)
 		{
 			nsi_terminal = "volumeshader";
+			m_vdbVolume.reset();
 		}
 		else
 		{
@@ -131,6 +173,15 @@ void HdNSIMaterial::ExportNetworks(
 		nsi.Connect(
 			e.second.nodes.back().path.GetString(), "",
 			mat_handle, nsi_terminal);
+
+		if (e.first == HdMaterialTerminalTokens->volume && m_volume_callbacks)
+		{
+			std::lock_guard<std::mutex> guard{m_volume_callbacks->m_mutex};
+			for( VolumeCB *cb : *m_volume_callbacks )
+			{
+				cb->NewVDBNode(nsi, this);
+			}
+		}
 	}
 }
 
@@ -260,6 +311,13 @@ void HdNSIMaterial::ExportNode(
 	std::string shader = renderParam->GetRenderDelegate()
 		->FindShader(node.identifier);
 
+	bool isVdb = node.identifier == _tokens->vdbVolume;
+	if (isVdb)
+	{
+		/* Grab a copy of that node, for use by HdNSIVolume. */
+		m_vdbVolume.reset(new HdMaterialNode{node});
+	}
+
 	nsi.Create(node_handle, "shader");
 	/* Record this new node. For deletion later. */
 	m_network_nodes.push_back(node_handle);
@@ -268,6 +326,18 @@ void HdNSIMaterial::ExportNode(
 	args.Add(new NSI::StringArg("shaderfilename", shader));
 	for (auto &p : node.parameters)
 	{
+		if (isVdb)
+		{
+			/* On vdbVolume, skip parameters moved to the volume node. */
+			bool isVNP = false;
+			for( const TfToken &volume_p : VolumeNodeParameters() )
+			{
+				isVNP = isVNP || p.first == volume_p;
+			}
+			if (isVNP)
+				continue;
+		}
+
 		std::string name = p.first.GetString();
 		const VtValue &v = p.second;
 

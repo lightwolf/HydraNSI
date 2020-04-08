@@ -40,12 +40,14 @@
 #include "pxr/imaging/hdNSI/mesh.h"
 #include "pxr/imaging/hdNSI/pointcloud.h"
 #include "pxr/imaging/hdNSI/curves.h"
+#include "volume.h"
 //XXX: Add other Rprim types later
 #include "pxr/imaging/hd/camera.h"
 #include "pxr/imaging/hd/bprim.h"
 #include "pxr/imaging/hdNSI/light.h"
 #include "pxr/imaging/hdNSI/material.h"
 //XXX: Add bprim types
+#include "field.h"
 #include "pxr/imaging/hdNSI/renderBuffer.h"
 
 #include "delight.h"
@@ -55,11 +57,18 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+TF_DEFINE_PRIVATE_TOKENS(
+    _tokens,
+	/* This is in usdVolImaging but we shouldn't be using it directly. */
+    (openvdbAsset)
+);
+
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_RPRIM_TYPES =
 {
     HdPrimTypeTokens->mesh,
     HdPrimTypeTokens->points,
     HdPrimTypeTokens->basisCurves,
+    HdPrimTypeTokens->volume,
 };
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
@@ -76,7 +85,8 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_BPRIM_TYPES =
 {
-    HdPrimTypeTokens->renderBuffer
+    HdPrimTypeTokens->renderBuffer,
+    _tokens->openvdbAsset,
 };
 
 std::mutex HdNSIRenderDelegate::_mutexResourceRegistry;
@@ -390,6 +400,8 @@ HdNSIRenderDelegate::CreateRprim(TfToken const& typeId,
         return new HdNSIPointCloud(rprimId, instancerId);
     } else if (typeId == HdPrimTypeTokens->basisCurves) {
         return new HdNSICurves(rprimId, instancerId);
+    } else if (typeId == HdPrimTypeTokens->volume) {
+        return new HdNSIVolume(rprimId, instancerId);
     } else {
         TF_CODING_ERROR("Unknown Rprim Type %s", typeId.GetText());
     }
@@ -478,6 +490,10 @@ HdNSIRenderDelegate::CreateBprim(TfToken const& typeId,
     {
         return new HdNSIRenderBuffer(bprimId);
     }
+    if (typeId == _tokens->openvdbAsset)
+    {
+        return new HdNSIField(bprimId);
+    }
     TF_CODING_ERROR("Unknown Bprim Type %s", typeId.GetText());
     return nullptr;
 }
@@ -488,6 +504,10 @@ HdNSIRenderDelegate::CreateFallbackBprim(TfToken const& typeId)
     if (typeId == HdPrimTypeTokens->renderBuffer)
     {
         return new HdNSIRenderBuffer(SdfPath::EmptyPath());
+    }
+    if (typeId == _tokens->openvdbAsset)
+    {
+        return nullptr;
     }
     TF_CODING_ERROR("Unknown Bprim Type %s", typeId.GetText());
     return nullptr;

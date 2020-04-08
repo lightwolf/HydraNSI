@@ -25,9 +25,13 @@ public:
 		const SdfPath &primId,
 		const std::string &geoHandle);
 
+	const SdfPath& GetMaterialId() const { return m_materialId; }
+
 private:
 	/* Handle of connected material. */
 	std::string m_assignedMaterialHandle;
+	/* Id of the currently assigned material. */
+	SdfPath m_materialId;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

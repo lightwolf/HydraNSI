@@ -31,6 +31,7 @@ pxr_plugin(hdNSI
     PRIVATE_CLASSES
         curves
         discoveryPlugin
+        field
         instancer
         light
         material
@@ -46,6 +47,7 @@ pxr_plugin(hdNSI
         renderPass
         rprimBase
         tokens
+        volume
 
     DISABLE_PRECOMPILED_HEADERS
 )

@@ -25,7 +25,8 @@ void HdNSIMaterialAssign::Sync(
 		m_assignedMaterialHandle.clear();
 	}
 	/* Figure out the new material to use. */
-	std::string mat = sceneDelegate->GetMaterialId(primId).GetString();
+	m_materialId = sceneDelegate->GetMaterialId(primId);
+	std::string mat = m_materialId.GetString();
 	if (mat.empty())
 	{
 		/* Use the default material. */
