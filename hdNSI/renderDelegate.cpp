@@ -179,6 +179,11 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
         VtValue(TfGetenvInt("HDNSI_SHADING_SAMPLES", 64))});
 
     _settingDescriptors.push_back({
+        "Volume Samples",
+        HdNSIRenderSettingsTokens->volumeSamples,
+        VtValue(TfGetenvInt("HDNSI_VOLUME_SAMPLES", 32))});
+
+    _settingDescriptors.push_back({
         "Pixel Samples",
         HdNSIRenderSettingsTokens->pixelSamples,
         VtValue(TfGetenvInt("HDNSI_PIXEL_SAMPLES", 8))});
@@ -219,6 +224,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
 
     // Set global parameters.
     SetShadingSamples();
+    SetVolumeSamples();
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::StringArg("bucketorder", "spiral"));
@@ -291,6 +297,10 @@ void HdNSIRenderDelegate::SetRenderSetting(
     if (key == HdNSIRenderSettingsTokens->shadingSamples)
     {
         SetShadingSamples();
+    }
+    if (key == HdNSIRenderSettingsTokens->volumeSamples)
+    {
+        SetVolumeSamples();
     }
     for (HdNSIRenderPass *pass : _renderPasses)
     {
@@ -570,6 +580,14 @@ void HdNSIRenderDelegate::SetShadingSamples() const
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::IntegerArg("quality.shadingsamples", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetVolumeSamples() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->volumeSamples);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("quality.volumesamples", s.Get<int>()));
 }
 
 /*

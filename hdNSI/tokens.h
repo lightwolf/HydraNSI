@@ -9,6 +9,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 
 #define HDNSI_SETTINGS_TOKENS \
     (shadingSamples) \
+    (volumeSamples) \
     (pixelSamples) \
     (cameraLightIntensity) \
     (envLightPath) \

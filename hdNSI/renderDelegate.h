@@ -220,6 +220,7 @@ public:
 
 private:
     void SetShadingSamples() const;
+    void SetVolumeSamples() const;
     void ExportDefaultMaterial() const;
 
 private:
