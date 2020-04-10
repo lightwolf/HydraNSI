@@ -150,6 +150,8 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
             PDlGetLibNameAndVersionString(), _delight.c_str());
     }
 
+    _capi->LoadFunction(m_DlGetShaderInfo, "DlGetShaderInfo");
+
     _nsi = std::make_shared<NSI::Context>(*_capi);
     _nsi->Begin();
 
@@ -542,6 +544,18 @@ const std::string HdNSIRenderDelegate::FindShader(const std::string &id) const
 
     /* Nothing found. Return the id. Could be useful for debugging. */
     return id;
+}
+
+/*
+    Given a shader path, this returns a metadata object for the shader.
+*/
+DlShaderInfo* HdNSIRenderDelegate::GetShaderInfo(
+    const std::string &i_shader) const
+{
+    if (!m_DlGetShaderInfo)
+        return nullptr;
+
+    return m_DlGetShaderInfo(i_shader.c_str());
 }
 
 void HdNSIRenderDelegate::SetShadingSamples() const

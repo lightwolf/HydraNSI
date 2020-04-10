@@ -26,6 +26,7 @@
 #ifndef HDNSI_RENDER_DELEGATE_H
 #define HDNSI_RENDER_DELEGATE_H
 
+#include "3Delight/ShaderQuery.h"
 #include "pxr/pxr.h"
 #include "pxr/imaging/hd/renderDelegate.h"
 
@@ -213,6 +214,8 @@ public:
 
     const std::string FindShader(const std::string &id) const;
 
+    DlShaderInfo* GetShaderInfo(const std::string &i_shader) const;
+
     const char* DefaultMaterialHandle() const { return "defaultShader"; }
 
 private:
@@ -260,6 +263,9 @@ private:
 
     /* Path to directory with our builtin shaders. */
     std::string _shaders_path;
+
+    /* Pointer to dynamically loaded shader query API. */
+    decltype(&DlGetShaderInfo) m_DlGetShaderInfo;
 
 public:
     // A callback that interprets NSI error codes and injects them into

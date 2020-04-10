@@ -198,107 +198,82 @@ std::string FixUDIM(const std::string &path)
 	return newpath;
 }
 
-/*
-	Returns true if the given parameter name ends with some specific suffix and
-	the node also has a parameter with the same root and a second suffix.
-*/
-bool HasRampParam(
-	const HdMaterialNode &node,
-	const std::string &basename,
-	const char *old_suffix,
-	const char *new_suffix)
+void IsRamp(
+	const DlShaderInfo::Parameter &param,
+	bool *ramp,
+	bool *related_to_ramp)
 {
-	size_t l = strlen(old_suffix);
-	if (basename.size() <= l)
-		return false;
-
-	if (0 != std::strcmp(basename.c_str() + basename.size() - l, old_suffix))
-		return false;
-
-	std::string newname = basename.substr(0, basename.size() - l);
-	newname += new_suffix;
-
-	/*
-		I'm not entirely certain about TfToken creation performance so we'll
-		just directly compare to all parameter names for now. This is not great
-		but it is a known amount of "not great" I can live with.
-	*/
-	for (auto &p : node.parameters)
+	for( const auto &m : param.metadata )
 	{
-		if (p.first == newname)
-			return true;
+		if (m.name == "widget" &&
+		    m.sdefault.size() >= 1 &&
+		    m.sdefault[0].size() > 4 &&
+		    0 == std::strcmp(m.sdefault[0].end() - 4, "Ramp"))
+		{
+			*ramp = true;
+		}
+		if (m.name == "related_to_widget" &&
+		    m.sdefault.size() >= 1 &&
+		    m.sdefault[0].size() > 4 &&
+		    0 == std::strcmp(m.sdefault[0].end() - 4, "Ramp"))
+		{
+			*related_to_ramp = true;
+		}
 	}
-	return false;
 }
 
-/*
-	Special handling for ramp parameters coming from Houdini. This can either
-	rename them, skip them, or output them in here differently. For a color
-	ramp with a base name of 'foo', the Houdini default shader translator
-	provides us with:
-
-	int foo -> number of control points
-	string foo_basis -> interpolation type
-	float[n] foo_keys -> the control point locations
-	color[n] foo_values -> the control point values
-
-	We must remap this to what our shaders usually expect:
-	int[] foo_Interp -> interpolation type (can be a single value)
-	float[n] foo_Position -> same as foo_keys above
-	color[n] foo_ColorValue -> same as foo_values above
-
-	In an ideal world, this would be driven by shader metadata. For now, I'm
-	just checking parameter names.
-
-	FIXME: This does not cover connections.
-
-	This returns true if the regular output should be skipped.
-*/
-bool RampFixup(
-	std::string &name,
-	const VtValue &v,
-	NSI::ArgumentList &args,
-	const HdMaterialNode &node)
+void FixRamps(
+	const DlShaderInfo &shader_meta,
+	HdMaterialNode &node)
 {
-	if (v.IsHolding<int>() && HasRampParam(node, name, "", "_keys"))
+	for( const auto &param : shader_meta.params() )
 	{
-		/* Skip this one. We get the count from the array lengths. */
-		return true;
+		bool ramp = false, related_to_ramp = false;
+		IsRamp(param, &ramp, &related_to_ramp);
+		//printf("isramp: %d %d\n", ramp, related_to_ramp);
+		if (ramp)
+		{
+			/*
+				Find the base name and remove any parameter with that name. It
+				should be the count of key/values, which we don't need.
+			*/
+			std::string base_name = param.name.string();
+			auto pos = base_name.rfind('_');
+			if (pos != std::string::npos)
+			{
+				base_name = base_name.substr(0, pos);
+				node.parameters.erase(TfToken(base_name));
+			}
+		}
+		if (related_to_ramp)
+		{
+			/*
+				Secondary ramp parameter. If its type is int and we're given a
+				string, this is the interpolation parameter and it requires
+				conversion.
+			*/
+			auto it = node.parameters.find(TfToken(param.name.string()));
+			if (param.type.elementtype() == NSITypeInteger &&
+			    it != node.parameters.end() &&
+			    it->second.IsHolding<std::string>())
+			{
+				std::string interp = it->second.Get<std::string>();
+				if (interp == "constant")
+				{
+					it->second = VtArray<int>({0});
+				}
+				else if (interp == "linear")
+				{
+					it->second = VtArray<int>({1});
+				}
+				else
+				{
+					/* catmull-rom spline for everything else, for now. */
+					it->second = VtArray<int>({3});
+				}
+			}
+		}
 	}
-
-	if (HasRampParam(node, name, "_basis", "_keys"))
-	{
-		/* Remap to an integer and output it here. */
-		int interp = 4; /* hopefully smoothstep */
-		std::string mode = v.Get<std::string>();
-		if (mode == "constant")
-			interp = 0;
-		else if (mode == "linear")
-			interp = 1;
-		/* FIXME: Support more modes. Fix the shaders. */
-
-		name = name.substr(0, name.size() - 6) + "_Interp";
-		args.Add(NSI::Argument::New(name)
-			->SetArrayType(NSITypeInteger, 1)
-			->CopyValue(&interp, sizeof(interp)));
-		return true;
-	}
-
-	if (HasRampParam(node, name, "_keys", "_basis"))
-	{
-		/* Rename it. Let standard output handle the value. */
-		name = name.substr(0, name.size() - 5) + "_Position";
-		return false;
-	}
-
-	if (HasRampParam(node, name, "_values", "_basis"))
-	{
-		/* Rename it. Let standard output handle the value. */
-		name = name.substr(0, name.size() - 7) + "_ColorValue";
-		return false;
-	}
-
-	return false;
 }
 }
 
@@ -310,12 +285,25 @@ void HdNSIMaterial::ExportNode(
 	std::string node_handle = node.path.GetString();
 	std::string shader = renderParam->GetRenderDelegate()
 		->FindShader(node.identifier);
+	/* Copy of the node on which we'll apply some fixes. */
+	HdMaterialNode exported_node = node;
 
-	bool isVdb = node.identifier == _tokens->vdbVolume;
-	if (isVdb)
+	if (node.identifier == _tokens->vdbVolume)
 	{
 		/* Grab a copy of that node, for use by HdNSIVolume. */
 		m_vdbVolume.reset(new HdMaterialNode{node});
+		/* Remove the parameters which are moved to the volume. */
+		for( const TfToken &volume_p : VolumeNodeParameters() )
+		{
+			exported_node.parameters.erase(volume_p);
+		}
+	}
+
+	/* Load metadata and apply ramp fixes. */
+	DlShaderInfo *si = renderParam->GetRenderDelegate()->GetShaderInfo(shader);
+	if (si)
+	{
+		FixRamps(*si, exported_node);
 	}
 
 	nsi.Create(node_handle, "shader");
@@ -324,25 +312,10 @@ void HdNSIMaterial::ExportNode(
 
 	NSI::ArgumentList args;
 	args.Add(new NSI::StringArg("shaderfilename", shader));
-	for (auto &p : node.parameters)
+	for (auto &p : exported_node.parameters)
 	{
-		if (isVdb)
-		{
-			/* On vdbVolume, skip parameters moved to the volume node. */
-			bool isVNP = false;
-			for( const TfToken &volume_p : VolumeNodeParameters() )
-			{
-				isVNP = isVNP || p.first == volume_p;
-			}
-			if (isVNP)
-				continue;
-		}
-
 		std::string name = p.first.GetString();
 		const VtValue &v = p.second;
-
-		if (RampFixup(name, v, args, node))
-			continue;
 
 		name = EscapeOSLKeyword(name);
 
@@ -394,6 +367,13 @@ void HdNSIMaterial::ExportNode(
 			args.Add(NSI::Argument::New(name)
 				->SetArrayType(NSITypeColor, v_array.size())
 				->SetValuePointer(v_array.cdata()->data()));
+		}
+		else if (v.IsHolding<VtArray<int>>())
+		{
+			const auto &v_array = v.Get<VtArray<int>>();
+			args.Add(NSI::Argument::New(name)
+				->SetArrayType(NSITypeInteger, v_array.size())
+				->SetValuePointer(v_array.cdata()));
 		}
 	}
 	nsi.SetAttribute(node_handle, args);
