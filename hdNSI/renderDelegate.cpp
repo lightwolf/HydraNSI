@@ -528,14 +528,16 @@ void HdNSIRenderDelegate::RemoveRenderPass(HdNSIRenderPass *renderPass)
 
 const std::string HdNSIRenderDelegate::FindShader(const std::string &id) const
 {
+    std::string filename = id + ".oso";
+
     /* First, try our own shaders. */
-    std::string path = TfStringCatPaths(_shaders_path, id);
-    if (TfIsFile(path + ".oso", true))
+    std::string path = TfStringCatPaths(_shaders_path, filename);
+    if (TfIsFile(path, true))
         return path;
 
     /* Try the ones shipped with the renderer. */
-    path = TfStringCatPaths(TfStringCatPaths(_delight, "osl"), id);
-    if (TfIsFile(path + ".oso", true))
+    path = TfStringCatPaths(TfStringCatPaths(_delight, "osl"), filename);
+    if (TfIsFile(path, true))
         return path;
 
     /* Nothing found. Return the id. Could be useful for debugging. */
