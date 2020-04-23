@@ -226,8 +226,9 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
     SetShadingSamples();
     SetVolumeSamples();
 
-    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
-        NSI::StringArg("bucketorder", "spiral"));
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
+        NSI::StringArg("bucketorder", "spiral"),
+        NSI::IntegerArg("renderatlowpriority", 1)));
 
     ExportDefaultMaterial();
 }
