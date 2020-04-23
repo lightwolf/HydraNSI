@@ -293,26 +293,22 @@ HdNSIRenderPass::_Execute(HdRenderPassStateSharedPtr const& renderPassState,
     /* The renderer is now up to date on all changes. */
     _renderParam->ResetSceneEdited();
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2002
     // Blit, only when no AOVs are specified.
     if (_aovBindings.empty())
     {
         _colorBuffer.Resolve();
         _depthBuffer.Resolve();
-#if defined(PXR_VERSION) && PXR_VERSION <= 2002
         _compositor.UpdateColor(
             _width, _height, _colorBuffer.GetFormat(), _colorBuffer.Map());
         _compositor.UpdateDepth(_width, _height, (uint8_t *)_depthBuffer.Map());
-#else
-        _compositor.SetTexture(TfToken("color"),
-            _width, _height, _colorBuffer.GetFormat(), _colorBuffer.Map());
-        _compositor.SetTexture(TfToken("depth"),
-            _width, _height, HdFormatFloat32, _depthBuffer.Map());
-        _compositor.SetProgramToCompositor(true);
-#endif
         _colorBuffer.Unmap();
         _depthBuffer.Unmap();
         _compositor.Draw();
     }
+#else
+    TF_VERIFY(!_aovBindings.empty(), "No aov bindings to render into");
+#endif
 }
 
 void HdNSIRenderPass::_CreateNSIOutputs(

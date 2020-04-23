@@ -35,8 +35,6 @@
 #include "pxr/imaging/hdNSI/renderParam.h"
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
 #include "pxr/imaging/hdx/compositor.h"
-#else
-#include "pxr/imaging/hdx/fullscreenShader.h"
 #endif
 
 #include "pxr/base/gf/matrix3d.h"
@@ -161,8 +159,6 @@ private:
     // Compositor to copy pixels to viewport.
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
     HdxCompositor _compositor;
-#else
-    HdxFullscreenShader _compositor;
 #endif
 };
 
