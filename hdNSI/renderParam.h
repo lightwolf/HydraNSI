@@ -29,9 +29,9 @@
 #include "pxr/pxr.h"
 #include "pxr/imaging/hd/renderDelegate.h"
 
-#include <atomic>
-
 #include <nsi_dynamic.hpp>
+
+#include <atomic>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

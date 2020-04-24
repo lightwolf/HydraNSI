@@ -1,8 +1,9 @@
-#include "pxr/imaging/hdNSI/rprimBase.h"
+#include "rprimBase.h"
+
+#include "instancer.h"
+#include "renderDelegate.h"
 
 #include "pxr/imaging/hd/rprim.h"
-#include "pxr/imaging/hdNSI/instancer.h"
-#include "pxr/imaging/hdNSI/renderDelegate.h"
 
 #include <numeric>
 

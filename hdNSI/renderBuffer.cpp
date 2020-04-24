@@ -21,8 +21,11 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
-#include "pxr/imaging/hdNSI/renderBuffer.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
+
+#include "renderBuffer.h"
+
+#include "renderParam.h"
+
 #include "pxr/base/gf/half.h"
 
 PXR_NAMESPACE_OPEN_SCOPE

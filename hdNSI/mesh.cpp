@@ -24,11 +24,12 @@
 // language governing permissions and limitations under the Apache License.
 //
 #include "pxr/imaging/glf/glew.h"
-#include "pxr/imaging/hdNSI/mesh.h"
+#include "mesh.h"
 
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
-#include "pxr/imaging/hdNSI/renderPass.h"
+#include "renderDelegate.h"
+#include "renderParam.h"
+#include "renderPass.h"
+
 #include "pxr/imaging/hd/meshUtil.h"
 #include "pxr/imaging/hd/smoothNormals.h"
 #include "pxr/imaging/pxOsd/tokens.h"

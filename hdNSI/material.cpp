@@ -1,6 +1,7 @@
-#include "pxr/imaging/hdNSI/material.h"
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
+#include "material.h"
+#include "renderDelegate.h"
+#include "renderParam.h"
+
 #include "pxr/usd/sdf/assetPath.h"
 
 #include <cstring>

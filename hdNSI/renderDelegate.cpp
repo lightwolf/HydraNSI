@@ -23,34 +23,33 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
+
+#include "renderDelegate.h"
+
+#include "curves.h"
+#include "field.h"
+#include "instancer.h"
+#include "light.h"
+#include "material.h"
+#include "mesh.h"
+#include "pointcloud.h"
+#include "renderBuffer.h"
+#include "renderParam.h"
+#include "renderPass.h"
+#include "tokens.h"
+#include "volume.h"
+
 #include "pxr/base/plug/plugin.h"
 #include "pxr/base/plug/thisPlugin.h"
 #include "pxr/base/tf/getenv.h"
 #include "pxr/base/tf/fileUtils.h"
 #include "pxr/imaging/glf/glew.h"
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-
-#include "pxr/imaging/hdNSI/instancer.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
-#include "pxr/imaging/hdNSI/renderPass.h"
-#include "pxr/imaging/hdNSI/tokens.h"
 
 #include "pxr/imaging/hd/resourceRegistry.h"
 
-#include "pxr/imaging/hdNSI/mesh.h"
-#include "pxr/imaging/hdNSI/pointcloud.h"
-#include "pxr/imaging/hdNSI/curves.h"
-#include "volume.h"
-//XXX: Add other Rprim types later
 #include "pxr/imaging/hd/camera.h"
-#include "pxr/imaging/hd/bprim.h"
-#include "pxr/imaging/hdNSI/light.h"
-#include "pxr/imaging/hdNSI/material.h"
-//XXX: Add bprim types
-#include "field.h"
-#include "pxr/imaging/hdNSI/renderBuffer.h"
 
-#include "delight.h"
+#include <delight.h>
 
 #include <iostream>
 #include <cassert>

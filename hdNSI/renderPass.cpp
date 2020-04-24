@@ -25,12 +25,12 @@
 //
 #include "pxr/imaging/glf/glew.h"
 
-#include "pxr/imaging/hdNSI/renderPass.h"
+#include "renderPass.h"
 
-#include "pxr/imaging/hdNSI/mesh.h"
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
-#include "pxr/imaging/hdNSI/tokens.h"
+#include "mesh.h"
+#include "renderDelegate.h"
+#include "renderParam.h"
+#include "tokens.h"
 
 #include "pxr/imaging/hd/perfLog.h"
 #include "pxr/imaging/hd/renderPassState.h"

@@ -1,10 +1,10 @@
 #ifndef HDNSI_OUTPUT_DRIVER_H
 #define HDNSI_OUTPUT_DRIVER_H
 
+#include "renderBuffer.h"
+
 #include <ndspy.h>
 #include <nsi_dynamic.hpp>
-
-#include "pxr/imaging/hdNSI/renderBuffer.h"
 
 class HdNSIOutputDriver
 {

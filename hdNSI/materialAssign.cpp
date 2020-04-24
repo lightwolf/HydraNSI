@@ -1,7 +1,7 @@
-#include "pxr/imaging/hdNSI/materialAssign.h"
+#include "materialAssign.h"
 
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
+#include "renderDelegate.h"
+#include "renderParam.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 

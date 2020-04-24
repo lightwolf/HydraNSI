@@ -30,10 +30,10 @@
 
 #include "pxr/imaging/hd/instancer.h"
 #include "pxr/imaging/hd/sceneDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
 #include "pxr/base/tf/hashmap.h"
 #include "pxr/base/tf/token.h"
 #include "pxr/base/vt/value.h"
+#include "renderParam.h"
 
 #include <mutex>
 

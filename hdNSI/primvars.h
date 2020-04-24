@@ -3,7 +3,7 @@
 
 #include "pxr/imaging/hd/sceneDelegate.h"
 
-#include "nsi.hpp"
+#include <nsi.hpp>
 
 #include <string>
 

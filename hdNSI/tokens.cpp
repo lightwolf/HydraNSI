@@ -1,4 +1,4 @@
-#include "pxr/imaging/hdNSI/tokens.h"
+#include "tokens.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 

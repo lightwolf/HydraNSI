@@ -25,9 +25,9 @@
 //
 #include "pxr/imaging/glf/glew.h"
 
-#include "pxr/imaging/hdNSI/instancer.h"
+#include "instancer.h"
 
-#include "pxr/imaging/hdNSI/primvars.h"
+#include "primvars.h"
 #include "pxr/imaging/hd/sceneDelegate.h"
 
 #include "pxr/base/gf/vec2f.h"

@@ -26,12 +26,13 @@
 #ifndef HDNSI_RENDER_DELEGATE_H
 #define HDNSI_RENDER_DELEGATE_H
 
-#include "3Delight/ShaderQuery.h"
 #include "pxr/pxr.h"
 #include "pxr/imaging/hd/renderDelegate.h"
 
-#include <mutex>
+#include <3Delight/ShaderQuery.h>
 #include <nsi_dynamic.hpp>
+
+#include <mutex>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

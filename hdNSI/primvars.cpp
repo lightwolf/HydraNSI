@@ -1,6 +1,6 @@
-#include "pxr/imaging/hdNSI/primvars.h"
+#include "primvars.h"
 
-#include "nsi_dynamic.hpp"
+#include <nsi_dynamic.hpp>
 #include "pxr/base/gf/vec2f.h"
 
 PXR_NAMESPACE_OPEN_SCOPE

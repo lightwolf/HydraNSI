@@ -30,15 +30,16 @@
 
 #include "pxr/imaging/hd/renderPass.h"
 #include "pxr/imaging/hd/sprim.h"
-#include "pxr/imaging/hdNSI/outputDriver.h"
-#include "pxr/imaging/hdNSI/renderBuffer.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
 #include "pxr/imaging/hdx/compositor.h"
 #endif
 
 #include "pxr/base/gf/matrix3d.h"
 #include "pxr/base/gf/matrix4d.h"
+
+#include "outputDriver.h"
+#include "renderBuffer.h"
+#include "renderParam.h"
 
 #include <nsi.hpp>
 

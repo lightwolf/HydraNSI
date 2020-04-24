@@ -24,12 +24,13 @@
 // language governing permissions and limitations under the Apache License.
 //
 #include "pxr/imaging/glf/glew.h"
-#include "pxr/imaging/hdNSI/pointcloud.h"
+#include "pointcloud.h"
 
-#include "pxr/imaging/hdNSI/instancer.h"
-#include "pxr/imaging/hdNSI/renderDelegate.h"
-#include "pxr/imaging/hdNSI/renderParam.h"
-#include "pxr/imaging/hdNSI/renderPass.h"
+#include "instancer.h"
+#include "renderDelegate.h"
+#include "renderParam.h"
+#include "renderPass.h"
+
 #include "pxr/imaging/hd/points.h"
 #include "pxr/imaging/pxOsd/tokens.h"
 #include "pxr/base/gf/matrix4f.h"

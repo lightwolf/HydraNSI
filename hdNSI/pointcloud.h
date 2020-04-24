@@ -33,9 +33,9 @@
 #include "pxr/imaging/hd/vertexAdjacency.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/base/gf/rotation.h"
-#include "pxr/imaging/hdNSI/materialAssign.h"
-#include "pxr/imaging/hdNSI/primvars.h"
-#include "pxr/imaging/hdNSI/rprimBase.h"
+#include "materialAssign.h"
+#include "primvars.h"
+#include "rprimBase.h"
 
 #include <nsi_dynamic.hpp>
 
