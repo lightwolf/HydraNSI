@@ -37,7 +37,7 @@
 #include <pxr/imaging/hd/perfLog.h>
 #include <pxr/imaging/hd/renderPassState.h>
 
-#include <boost/lexical_cast.hpp>
+#include <atomic>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -56,6 +56,8 @@ HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
     , _viewMatrix(1.0)
     , _projMatrix(1.0)
 {
+    static std::atomic<unsigned> pass_counter{0};
+    _handlesPrefix = "pass" + std::to_string(++pass_counter);
 }
 
 HdNSIRenderPass::~HdNSIRenderPass()
@@ -322,12 +324,11 @@ void HdNSIRenderPass::_CreateNSIOutputs(
     }
     _outputNodes.clear();
 
-    const std::string &prefix = boost::lexical_cast<std::string>(this);
     size_t i = 0;
     for( const HdRenderPassAovBinding &aov : bindings )
     {
         /* Create an output layer. */
-        std::string layerHandle = prefix + "|outputLayer" + std::to_string(i);
+        std::string layerHandle = Handle("|outputLayer") + std::to_string(i);
         nsi.Create(layerHandle, "outputlayer");
         nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
 
@@ -343,7 +344,7 @@ void HdNSIRenderPass::_CreateNSIOutputs(
         }
 
         /* Create an output driver. */
-        std::string driverHandle = prefix + "|outputDriver" + std::to_string(i);
+        std::string driverHandle = Handle("|outputDriver") + std::to_string(i);
         nsi.Create(driverHandle, "outputdriver");
         nsi.SetAttribute(driverHandle, (
             NSI::StringArg("drivername", "HdNSI"),
@@ -361,9 +362,14 @@ void HdNSIRenderPass::_CreateNSIOutputs(
     }
 }
 
+std::string HdNSIRenderPass::Handle(const char *suffix) const
+{
+    return _handlesPrefix + suffix;
+}
+
 std::string HdNSIRenderPass::ScreenHandle() const
 {
-    return boost::lexical_cast<std::string>(this) + "|screen1";
+    return Handle("|screen1");
 }
 
 void HdNSIRenderPass::SetOversampling() const
@@ -387,9 +393,8 @@ void HdNSIRenderPass::_CreateNSICamera()
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
     // Create the camera node and the others.
-    const std::string &prefix = boost::lexical_cast<std::string>(this);
 
-    _cameraXformHandle = prefix + "|camera1";
+    _cameraXformHandle = Handle("|camera1");
     nsi.Create(_cameraXformHandle, "transform");
     {
         const GfMatrix4d &viewInvMatrix = _viewMatrix.GetInverse();
@@ -401,7 +406,7 @@ void HdNSIRenderPass::_CreateNSICamera()
 
     // Create the camera shape.
     // XXX: Support orthographics camera.
-    _cameraShapeHandle = prefix + "|cameraShape1";
+    _cameraShapeHandle = Handle("|cameraShape1");
     nsi.Create(_cameraShapeHandle, "perspectivecamera");
     {
         NSI::ArgumentList args;
@@ -432,8 +437,7 @@ void HdNSIRenderPass::_CreateNSICamera()
 std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 {
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
-    const std::string prefix = boost::lexical_cast<std::string>(this);
-    std::string handle = + "|headlightShader1";
+    std::string handle = Handle("|headlightShader1");
 
     nsi.Create(handle, "shader");
 
@@ -470,9 +474,8 @@ void HdNSIRenderPass::_CreateNSIHeadLight(bool create)
 {
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    const std::string &prefix = boost::lexical_cast<std::string>(this);
-    _headlightXformHandle = prefix + "|headlight1";
-    std::string headlightShapeHandle = prefix + "|headlightShape1";
+    _headlightXformHandle = Handle("|headlight1");
+    std::string headlightShapeHandle = Handle("|headlightShape1");
     std::string headlightGeoAttrsHandle = headlightShapeHandle + "Attr1";
 
     if (!create)
@@ -522,15 +525,13 @@ void HdNSIRenderPass::_CreateNSIEnvironmentLight(bool create)
 {
     NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    const std::string &prefix = boost::lexical_cast<std::string>(this);
-
     // Handles to all the nodes we might create in here.
-    _envlightXformHandle = prefix + "|envlight1";
-    std::string envlightShapeHandle = prefix + "|envlightShape1";
+    _envlightXformHandle = Handle("|envlight1");
+    std::string envlightShapeHandle = Handle("|envlightShape1");
     std::string envlightGeoAttrsHandle = envlightShapeHandle + "|attributes1";
-    std::string envlightShaderHandle = prefix + "|envlightShader1";
-    std::string envlightFileShaderHandle = prefix + "|envlightFileShader1";
-    std::string envlightCoordShaderHandle = prefix + "|envCoordShader1";
+    std::string envlightShaderHandle = Handle("|envlightShader1");
+    std::string envlightFileShaderHandle = Handle("|envlightFileShader1");
+    std::string envlightCoordShaderHandle = Handle("|envCoordShader1");
 
     // Delete any existing nodes (for update from a setting change).
     nsi.Delete(_envlightXformHandle);

@@ -118,6 +118,11 @@ private:
     // A handle to the render param.
     HdNSIRenderParam *_renderParam;
 
+    // Prefix to all handles used in here.
+    std::string _handlesPrefix;
+
+    std::string Handle(const char *suffix) const;
+
     std::string ScreenHandle() const;
     void SetOversampling() const;
 
