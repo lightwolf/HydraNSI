@@ -1,9 +1,9 @@
 #ifndef HDNSI_TOKENS_H
 #define HDNSI_TOKENS_H
 
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/api.h"
-#include "pxr/base/tf/staticTokens.h"
+#include <pxr/base/tf/staticTokens.h>
+#include <pxr/imaging/hd/api.h>
+#include <pxr/pxr.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

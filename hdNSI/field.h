@@ -1,7 +1,7 @@
 #ifndef HDNSI_FIELD_H
 #define HDNSI_FIELD_H
 
-#include "pxr/imaging/hd/field.h"
+#include <pxr/imaging/hd/field.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

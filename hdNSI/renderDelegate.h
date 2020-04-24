@@ -26,8 +26,8 @@
 #ifndef HDNSI_RENDER_DELEGATE_H
 #define HDNSI_RENDER_DELEGATE_H
 
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/renderDelegate.h"
+#include <pxr/imaging/hd/renderDelegate.h>
+#include <pxr/pxr.h>
 
 #include <3Delight/ShaderQuery.h>
 #include <nsi_dynamic.hpp>

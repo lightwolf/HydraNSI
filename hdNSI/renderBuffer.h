@@ -24,11 +24,11 @@
 #ifndef HDNSI_RENDERBUFFER_H
 #define HDNSI_RENDERBUFFER_H
 
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/renderBuffer.h"
-#include "pxr/base/gf/vec2f.h"
-#include "pxr/base/gf/vec3f.h"
-#include "pxr/base/gf/vec4f.h"
+#include <pxr/base/gf/vec2f.h>
+#include <pxr/base/gf/vec3f.h>
+#include <pxr/base/gf/vec4f.h>
+#include <pxr/imaging/hd/renderBuffer.h>
+#include <pxr/pxr.h>
 
 #include <nsi.hpp>
 

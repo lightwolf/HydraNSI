@@ -1,9 +1,9 @@
 #ifndef HDNSI_MATERIALASSIGN_H
 #define HDNSI_MATERIALASSIGN_H
 
-#include "pxr/imaging/hd/sceneDelegate.h"
+#include <pxr/imaging/hd/sceneDelegate.h>
 
-#include "nsi.hpp"
+#include <nsi.hpp>
 
 #include <string>
 

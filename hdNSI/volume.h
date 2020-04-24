@@ -3,9 +3,10 @@
 
 #include "material.h"
 #include "materialAssign.h"
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/volume.h"
 #include "rprimBase.h"
+
+#include <pxr/imaging/hd/volume.h>
+#include <pxr/pxr.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

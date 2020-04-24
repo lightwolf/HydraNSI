@@ -1,7 +1,8 @@
 #include "primvars.h"
 
+#include <pxr/base/gf/vec2f.h>
+
 #include <nsi_dynamic.hpp>
-#include "pxr/base/gf/vec2f.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 

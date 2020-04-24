@@ -39,15 +39,12 @@
 #include "tokens.h"
 #include "volume.h"
 
-#include "pxr/base/plug/plugin.h"
-#include "pxr/base/plug/thisPlugin.h"
-#include "pxr/base/tf/getenv.h"
-#include "pxr/base/tf/fileUtils.h"
-#include "pxr/imaging/glf/glew.h"
-
-#include "pxr/imaging/hd/resourceRegistry.h"
-
-#include "pxr/imaging/hd/camera.h"
+#include <pxr/base/plug/plugin.h>
+#include <pxr/base/plug/thisPlugin.h>
+#include <pxr/base/tf/getenv.h>
+#include <pxr/base/tf/fileUtils.h>
+#include <pxr/imaging/hd/camera.h>
+#include <pxr/imaging/hd/resourceRegistry.h>
 
 #include <delight.h>
 

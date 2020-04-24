@@ -26,7 +26,7 @@
 
 #include "renderParam.h"
 
-#include "pxr/base/gf/half.h"
+#include <pxr/base/gf/half.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

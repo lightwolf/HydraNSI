@@ -1,9 +1,9 @@
 #ifndef HDNSI_LIGHT_H
 #define HDNSI_LIGHT_H
 
-#include "pxr/imaging/hd/light.h"
+#include <pxr/imaging/hd/light.h>
 
-#include "nsi.hpp"
+#include <nsi.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

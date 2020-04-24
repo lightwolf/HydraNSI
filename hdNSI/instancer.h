@@ -26,14 +26,14 @@
 #ifndef HDNSI_INSTANCER_H
 #define HDNSI_INSTANCER_H
 
-#include "pxr/pxr.h"
-
-#include "pxr/imaging/hd/instancer.h"
-#include "pxr/imaging/hd/sceneDelegate.h"
-#include "pxr/base/tf/hashmap.h"
-#include "pxr/base/tf/token.h"
-#include "pxr/base/vt/value.h"
 #include "renderParam.h"
+
+#include <pxr/base/tf/hashmap.h>
+#include <pxr/base/tf/token.h>
+#include <pxr/base/vt/value.h>
+#include <pxr/imaging/hd/instancer.h>
+#include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/pxr.h>
 
 #include <mutex>
 

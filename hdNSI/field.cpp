@@ -1,7 +1,7 @@
 #include "field.h"
 
-#include "pxr/imaging/hd/sceneDelegate.h"
-#include "pxr/usd/sdf/assetPath.h"
+#include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/usd/sdf/assetPath.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

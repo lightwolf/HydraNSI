@@ -1,8 +1,8 @@
 #ifndef HDNSI_DISCOVERY_PLUGIN_H
 #define HDNSI_DISCOVERY_PLUGIN_H
 
-#include "pxr/pxr.h"
-#include "pxr/usd/ndr/discoveryPlugin.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/ndr/discoveryPlugin.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

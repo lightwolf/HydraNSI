@@ -26,20 +26,17 @@
 #ifndef HDNSI_RENDER_PASS_H
 #define HDNSI_RENDER_PASS_H
 
-#include "pxr/pxr.h"
-
-#include "pxr/imaging/hd/renderPass.h"
-#include "pxr/imaging/hd/sprim.h"
-#if defined(PXR_VERSION) && PXR_VERSION <= 2002
-#include "pxr/imaging/hdx/compositor.h"
-#endif
-
-#include "pxr/base/gf/matrix3d.h"
-#include "pxr/base/gf/matrix4d.h"
-
 #include "outputDriver.h"
 #include "renderBuffer.h"
 #include "renderParam.h"
+
+#include <pxr/pxr.h>
+#include <pxr/base/gf/matrix4d.h>
+#include <pxr/imaging/hd/renderPass.h>
+#include <pxr/imaging/hd/sprim.h>
+#if defined(PXR_VERSION) && PXR_VERSION <= 2002
+#include <pxr/imaging/hdx/compositor.h>
+#endif
 
 #include <nsi.hpp>
 

@@ -1,8 +1,8 @@
 #ifndef HDNSI_OSO_PARSER_PLUGIN_H
 #define HDNSI_OSO_PARSER_PLUGIN_H
 
-#include "pxr/pxr.h"
-#include "pxr/usd/ndr/parserPlugin.h"
+#include <pxr/pxr.h>
+#include <pxr/usd/ndr/parserPlugin.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

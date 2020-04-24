@@ -1,11 +1,12 @@
 #include "discoveryPlugin.h"
 
-#include "delight.h"
-#include "nsi_dynamic.hpp"
-#include "pxr/base/plug/plugin.h"
-#include "pxr/base/plug/thisPlugin.h"
-#include "pxr/base/tf/stringUtils.h"
-#include "pxr/usd/ndr/filesystemDiscoveryHelpers.h"
+#include <pxr/base/plug/plugin.h>
+#include <pxr/base/plug/thisPlugin.h>
+#include <pxr/base/tf/stringUtils.h>
+#include <pxr/usd/ndr/filesystemDiscoveryHelpers.h>
+
+#include <delight.h>
+#include <nsi_dynamic.hpp>
 
 /* Useful traces if shaders are not being found. */
 //#define DISCOVERY_TRACES

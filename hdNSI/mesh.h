@@ -26,15 +26,14 @@
 #ifndef HDNSI_MESH_H
 #define HDNSI_MESH_H
 
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/mesh.h"
-#include "pxr/imaging/hd/enums.h"
-#include "pxr/imaging/hd/vertexAdjacency.h"
-#include "pxr/base/gf/matrix4f.h"
-#include "pxr/base/gf/rotation.h"
 #include "materialAssign.h"
 #include "primvars.h"
 #include "rprimBase.h"
+
+#include <pxr/imaging/hd/enums.h>
+#include <pxr/imaging/hd/mesh.h>
+#include <pxr/imaging/hd/vertexAdjacency.h>
+#include <pxr/pxr.h>
 
 #include <nsi.hpp>
 

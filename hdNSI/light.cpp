@@ -3,11 +3,11 @@
 #include "renderDelegate.h"
 #include "renderParam.h"
 
-#include "pxr/imaging/hd/changeTracker.h"
-#include "pxr/imaging/hd/sceneDelegate.h"
-#include "pxr/usd/sdf/assetPath.h"
-#include "pxr/usd/usdLux/blackbody.h"
-#include "pxr/usd/usdLux/tokens.h"
+#include <pxr/imaging/hd/changeTracker.h>
+#include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/usd/sdf/assetPath.h>
+#include <pxr/usd/usdLux/blackbody.h>
+#include <pxr/usd/usdLux/tokens.h>
 
 #include <cmath>
 

@@ -1,7 +1,8 @@
 #include "volume.h"
 
 #include "field.h"
-#include "pxr/usd/sdf/assetPath.h"
+
+#include <pxr/usd/sdf/assetPath.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

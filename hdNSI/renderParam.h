@@ -26,8 +26,8 @@
 #ifndef HDNSI_RENDER_PARAM_H
 #define HDNSI_RENDER_PARAM_H
 
-#include "pxr/pxr.h"
-#include "pxr/imaging/hd/renderDelegate.h"
+#include <pxr/imaging/hd/renderDelegate.h>
+#include <pxr/pxr.h>
 
 #include <nsi_dynamic.hpp>
 

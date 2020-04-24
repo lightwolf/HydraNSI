@@ -27,7 +27,7 @@
 
 #include "renderDelegate.h"
 
-#include "pxr/imaging/hd/rendererPluginRegistry.h"
+#include <pxr/imaging/hd/rendererPluginRegistry.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

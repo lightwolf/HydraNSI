@@ -1,8 +1,9 @@
 #ifndef HDNSI_RPRIMBASE_h
 #define HDNSI_RPRIMBASE_h
 
-#include "pxr/imaging/hd/sceneDelegate.h"
 #include "renderParam.h"
+
+#include <pxr/imaging/hd/sceneDelegate.h>
 
 #include <string>
 

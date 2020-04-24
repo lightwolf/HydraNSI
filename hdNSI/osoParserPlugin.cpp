@@ -1,8 +1,8 @@
 #include "osoParserPlugin.h"
 
-#include "pxr/base/tf/staticTokens.h"
-#include "pxr/usd/ndr/node.h"
-#include "pxr/usd/ndr/nodeDiscoveryResult.h"
+#include <pxr/base/tf/staticTokens.h>
+#include <pxr/usd/ndr/node.h>
+#include <pxr/usd/ndr/nodeDiscoveryResult.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 

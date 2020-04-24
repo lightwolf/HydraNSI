@@ -1,7 +1,7 @@
 #ifndef HDNSI_PRIMVARS_H
 #define HDNSI_PRIMVARS_H
 
-#include "pxr/imaging/hd/sceneDelegate.h"
+#include <pxr/imaging/hd/sceneDelegate.h>
 
 #include <nsi.hpp>
 

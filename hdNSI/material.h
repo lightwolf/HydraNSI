@@ -1,9 +1,9 @@
 #ifndef HDNSI_MATERIAL_H
 #define HDNSI_MATERIAL_H
 
-#include "pxr/imaging/hd/material.h"
+#include <pxr/imaging/hd/material.h>
 
-#include "nsi.hpp"
+#include <nsi.hpp>
 
 #include <array>
 #include <memory>

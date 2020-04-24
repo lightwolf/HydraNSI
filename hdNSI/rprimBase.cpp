@@ -3,7 +3,7 @@
 #include "instancer.h"
 #include "renderDelegate.h"
 
-#include "pxr/imaging/hd/rprim.h"
+#include <pxr/imaging/hd/rprim.h>
 
 #include <numeric>
 

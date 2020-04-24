@@ -2,7 +2,7 @@
 #include "renderDelegate.h"
 #include "renderParam.h"
 
-#include "pxr/usd/sdf/assetPath.h"
+#include <pxr/usd/sdf/assetPath.h>
 
 #include <cstring>
 

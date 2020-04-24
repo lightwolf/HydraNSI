@@ -23,23 +23,21 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
-#include "pxr/imaging/glf/glew.h"
+
 #include "mesh.h"
 
 #include "renderDelegate.h"
 #include "renderParam.h"
 #include "renderPass.h"
 
-#include "pxr/imaging/hd/meshUtil.h"
-#include "pxr/imaging/hd/smoothNormals.h"
-#include "pxr/imaging/pxOsd/tokens.h"
-#include "pxr/base/gf/matrix4f.h"
-#include "pxr/base/gf/matrix4d.h"
+#include <pxr/imaging/hd/meshUtil.h>
+#include <pxr/imaging/hd/smoothNormals.h>
+#include <pxr/imaging/pxOsd/tokens.h>
+
+#include <nsi.hpp>
 
 #include <sstream>
 #include <iostream>
-
-#include <nsi.hpp>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
