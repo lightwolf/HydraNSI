@@ -35,6 +35,14 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 → [more videos](https://gitlab.com/3DelightOpenSource/HydraNSI/wikis/Videos)
 
 
+## Integration
+
+hdNSI is used in the following softare products:
+
+- ![Multiverse | USD](https://multi-verse.io)
+
+
+
 ## Building
 > This code supports Pixar USD version **19.11** or later.
 > The minimum 3Delight NSI version needed is **2.0.2**.
@@ -106,17 +114,11 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 > Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
 
 
-## A note about Alembic files and primitive variables
-
-When reading Alembic files in usdview some variables that control the color and width of primitives will not be read even if the attribute naming matches the USD one. The USD Alembic plug-in reader should be improved by the USD team so to handle proper support of such primitive variables, it could additionally recognize typical primitive variables of DCC Apps (for example in Houdini *Cd*, *width* and *pscale* are standard names and if present they could be converted on-the-fly to the USD respective ones). Feel free to push Pixar in improving their Alembic plug-in: [USD issue #569](https://github.com/PixarAnimationStudios/USD/issues/569).  
-
-
 ## Future
 
 We are looking for community contributions to implement the following:
 
 - testing & bugfixing on all platforms
-- add experimental **usdVolume** schema support for 3Delight OpenVDB volumes: [Issue #3](https://gitlab.com/3DelightOpenSource/HydraNSI/issues/3)
 
 
 ## Feedback & Contributions
@@ -128,18 +130,18 @@ If you need to get in touch with us e-mail [support@3delight.com](mailto:support
 
 ## Credits
 
-This work was authored by:
+This work is authored by:
 
-[J Cube Inc](http://j-cube.jp) — Marco Pantaleoni, Bo Zhou, Davide Selmo, Paolo Berto Durante. 
+[J CUBE Inc](https://j-cube.jp) and [Illumination Research](https://3delight.com)
 
-Copyright © 2019 Illumination Research Ptv Ltd.
+Copyright © 2020 Illumination Research Ptv Ltd.
 
 ### Contributors
 
 We wish to thank the following external contributors:
 
 - Mark Tucker (Side Effects Inc)
-
+- Chris Rydalch
 
 ## License
 
