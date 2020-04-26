@@ -41,7 +41,7 @@ hdNSI is used in the following products:
 
 - [Multiverse | USD](https://multi-verse.io)
 - [Solari](https://sidefx.com)
-- [Katna](https://foundry.com) (Experimental)
+- [Katana](https://foundry.com) (Experimental)
 
 ## Building
 > This code supports Pixar USD version **19.11** or later.
