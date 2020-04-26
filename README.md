@@ -37,18 +37,17 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 
 ## Integration
 
-hdNSI is used in the following softare products:
+hdNSI is used in the following products:
 
-- ![Multiverse | USD](https://multi-verse.io)
-
-
+- [Multiverse | USD](https://multi-verse.io)
+- [Solari](https://sidefx.com)
+- [Katna](https://foundry.com) (Experimental)
 
 ## Building
 > This code supports Pixar USD version **19.11** or later.
 > The minimum 3Delight NSI version needed is **2.0.2**.
 
 Once  you are able to build Pixar USD, building HydraNSI is very easy:
-
 
 1. Add the hdNSI folder to your USD distribution, the injection point being:
   https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin
@@ -71,29 +70,10 @@ Once  you are able to build Pixar USD, building HydraNSI is very easy:
 |                 |                             | macOS   | /Applications/3Delight/lib/lib3delight.dylib            |
 |                 |                             | Windows | C:\Program Files\3Delight\lib                           |
 
-## Features
+## Missing Features
 
-Currently HydraNSI supports the following:
-
-- Geometric primitives:
-  - Polygon mesh
-  - Subdivision surfaces (analytic evaluation at rendertime, no pre-tesselation).
-  - Points (particles/pointclouds)
-  - Curves (hair/fur)
-- Instancing of primitives
-- Cameras
-- Shading (PBR):
-  - Polygons (and subdivisions) use a *dl3DelightMaterial* material which defaults to a mostly diffusive material (Oren-Nayar model) with a degree of glossy reflection (GGX model).
-  - Points also use a *dl3DelightMaterial* material, with a higher reflection roughness. 
-  - Curves are shaded with the *dlHairAndFur* material (Marschner-Chiang-d'Eon model).
-
-  > Note that the shading network for points and curves have a *dlPrimitiveVariable* so to read per-point and per-curve-vertex color.
-
-- Lighting:
-  - Head light: a directional light that uses a *directionalLight* emitter which shines from the camera pov. It is always active. Note that in NSI directional lights are actual environment lights: when an angle of 0 degrees is specified they behave directionally. See nsi.pdf for more informations. 
-  - Omni environment: this is another directional light that uses another *directionalLight* emitter. It is used when a file texture is *not* set to be used for environment in the configuration (see below). As per above this is an environment light, though when an angle of 360 degrees it behaves like a uniform environment.
-  - HDRI environment: this is a small shading network using *uvCoordEnvironment --> file --> dlEnvironmentShape* which allows to optionally use a HDRI file texture for image-based lighting. It can be enabled via environment variable. Use the HDNSI_ENV_LIGHT_IMAGE environment variable pointing at the file location on disk (.tdl, .exr and .hdr formats are accepted). HDRI environments can be created using data such as [high res probes](http://gl.ict.usc.edu/Data/HighResProbes) and then processed as tiled mipmaps using the following command: *tdlmake -envlatl filename.exr filename.tdl.tif*
-  - Procedural Sky environment: this is a small shading network using *dlSky --> dlEnvironmentShape* which uses a HDRI procedural sky (Hosek-Wilkie model) for (procedural) image-based lighting. It is enabled by default and can be disabled by setting the HDNSI_ENV_USE_SKY environment variable set to.
+- UsdRender
+- UsdSkel
 
 ## Testing
 
@@ -109,40 +89,19 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
   - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
   - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
   - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
-- Further explore the source code and issues in this repository & contribute.
-
-> Contributors may contact us at [support@3delight.com](mailto:support@3delight.com) to obtain a copy of 3Delight NSI for development purposes.
-
-
-## Future
-
-We are looking for community contributions to implement the following:
-
-- testing & bugfixing on all platforms
-
-
-## Feedback & Contributions
-
-Feel free to log issues or submit your patched as pull requests on this repository. Contributors will be added to the be credits.
-
-If you need to get in touch with us e-mail [support@3delight.com](mailto:support@3delight.com)
-
-
-## Credits
-
-This work is authored by:
-
-[J CUBE Inc](https://j-cube.jp) and [Illumination Research](https://3delight.com)
-
-Copyright © 2020 Illumination Research Ptv Ltd.
 
 ### Contributors
 
-We wish to thank the following external contributors:
-
+- Initial working implementation, docuementation, videos and testing by [J CUBE Inc](https://j-cube.jp)
 - Mark Tucker (Side Effects Inc)
 - Chris Rydalch
+- The initial code base is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
+
+Ongoing development by Illumination Research Pte Ltd. (www.3delight.com)
 
 ## License
 
 Apache 2.0 License
+
+## Copyright
+Copyright 2020 Illumination Research Pte Ltd.
