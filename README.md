@@ -40,7 +40,7 @@ HydraNSI can be easily compiled as a plug-in part of the USD toolset. It can nat
 hdNSI is used in the following products:
 
 - [Multiverse | USD](https://multi-verse.io)
-- [Solari](https://sidefx.com)
+- [Solaris](https://sidefx.com)
 - [Katana](https://foundry.com) (Experimental)
 
 ## Building
@@ -92,10 +92,10 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 
 ### Contributors
 
-- Initial working implementation, docuementation, videos and testing by [J CUBE Inc](https://j-cube.jp)
+- Initial working implementation, documentation, videos and testing by [J CUBE Inc](https://j-cube.jp)
 - Mark Tucker (Side Effects Inc)
 - Chris Rydalch
-- The initial code base is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
+- The initial implenmentation is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
 
 Ongoing development by Illumination Research Pte Ltd. (www.3delight.com)
 
