@@ -11,7 +11,7 @@ This repository contains a render delegate for Hydra using the NSI technology.
 | ![](/uploads/c9e2fa6aa4f3cf0f559e6c71efd0b5e8/nsi_kitchen_detail.png) | ![](/uploads/53a9d2d71039d834649beeff557c1fb1/nsi_1M_hair.png)   | ![](/uploads/444a58398fd19d55e2dffd0520736e23/pointcloud-color-size.png)  |
 
 
-![](https://assets.gitlab-static.net/uploads/-/system/project/avatar/7466299/nsi_logo_round.png)
+![](https://assets.gitlab-static.net/uploads/-/system/project/avatar/7466299/hydra_gitlab_128px.png)
 
 
 ## Background
@@ -86,16 +86,20 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
     ```
 - Switch to View> Hydra Renderer: “NSI”.
 - Try loading some USD or ABC files, e.g:
-  - [Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
-  - [Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
-  - [Apple USDZ examples](https://developer.apple.com/arkit/gallery) -- Note that USDZ is basically a zip file with no compression: you can rename the files from .usdz to .zip and unzip them to access the actual .usd files.
-
+  - [Pixar Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
+  - [Pixar Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
+  - [Apple USDZ examples](https://developer.apple.com/arkit/gallery)
+  - [J Cube Esper Room](https://j-cube.jp/solutions/multiverse/assets/)
+  - [J Cube Maneki](https://j-cube.jp/solutions/multiverse/assets/)
+  - [Sidefx Bar](https://www.sidefx.com/contentlibrary/bar-scene/)
+  - [nVidia Attic](https://developer.nvidia.com/usd)
+  
 ### Contributors
 
-- Initial working implementation, documentation, videos and testing by [J CUBE Inc](https://j-cube.jp)
+- Initial working implementation, documentation, videos and testing by [J Cube Inc](https://j-cube.jp)
 - Mark Tucker (Side Effects Inc)
 - Chris Rydalch
-- The initial implementation is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
+- The initial implementation was based on Pixar's [hdEmbree](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
 
 Ongoing development by Illumination Research Pte Ltd. (www.3delight.com)
 
