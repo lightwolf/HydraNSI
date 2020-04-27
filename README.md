@@ -95,7 +95,7 @@ From an environment where both `usdview` and the NSI command-line renderer `rend
 - Initial working implementation, documentation, videos and testing by [J CUBE Inc](https://j-cube.jp)
 - Mark Tucker (Side Effects Inc)
 - Chris Rydalch
-- The initial implenmentation is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
+- The initial implementation is based on Pixar's [hdEmbre](https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin/hdEmbree)
 
 Ongoing development by Illumination Research Pte Ltd. (www.3delight.com)
 
