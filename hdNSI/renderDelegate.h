@@ -121,11 +121,11 @@ public:
     ///   \return An NSI instancer object.
     virtual HdInstancer *CreateInstancer(HdSceneDelegate *delegate,
                                          SdfPath const& id,
-                                         SdfPath const& instancerId);
+                                         SdfPath const& instancerId) override;
 
     /// Destroy an instancer created with CreateInstancer.
     ///   \param instancer The instancer to be destroyed.
-    virtual void DestroyInstancer(HdInstancer *instancer);
+    virtual void DestroyInstancer(HdInstancer *instancer) override;
 
     /// Create a hydra Rprim, representing scene geometry. This class creates
     /// NSI-specialized geometry containers like HdNSIMesh which map
