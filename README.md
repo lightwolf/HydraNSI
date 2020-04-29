@@ -47,28 +47,10 @@ hdNSI is used in the following products:
 > This code supports Pixar USD version **19.11** or later.
 > The minimum 3Delight NSI version needed is **2.0.2**.
 
-Once  you are able to build Pixar USD, building HydraNSI is very easy:
+Building HydraNSI should be straightforward. Make sure the DELIGHT environment variable points to your 3Delight installation. Then provide USD in one of two ways:
 
-1. Add the hdNSI folder to your USD distribution, the injection point being:
-  https://github.com/PixarAnimationStudios/USD/tree/master/pxr/imaging/plugin
-  
-2. Make sure to use a CMAKE set to build *hdNSI*:
-
-| CMAKE Variable       | Value     |
-| -------------------- | --------- |
-| PXR_BUILD_NSI_PLUGIN | 1         |
-
-  
-3. Obtain a copy of 3Delight | NSI containing the rendering library, include headers and OSL shaders, then set the following CMAKE variables:
-
-| CMAKE Variable  | Value                       |         |                                                         |
-| --------------- | --------------------------- | ------- | ------------------------------------------------------- |
-| NSI_INCLUDE_DIR | /path/to/nsi-include-folder | Linux   | /usr/local/3delight-version/Linux_64/include            |
-|                 |                             | macOS   | /Applications/3Delight/include                          |
-|                 |                             | Windows | C:\Program Files\3Delight\include                       |
-| NSI_LIBRARY     | /path/to/nsi-library-file   | Linux   | /usr/local/3delight-version/Linux_64/lib/lib3delight.so |
-|                 |                             | macOS   | /Applications/3Delight/lib/lib3delight.dylib            |
-|                 |                             | Windows | C:\Program Files\3Delight\lib                           |
+1. An installation of USD. Define pxr_DIR to point to it when running cmake, if required.
+2. The USD which is provided with Houdini. The HFS environment variable should point to the Houdini installation.
 
 ## Missing Features
 
@@ -79,12 +61,13 @@ Once  you are able to build Pixar USD, building HydraNSI is very easy:
 
 From an environment where both `usdview` and the NSI command-line renderer `renderdl` can be executed:
 
-- On your terminal, launch `usdview`:
+- In your terminal, add the plugin to USD's search path when launching `usdview`:
   
     ```bash
-    usdview /path/to/file.usd
+    env PXR_PLUGINPATH_NAME=builddir/output/hdNSI/resources usdview /path/to/file.usd
     ```
-- Switch to View> Hydra Renderer: “NSI”.
+    Where builddir is your cmake build directory for HydraNSI. Adjust if your changed the default install location.
+- Switch to View> Hydra Renderer: “3Delight”.
 - Try loading some USD or ABC files, e.g:
   - [Pixar Kitchen](http://graphics.pixar.com/usd/files/Kitchen_set.zip)
   - [Pixar Instanced city](http://graphics.pixar.com/usd/files/PointInstancedMedCity.zip)
