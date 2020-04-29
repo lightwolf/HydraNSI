@@ -402,11 +402,16 @@ void HdNSIMaterial::DeleteShaderNodes(NSI::Context &nsi)
 
 	We also include 'normalize' as overwriting that function with a parameter
 	makes for really painful shader writing.
+
+	Similar for 'diffuse' which is a closure name and causes warnings.
 */
 std::string HdNSIMaterial::EscapeOSLKeyword(const std::string &name)
 {
-	if (name == "color" || name == "normal" | name == "normalize")
+	if (name == "color" || name == "normal" ||
+	    name == "normalize" || name == "diffuse")
+	{
 		return name + "_";
+	}
 	return name;
 }
 

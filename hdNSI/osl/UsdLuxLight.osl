@@ -6,7 +6,7 @@ surface UsdLuxLight(
 	*/
 	color color_ = color(1),
 	int normalize_ = 0,
-	float diffuse = 1,
+	float diffuse_ = 1,
 	float specular = 1,
 	string texturefile = "",
 	string textureformat = "")
@@ -35,7 +35,7 @@ surface UsdLuxLight(
 
 	if (raytype("diffuse"))
 	{
-		result *= diffuse;
+		result *= diffuse_;
 	}
 	if (raytype("specular"))
 	{
