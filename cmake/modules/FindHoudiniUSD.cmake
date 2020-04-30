@@ -107,8 +107,9 @@ if(HoudiniUSD_FOUND AND NOT TARGET hd)
 				INTERFACE "_GLIBCXX_USE_CXX11_ABI=0")
 		endif()
 		if(WIN32)
-			# Shut up compiler about some VtValue stuff.
-			target_compile_options(${targetName} INTERFACE "/wd4506")
+			# Shut up compiler about warnings from USD.
+			target_compile_options(${targetName} INTERFACE
+				"/wd4506" "/wd4244" "/wd4305" "/wd4267")
 			# For automatically linked libraries (python, tbb)
 			target_link_directories(${targetName}
 				INTERFACE "$ENV{HFS}/custom/houdini/dsolib")

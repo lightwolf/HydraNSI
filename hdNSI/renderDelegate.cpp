@@ -150,8 +150,8 @@ HdNSIRenderDelegate::HdNSIRenderDelegate()
 
     _nsi = std::make_shared<NSI::Context>(*_capi);
     NSI::ArgumentList beginArgs;
-    const char *trace_file = std::getenv("HDNSI_TRACE");
-    if (trace_file)
+    std::string trace_file = TfGetenv("HDNSI_TRACE");
+    if (!trace_file.empty())
     {
         beginArgs.push(new NSI::StringArg("streamfilename", trace_file));
     }

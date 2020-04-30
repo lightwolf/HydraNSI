@@ -324,7 +324,7 @@ void HdNSIRenderPass::_CreateNSIOutputs(
     }
     _outputNodes.clear();
 
-    size_t i = 0;
+    int i = 0;
     for( const HdRenderPassAovBinding &aov : bindings )
     {
         /* Create an output layer. */
