@@ -287,10 +287,17 @@ void HdNSIRenderDelegate::SetRenderSetting(
     TfToken const& key,
     VtValue const& value)
 {
-    HdRenderDelegate::SetRenderSetting(key, value);
+    VtValue newvalue = value;
+    /* Houdini stubbornly sends long for its viewport settings. Convert. */
+    if( newvalue.IsHolding<long>() )
+    {
+        newvalue.Cast<int>();
+    }
+
+    HdRenderDelegate::SetRenderSetting(key, newvalue);
 
     /* See if something actually changed. */
-    if( _exportedSettings[key] == value )
+    if( _exportedSettings[key] == newvalue )
         return;
 
     /* Handle the change. Some are done here, most in the render pass. */
@@ -307,7 +314,7 @@ void HdNSIRenderDelegate::SetRenderSetting(
         pass->RenderSettingChanged(key);
     }
 
-    _exportedSettings[key] = value;
+    _exportedSettings[key] = newvalue;
     _renderParam->SyncRender();
 }
 
