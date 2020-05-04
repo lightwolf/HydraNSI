@@ -119,7 +119,10 @@ HdNSIRenderDelegate::HandleNSIError(int level, int code, const char* msg)
     }
 }
 
-HdNSIRenderDelegate::HdNSIRenderDelegate()
+HdNSIRenderDelegate::HdNSIRenderDelegate(
+    HdRenderSettingsMap const& settingsMap)
+:
+    HdRenderDelegate{settingsMap}
 {
     // Initialize the NSI context with dynamic API.
     _capi.reset(new NSI::DynamicAPI);

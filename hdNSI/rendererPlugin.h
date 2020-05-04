@@ -52,6 +52,8 @@ public:
     /// delegate should be created for each instance of HdRenderIndex.
     ///   \return A new HdNSIRenderDelegate object.
     virtual HdRenderDelegate *CreateRenderDelegate() override;
+    virtual HdRenderDelegate *CreateRenderDelegate(
+        HdRenderSettingsMap const& settingsMap) override;
 
     /// Destroy a render delegate created by this class's CreateRenderDelegate.
     ///   \param renderDelegate The render delegate to delete.

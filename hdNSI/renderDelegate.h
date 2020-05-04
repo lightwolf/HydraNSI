@@ -77,7 +77,7 @@ class HdNSIRenderDelegate final : public HdRenderDelegate {
 public:
     /// Render delegate constructor. This method creates the NSI context and
     /// scene, and links NSI error handling to hydra error handling.
-    HdNSIRenderDelegate();
+    HdNSIRenderDelegate(HdRenderSettingsMap const& settingsMap);
     /// Render delegate destructor. This method destroys the NSI context and
     /// scene.
     virtual ~HdNSIRenderDelegate();

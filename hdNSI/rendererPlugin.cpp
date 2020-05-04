@@ -40,7 +40,13 @@ TF_REGISTRY_FUNCTION(TfType)
 HdRenderDelegate*
 HdNSIRendererPlugin::CreateRenderDelegate()
 {
-    return new HdNSIRenderDelegate();
+    return new HdNSIRenderDelegate({});
+}
+
+HdRenderDelegate* HdNSIRendererPlugin::CreateRenderDelegate(
+    HdRenderSettingsMap const& settingsMap)
+{
+    return new HdNSIRenderDelegate(settingsMap);
 }
 
 void
