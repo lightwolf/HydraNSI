@@ -8,9 +8,9 @@
 PXR_NAMESPACE_OPEN_SCOPE
 
 #define HDNSI_SETTINGS_TOKENS \
-    (shadingSamples) \
-    (volumeSamples) \
-    (pixelSamples) \
+    ((shadingSamples, "nsi:global:shadingsamples")) \
+    ((volumeSamples, "nsi:global:volumesamples")) \
+    ((pixelSamples, "nsi:global:pixelsamples")) \
     (cameraLightIntensity) \
     (envLightPath) \
     (envLightMapping) \
