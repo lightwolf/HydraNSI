@@ -73,9 +73,8 @@ void HdNSIRprimBase::Sync(
 	/* Update visibility. */
 	if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, id))
 	{
-		nsi.SetAttribute(_attrsHandle, (
-			NSI::IntegerArg("visibility", rprim.IsVisible() ? 1 : 0),
-			NSI::IntegerArg("visibility.priority", 1)));
+		nsi.SetAttribute(_attrsHandle,
+			NSI::IntegerArg("visibility", rprim.IsVisible() ? 1 : 0));
 	}
 
 	/* Clear the bits for what we processed. */

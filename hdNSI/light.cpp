@@ -11,8 +11,6 @@
 
 #include <cmath>
 
-#define CAMERA_VISIBILITY_PRIORITY 10
-
 PXR_NAMESPACE_OPEN_SCOPE
 
 HdNSILight::HdNSILight(
@@ -74,10 +72,8 @@ void HdNSILight::Sync(
 
 				// If it has no radius, it should be invisible to
 				// the camera
-				nsi.SetAttribute(attr_handle, (
-						NSI::IntegerArg("visibility.camera", 0),
-						NSI::IntegerArg("visibility.camera.priority",
-										CAMERA_VISIBILITY_PRIORITY)));
+				nsi.SetAttribute(attr_handle,
+					NSI::IntegerArg("visibility.camera", 0));
 			}
 			nsi.SetAttribute(geo_handle, NSI::FloatArg("width", radius*2));
 		}
