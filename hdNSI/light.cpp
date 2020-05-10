@@ -35,6 +35,7 @@ void HdNSILight::Sync(
 
 	std::string xform_handle = GetId().GetString();
 	std::string geo_handle = xform_handle + "|geo";
+	std::string attr_handle = xform_handle + "|attr";
 
 	if (!m_nodes_created)
 	{
@@ -73,7 +74,6 @@ void HdNSILight::Sync(
 
 				// If it has no radius, it should be invisible to
 				// the camera
-				std::string attr_handle = xform_handle + "|attr";
 				nsi.SetAttribute(attr_handle, (
 						NSI::IntegerArg("visibility.camera", 0),
 						NSI::IntegerArg("visibility.camera.priority",
@@ -108,6 +108,10 @@ void HdNSILight::Sync(
 			nsi.SetAttribute(geo_handle, NSI::PointsArg("P", P, 4));
 		}
 	}
+
+	/* Visibility does not have a dirty bit, as of writing this. */
+	nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility",
+		sceneDelegate->GetVisible(GetId()) ? 1 : 0));
 
 	*dirtyBits = Clean;
 }
