@@ -252,7 +252,7 @@ void HdNSILight::SetShaderParams(
 	i_nsi.SetAttribute(shader_handle, (
 		NSI::ColorArg("color_", emission.data()),
 		NSI::IntegerArg("normalize_", normalize),
-		NSI::FloatArg("diffuse", diffuse),
+		NSI::FloatArg("diffuse_", diffuse),
 		NSI::FloatArg("specular", specular)));
 
 	if (m_typeId == HdPrimTypeTokens->domeLight)
