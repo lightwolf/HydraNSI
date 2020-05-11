@@ -15,6 +15,9 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/output" CACHE PATH "..." FORCE)
 endif()
 
+# Shut up 'Up-to-date' install messages.
+set(CMAKE_INSTALL_MESSAGE LAZY)
+
 if(WIN32)
 	# Fix Windows. I can dream, right?
 	add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN)
