@@ -263,20 +263,13 @@ void HdNSIRenderPass::SetOversampling() const
 std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 {
 	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
-	std::string handle = Handle("|headlightShader1");
-
+	std::string handle = Handle("|headlight|shader");
 	nsi.Create(handle, "shader");
 
 	NSI::ArgumentList args;
 
-	const std::string &directionalLightShaderPath =
-		_renderDelegate->GetDelight() + "/maya/osl/directionalLight";
-
 	args.Add(new NSI::StringArg("shaderfilename",
-		directionalLightShaderPath));
-
-	float light_shader_color_data[3] = { 1, 1, 1 };
-	args.Add(new NSI::ColorArg("i_color", light_shader_color_data));
+		_renderDelegate->FindShader("UsdLuxLight")));
 
 	VtValue intensity = _renderDelegate->GetRenderSetting(
 		HdNSIRenderSettingsTokens->cameraLightIntensity);
@@ -287,10 +280,9 @@ std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 	*/
 	float intensity_value = intensity.IsHolding<float>()
 		? intensity.Get<float>() : intensity.Get<double>();
-	args.Add(new NSI::FloatArg("intensity", intensity_value));
-
-	args.Add(new NSI::FloatArg("diffuse_contribution", 1));
-	args.Add(new NSI::FloatArg("specular_contribution", 1));
+	float color_data[3] = { intensity_value, intensity_value, intensity_value };
+	args.Add(new NSI::ColorArg("color_", color_data));
+	args.Add(new NSI::IntegerArg("normalize_", 1));
 
 	nsi.SetAttribute(handle, args);
 	return handle;
