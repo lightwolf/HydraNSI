@@ -8,20 +8,15 @@
 PXR_NAMESPACE_OPEN_SCOPE
 
 #define HDNSI_SETTINGS_TOKENS \
-    ((shadingSamples, "nsi:global:shadingsamples")) \
-    ((volumeSamples, "nsi:global:volumesamples")) \
-    ((pixelSamples, "nsi:global:pixelsamples")) \
-    (cameraLightIntensity) \
-    (envLightPath) \
-    (envLightMapping) \
-    (envLightIntensity) \
-    (envAsBackground) \
-    (envUseSky)
+	((shadingSamples, "nsi:global:shadingsamples")) \
+	((volumeSamples, "nsi:global:volumesamples")) \
+	((pixelSamples, "nsi:global:pixelsamples")) \
+	(cameraLightIntensity)
 
 TF_DECLARE_PUBLIC_TOKENS(
-    HdNSIRenderSettingsTokens, HDNSI_SETTINGS_TOKENS);
+	HdNSIRenderSettingsTokens, HDNSI_SETTINGS_TOKENS);
 
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #endif
-// vim: set softtabstop=4 expandtab shiftwidth=4:
+// vim: set softtabstop=0 noexpandtab shiftwidth=4:

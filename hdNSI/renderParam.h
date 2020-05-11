@@ -32,6 +32,7 @@
 #include <nsi_dynamic.hpp>
 
 #include <atomic>
+#include <cassert>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -76,18 +77,18 @@ public:
     void RemoveLight() { --_numLights; }
     bool HasLights() const { return _numLights != 0; }
 
+	bool IsRendering() const { return _rendering; }
+
     void StartRender()
     {
-        if( !_rendering)
-        {
-            _rendering = true;
-            GetNSIContext().RenderControl((
-                NSI::CStringPArg("action", "start"),
-                NSI::PointerArg("stoppedcallback", (void*)StatusCB),
-                NSI::PointerArg("stoppedcallbackdata", this),
-                NSI::IntegerArg("interactive", 1),
-                NSI::IntegerArg("progressive", 1)));
-        }
+		assert(!_rendering);
+		_rendering = true;
+		GetNSIContext().RenderControl((
+			NSI::CStringPArg("action", "start"),
+			NSI::PointerArg("stoppedcallback", (void*)StatusCB),
+			NSI::PointerArg("stoppedcallbackdata", this),
+			NSI::IntegerArg("interactive", 1),
+			NSI::IntegerArg("progressive", 1)));
     }
 
     void StopRender()
@@ -102,17 +103,8 @@ public:
 
     void SyncRender()
     {
-        if (!_rendering)
-        {
-            /* Restart the render if it was stopped. */
-            StartRender();
-        }
-        else
-        {
-            /* Otherwise just sync. */
-            GetNSIContext().RenderControl(
-                NSI::CStringPArg("action", "synchronize"));
-        }
+		GetNSIContext().RenderControl(
+			NSI::CStringPArg("action", "synchronize"));
     }
 
 private:
@@ -147,4 +139,4 @@ private:
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #endif // HDNSI_RENDER_PARAM_H
-// vim: set softtabstop=4 expandtab shiftwidth=4:
+// vim: set softtabstop=0 noexpandtab shiftwidth=4:

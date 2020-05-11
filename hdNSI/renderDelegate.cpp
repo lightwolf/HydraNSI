@@ -26,6 +26,7 @@
 
 #include "renderDelegate.h"
 
+#include "camera.h"
 #include "curves.h"
 #include "field.h"
 #include "instancer.h"
@@ -191,31 +192,6 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
         "Camera light intensity",
         HdNSIRenderSettingsTokens->cameraLightIntensity,
         VtValue(float(TfGetenvDouble("HDNSI_CAMERA_LIGHT_INTENSITY", 1.0)))});
-
-    _settingDescriptors.push_back({
-        "Environment image",
-        HdNSIRenderSettingsTokens->envLightPath,
-        VtValue(TfGetenv("HDNSI_ENV_LIGHT_IMAGE"))});
-
-    _settingDescriptors.push_back({
-        "Format of enviroment image, spherical (0) or angular (1)",
-        HdNSIRenderSettingsTokens->envLightMapping,
-        VtValue(TfGetenvInt("HDNSI_ENV_LIGHT_MAPPING", 0))});
-
-    _settingDescriptors.push_back({
-        "Intensity of enviroment image",
-        HdNSIRenderSettingsTokens->envLightIntensity,
-        VtValue(float(TfGetenvDouble("HDNSI_ENV_LIGHT_INTENSITY", 1.0)))});
-
-    _settingDescriptors.push_back({
-        "Display environment image as background",
-        HdNSIRenderSettingsTokens->envAsBackground,
-        VtValue(TfGetenvBool("HDNSI_ENV_AS_BACKGROUND", true))});
-
-    _settingDescriptors.push_back({
-        "Use 3Delight Sky as environment",
-        HdNSIRenderSettingsTokens->envUseSky,
-        VtValue(TfGetenvBool("HDNSI_ENV_USE_SKY", true))});
 
     _PopulateDefaultSettings(_settingDescriptors);
 
@@ -443,8 +419,9 @@ HdSprim *
 HdNSIRenderDelegate::CreateSprim(TfToken const& typeId,
                                     SdfPath const& sprimId)
 {
-    if (typeId == HdPrimTypeTokens->camera) {
-        return new HdCamera(sprimId);
+    if (typeId == HdPrimTypeTokens->camera)
+    {
+        return new HdNSICamera(sprimId);
     }
     else if (
         typeId == HdPrimTypeTokens->cylinderLight ||
@@ -473,8 +450,9 @@ HdNSIRenderDelegate::CreateFallbackSprim(TfToken const& typeId)
 {
     // For fallback sprims, create objects with an empty scene path.
     // They'll use default values and won't be updated by a scene delegate.
-    if (typeId == HdPrimTypeTokens->camera) {
-        return new HdCamera(SdfPath::EmptyPath());
+    if (typeId == HdPrimTypeTokens->camera)
+    {
+        return new HdNSICamera(SdfPath::EmptyPath());
     }
     else if (typeId == HdPrimTypeTokens->material)
     {

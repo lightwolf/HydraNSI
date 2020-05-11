@@ -42,6 +42,7 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSICamera;
 class HdNSIRenderDelegate;
 
 /// \class HdNSIRenderPass
@@ -89,7 +90,7 @@ protected:
 
 private:
 
-    void _CreateNSIOutputs(const HdRenderPassAovBindingVector &bindings);
+	void UpdateOutputs(const HdRenderPassAovBindingVector &bindings);
 
     // -----------------------------------------------------------------------
     // Internal API
@@ -104,8 +105,10 @@ private:
     // AOV bindings for which the above output nodes were created.
     HdRenderPassAovBindingVector _aovBindings;
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2002
     // Default render buffers when none are provided.
     HdNSIRenderBuffer _colorBuffer, _depthBuffer;
+#endif
 
     // The width of the viewport we're rendering into.
     unsigned int _width;
@@ -126,38 +129,23 @@ private:
     std::string ScreenHandle() const;
     void SetOversampling() const;
 
-    // Our camera-related handles.
-    void _CreateNSICamera();
-
-    std::string _cameraXformHandle;
-    std::string _cameraShapeHandle;
-
-    std::string _outputDriverHandle;
-
-    // Our headlight handle.
     std::string ExportNSIHeadLightShader();
-    void _CreateNSIHeadLight(bool create);
+	void UpdateHeadlight(
+		bool enable,
+		const HdNSICamera *camera);
 
-    std::string _headlightXformHandle;
+	/* The handle of the transform to which the headlight is parented. This is
+	   the render camera's transform. Empty when the light does not exist. */
+	std::string m_headlight_xform;
 
-    // Our environment light handles.
-    void _CreateNSIEnvironmentLight(bool create);
+	void UpdateScreen(
+		const HdRenderPassState &renderPassState,
+		const HdNSICamera *camera);
+	bool m_screen_created{false};
 
-    std::string _envlightXformHandle;
-
-    // Update the perspective camera parameters.
-    void _UpdateNSICamera();
-
-    // Status of the 3Delight renderer.
-    enum RenderStatus {
-        Stopped,
-        Running
-    };
-    RenderStatus _renderStatus;
-
-    // The view matrix
-    GfMatrix4d _viewMatrix;
-    GfMatrix4d _projMatrix;
+	/* The camera node to which the screen is currently connected (ie. the
+	   camera we're rendering). */
+	std::string m_render_camera;
 
     // Compositor to copy pixels to viewport.
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
@@ -168,4 +156,4 @@ private:
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #endif // HDNSI_RENDER_PASS_H
-// vim: set softtabstop=4 expandtab shiftwidth=4:
+// vim: set softtabstop=0 noexpandtab shiftwidth=4:
