@@ -55,81 +55,83 @@ class HdNSIRenderDelegate;
 ///
 class HdNSIRenderPass final : public HdRenderPass {
 public:
-    /// Renderpass constructor.
-    ///   \param index The render index containing scene data to render.
-    ///   \param collection The initial rprim collection for this renderpass.
-    HdNSIRenderPass(HdRenderIndex *index,
-                    HdRprimCollection const &collection,
-                    HdNSIRenderDelegate *renderDelegate,
-                    HdNSIRenderParam *renderParam);
+	/// Renderpass constructor.
+	///   \param index The render index containing scene data to render.
+	///   \param collection The initial rprim collection for this renderpass.
+	HdNSIRenderPass(
+		HdRenderIndex *index,
+		HdRprimCollection const &collection,
+		HdNSIRenderDelegate *renderDelegate,
+		HdNSIRenderParam *renderParam);
 
-    /// Renderpass destructor.
-    virtual ~HdNSIRenderPass();
+	/// Renderpass destructor.
+	virtual ~HdNSIRenderPass();
 
-    // -----------------------------------------------------------------------
-    // HdRenderPass API
+	// -----------------------------------------------------------------------
+	// HdRenderPass API
 
-    virtual bool IsConverged() const override;
+	virtual bool IsConverged() const override;
 
-    void RenderSettingChanged(const TfToken &key);
+	void RenderSettingChanged(const TfToken &key);
 
 protected:
 
-    // -----------------------------------------------------------------------
-    // HdRenderPass API
+	// -----------------------------------------------------------------------
+	// HdRenderPass API
 
-    /// Draw the scene with the bound renderpass state.
-    ///   \param renderPassState Input parameters (including viewer parameters)
-    ///                          for this renderpass.
-    ///   \param renderTags Which rendertags should be drawn this pass.
-    virtual void _Execute(HdRenderPassStateSharedPtr const& renderPassState,
-                          TfTokenVector const &renderTags) override;
+	/// Draw the scene with the bound renderpass state.
+	///   \param renderPassState Input parameters (including viewer parameters)
+	///                          for this renderpass.
+	///   \param renderTags Which rendertags should be drawn this pass.
+	virtual void _Execute(
+		HdRenderPassStateSharedPtr const& renderPassState,
+		TfTokenVector const &renderTags) override;
 
-    /// Update internal tracking to reflect a dirty collection.
-    virtual void _MarkCollectionDirty() override {}
+	/// Update internal tracking to reflect a dirty collection.
+	virtual void _MarkCollectionDirty() override {}
 
 private:
 
 	void UpdateOutputs(const HdRenderPassAovBindingVector &bindings);
 
-    // -----------------------------------------------------------------------
-    // Internal API
+	// -----------------------------------------------------------------------
+	// Internal API
 
 
-    // Needed by output system to get correct Z.
-    HdNSIOutputDriver::ProjData _depthProj;
+	// Needed by output system to get correct Z.
+	HdNSIOutputDriver::ProjData _depthProj;
 
-    // Handles to all nodes used to define outputs (layers, drivers).
-    std::vector<std::string> _outputNodes;
+	// Handles to all nodes used to define outputs (layers, drivers).
+	std::vector<std::string> _outputNodes;
 
-    // AOV bindings for which the above output nodes were created.
-    HdRenderPassAovBindingVector _aovBindings;
+	// AOV bindings for which the above output nodes were created.
+	HdRenderPassAovBindingVector _aovBindings;
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
-    // Default render buffers when none are provided.
-    HdNSIRenderBuffer _colorBuffer, _depthBuffer;
+	// Default render buffers when none are provided.
+	HdNSIRenderBuffer _colorBuffer, _depthBuffer;
 #endif
 
-    // The width of the viewport we're rendering into.
-    unsigned int _width;
-    // The height of the viewport we're rendering into.
-    unsigned int _height;
+	// The width of the viewport we're rendering into.
+	unsigned int _width;
+	// The height of the viewport we're rendering into.
+	unsigned int _height;
 
-    // A handle to the render delegate.
-    HdNSIRenderDelegate *_renderDelegate;
+	// A handle to the render delegate.
+	HdNSIRenderDelegate *_renderDelegate;
 
-    // A handle to the render param.
-    HdNSIRenderParam *_renderParam;
+	// A handle to the render param.
+	HdNSIRenderParam *_renderParam;
 
-    // Prefix to all handles used in here.
-    std::string _handlesPrefix;
+	// Prefix to all handles used in here.
+	std::string _handlesPrefix;
 
-    std::string Handle(const char *suffix) const;
+	std::string Handle(const char *suffix) const;
 
-    std::string ScreenHandle() const;
-    void SetOversampling() const;
+	std::string ScreenHandle() const;
+	void SetOversampling() const;
 
-    std::string ExportNSIHeadLightShader();
+	std::string ExportNSIHeadLightShader();
 	void UpdateHeadlight(
 		bool enable,
 		const HdNSICamera *camera);
@@ -147,9 +149,9 @@ private:
 	   camera we're rendering). */
 	std::string m_render_camera;
 
-    // Compositor to copy pixels to viewport.
+	// Compositor to copy pixels to viewport.
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
-    HdxCompositor _compositor;
+	HdxCompositor _compositor;
 #endif
 };
 

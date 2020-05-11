@@ -47,40 +47,41 @@ class HdNSIRenderDelegate;
 /// 
 class HdNSIRenderParam final : public HdRenderParam {
 public:
-    HdNSIRenderParam(
-        HdNSIRenderDelegate *renderDelegate,
-        const std::shared_ptr<NSI::Context> &nsi)
-    : _renderDelegate(renderDelegate)
-    , _nsi(nsi)
-    , _sceneEdited(false)
-    , _numLights{0}
-    {}
+	HdNSIRenderParam(
+		HdNSIRenderDelegate *renderDelegate,
+		const std::shared_ptr<NSI::Context> &nsi)
+	: _renderDelegate(renderDelegate)
+	, _nsi(nsi)
+	, _sceneEdited(false)
+	, _numLights{0}
+	{}
 
-    virtual ~HdNSIRenderParam() = default;
+	virtual ~HdNSIRenderParam() = default;
 
-    HdNSIRenderDelegate* GetRenderDelegate() const { return _renderDelegate; }
+	HdNSIRenderDelegate* GetRenderDelegate() const { return _renderDelegate; }
 
-    /// Accessor for the top-level NSI scene.
-    NSI::Context& AcquireSceneForEdit() {
-        _sceneEdited.store(true, std::memory_order_relaxed);
-        return *_nsi;
-    }
-    /// Accessor for the global shared NSI context.
-    NSI::Context& GetNSIContext() { return *_nsi; }
+	/// Accessor for the top-level NSI scene.
+	NSI::Context& AcquireSceneForEdit()
+	{
+		_sceneEdited.store(true, std::memory_order_relaxed);
+		return *_nsi;
+	}
+	/// Accessor for the global shared NSI context.
+	NSI::Context& GetNSIContext() { return *_nsi; }
 
-    bool SceneEdited() const { return _sceneEdited; }
-    void ResetSceneEdited() { _sceneEdited = false; }
+	bool SceneEdited() const { return _sceneEdited; }
+	void ResetSceneEdited() { _sceneEdited = false; }
 
-    bool IsConverged() const { return _isConverged; }
+	bool IsConverged() const { return _isConverged; }
 
-    void AddLight() { ++_numLights; }
-    void RemoveLight() { --_numLights; }
-    bool HasLights() const { return _numLights != 0; }
+	void AddLight() { ++_numLights; }
+	void RemoveLight() { --_numLights; }
+	bool HasLights() const { return _numLights != 0; }
 
 	bool IsRendering() const { return _rendering; }
 
-    void StartRender()
-    {
+	void StartRender()
+	{
 		assert(!_rendering);
 		_rendering = true;
 		GetNSIContext().RenderControl((
@@ -89,51 +90,51 @@ public:
 			NSI::PointerArg("stoppedcallbackdata", this),
 			NSI::IntegerArg("interactive", 1),
 			NSI::IntegerArg("progressive", 1)));
-    }
+	}
 
-    void StopRender()
-    {
-        if (_rendering)
-        {
-            _rendering = false;
-            GetNSIContext().RenderControl(
-                NSI::CStringPArg("action", "stop"));
-        }
-    }
+	void StopRender()
+	{
+		if (_rendering)
+		{
+			_rendering = false;
+			GetNSIContext().RenderControl(
+				NSI::CStringPArg("action", "stop"));
+		}
+	}
 
-    void SyncRender()
-    {
+	void SyncRender()
+	{
 		GetNSIContext().RenderControl(
 			NSI::CStringPArg("action", "synchronize"));
-    }
+	}
 
 private:
-    static void StatusCB(void *data, NSIContext_t ctx, int status)
-    {
-        auto param = (HdNSIRenderParam*)data;
-        if (status == NSIRenderSynchronized)
-            param->_isConverged = true;
-        if (status == NSIRenderRestarted)
-            param->_isConverged = false;
-    }
+	static void StatusCB(void *data, NSIContext_t ctx, int status)
+	{
+		auto param = (HdNSIRenderParam*)data;
+		if (status == NSIRenderSynchronized)
+			param->_isConverged = true;
+		if (status == NSIRenderRestarted)
+			param->_isConverged = false;
+	}
 
 private:
-    HdNSIRenderDelegate *_renderDelegate;
+	HdNSIRenderDelegate *_renderDelegate;
 
-    /// A smart pointer to the NSI API.
-    std::shared_ptr<NSI::Context> _nsi;
+	/// A smart pointer to the NSI API.
+	std::shared_ptr<NSI::Context> _nsi;
 
-    /// true when the render is actually running
-    bool _rendering{false};
+	/// true when the render is actually running
+	bool _rendering{false};
 
-    /// True when the render buffers are fully in sync with the scene.
-    bool _isConverged{false};
+	/// True when the render buffers are fully in sync with the scene.
+	bool _isConverged{false};
 
-    /// A flag to know if the scene has been edited.
-    std::atomic<bool> _sceneEdited;
+	/// A flag to know if the scene has been edited.
+	std::atomic<bool> _sceneEdited;
 
-    /// Number of lights in the scene.
-    std::atomic<unsigned> _numLights;
+	/// Number of lights in the scene.
+	std::atomic<unsigned> _numLights;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

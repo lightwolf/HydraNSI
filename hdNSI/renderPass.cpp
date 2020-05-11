@@ -44,67 +44,68 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-HdNSIRenderPass::HdNSIRenderPass(HdRenderIndex *index,
-                                 HdRprimCollection const &collection,
-                                 HdNSIRenderDelegate *renderDelegate,
-                                 HdNSIRenderParam *renderParam)
-    : HdRenderPass(index, collection)
+HdNSIRenderPass::HdNSIRenderPass(
+	HdRenderIndex *index,
+	HdRprimCollection const &collection,
+	HdNSIRenderDelegate *renderDelegate,
+	HdNSIRenderParam *renderParam)
+	: HdRenderPass(index, collection)
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
-    , _colorBuffer{SdfPath::EmptyPath()}
-    , _depthBuffer{SdfPath::EmptyPath()}
+	, _colorBuffer{SdfPath::EmptyPath()}
+	, _depthBuffer{SdfPath::EmptyPath()}
 #endif
-    , _width(0)
-    , _height(0)
-    , _renderDelegate(renderDelegate)
-    , _renderParam(renderParam)
+	, _width(0)
+	, _height(0)
+	, _renderDelegate(renderDelegate)
+	, _renderParam(renderParam)
 {
-    static std::atomic<unsigned> pass_counter{0};
-    _handlesPrefix = "pass" + std::to_string(++pass_counter);
+	static std::atomic<unsigned> pass_counter{0};
+	_handlesPrefix = "pass" + std::to_string(++pass_counter);
 }
 
 HdNSIRenderPass::~HdNSIRenderPass()
 {
-    // Stop the render.
-    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
+	// Stop the render.
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    _renderParam->StopRender();
-    nsi.RenderControl(NSI::CStringPArg("action", "wait"));
+	_renderParam->StopRender();
+	nsi.RenderControl(NSI::CStringPArg("action", "wait"));
 }
 
 bool HdNSIRenderPass::IsConverged() const
 {
-    /*
-        Propagate converged flag to all the render buffers. It's a little weird
-        to do this here but it works.
-    */
-    for( const auto &b : _aovBindings )
-    {
-        static_cast<HdNSIRenderBuffer*>(b.renderBuffer)->SetConverged(
-            _renderParam->IsConverged());
-    }
-    return _renderParam->IsConverged();
+	/*
+		Propagate converged flag to all the render buffers. It's a little weird
+		to do this here but it works.
+	*/
+	for( const auto &b : _aovBindings )
+	{
+		static_cast<HdNSIRenderBuffer*>(b.renderBuffer)->SetConverged(
+			_renderParam->IsConverged());
+	}
+	return _renderParam->IsConverged();
 }
 
 void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
 {
-    if (key == HdNSIRenderSettingsTokens->pixelSamples)
-    {
-        SetOversampling();
-    }
-    if (key == HdNSIRenderSettingsTokens->cameraLightIntensity)
-    {
-        if (!m_headlight_xform.empty())
-            ExportNSIHeadLightShader();
-    }
+	if (key == HdNSIRenderSettingsTokens->pixelSamples)
+	{
+		SetOversampling();
+	}
+	if (key == HdNSIRenderSettingsTokens->cameraLightIntensity)
+	{
+		if (!m_headlight_xform.empty())
+			ExportNSIHeadLightShader();
+	}
 }
 
 void HdNSIRenderPass::_Execute(
 	HdRenderPassStateSharedPtr const& renderPassState,
 	TfTokenVector const &renderTags)
 {
-    NSI::Context &nsi = _renderParam->GetNSIContext();
+	NSI::Context &nsi = _renderParam->GetNSIContext();
 
-    GfVec4f vp = renderPassState->GetViewport();
+	GfVec4f vp = renderPassState->GetViewport();
 	auto *camera = static_cast<const HdNSICamera*>(
 		renderPassState->GetCamera());
 	/* If either the viewport or the selected camera changes, update screen. */
@@ -118,33 +119,33 @@ void HdNSIRenderPass::_Execute(
 		UpdateScreen(*renderPassState, camera);
 	}
 
-    // If the list of AOVs changed, update the outputs.
-    HdRenderPassAovBindingVector aovBindings =
-        renderPassState->GetAovBindings();
+	// If the list of AOVs changed, update the outputs.
+	HdRenderPassAovBindingVector aovBindings =
+		renderPassState->GetAovBindings();
 
-    if( _outputNodes.empty() || aovBindings != _aovBindings )
-    {
-        _aovBindings = aovBindings;
+	if( _outputNodes.empty() || aovBindings != _aovBindings )
+	{
+		_aovBindings = aovBindings;
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
-        if( aovBindings.empty() )
-        {
-            _colorBuffer.Allocate(
-                GfVec3i(_width, _height, 1), HdFormatUNorm8Vec4, true);
-            _depthBuffer.Allocate(
-                GfVec3i(_width, _height, 1), HdFormatFloat32, true);
-            HdRenderPassAovBinding aov;
-            aov.aovName = HdAovTokens->color;
-            aov.renderBuffer = &_colorBuffer;
-            aovBindings.push_back(aov);
-            aov.aovName = HdAovTokens->depth;
-            aov.renderBuffer = &_depthBuffer;
-            aovBindings.push_back(aov);
-        }
+		if( aovBindings.empty() )
+		{
+			_colorBuffer.Allocate(
+				GfVec3i(_width, _height, 1), HdFormatUNorm8Vec4, true);
+			_depthBuffer.Allocate(
+				GfVec3i(_width, _height, 1), HdFormatFloat32, true);
+			HdRenderPassAovBinding aov;
+			aov.aovName = HdAovTokens->color;
+			aov.renderBuffer = &_colorBuffer;
+			aovBindings.push_back(aov);
+			aov.aovName = HdAovTokens->depth;
+			aov.renderBuffer = &_depthBuffer;
+			aovBindings.push_back(aov);
+		}
 #endif
 		/* Output changes required stopping the render. */
 		_renderParam->StopRender();
 		UpdateOutputs(aovBindings);
-    }
+	}
 
 	/* The output driver needs part of the projection matrix to remap Z. */
 	const GfMatrix4d &projMatrix = camera->GetProjectionMatrix();
@@ -165,134 +166,134 @@ void HdNSIRenderPass::_Execute(
 		_renderParam->SyncRender();
 	}
 
-    /* The renderer is now up to date on all changes. */
-    _renderParam->ResetSceneEdited();
+	/* The renderer is now up to date on all changes. */
+	_renderParam->ResetSceneEdited();
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
-    // Blit, only when no AOVs are specified.
-    if (_aovBindings.empty())
-    {
-        _colorBuffer.Resolve();
-        _depthBuffer.Resolve();
-        _compositor.UpdateColor(
-            _width, _height, _colorBuffer.GetFormat(), _colorBuffer.Map());
-        _compositor.UpdateDepth(_width, _height, (uint8_t *)_depthBuffer.Map());
-        _colorBuffer.Unmap();
-        _depthBuffer.Unmap();
-        _compositor.Draw();
-    }
+	// Blit, only when no AOVs are specified.
+	if (_aovBindings.empty())
+	{
+		_colorBuffer.Resolve();
+		_depthBuffer.Resolve();
+		_compositor.UpdateColor(
+			_width, _height, _colorBuffer.GetFormat(), _colorBuffer.Map());
+		_compositor.UpdateDepth(_width, _height, (uint8_t *)_depthBuffer.Map());
+		_colorBuffer.Unmap();
+		_depthBuffer.Unmap();
+		_compositor.Draw();
+	}
 #else
-    TF_VERIFY(!_aovBindings.empty(), "No aov bindings to render into");
+	TF_VERIFY(!_aovBindings.empty(), "No aov bindings to render into");
 #endif
 }
 
 void HdNSIRenderPass::UpdateOutputs(
-    const HdRenderPassAovBindingVector &bindings)
+	const HdRenderPassAovBindingVector &bindings)
 {
-    NSI::Context &nsi = _renderParam->GetNSIContext();
+	NSI::Context &nsi = _renderParam->GetNSIContext();
 
-    /* Delete the NSI nodes from the previous output specification. */
-    for( const std::string &h : _outputNodes )
-    {
-        nsi.Delete(h);
-    }
-    _outputNodes.clear();
+	/* Delete the NSI nodes from the previous output specification. */
+	for( const std::string &h : _outputNodes )
+	{
+		nsi.Delete(h);
+	}
+	_outputNodes.clear();
 
-    int i = 0;
-    for( const HdRenderPassAovBinding &aov : bindings )
-    {
-        /* Create an output layer. */
-        std::string layerHandle = Handle("|outputLayer") + std::to_string(i);
-        nsi.Create(layerHandle, "outputlayer");
-        nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
+	int i = 0;
+	for( const HdRenderPassAovBinding &aov : bindings )
+	{
+		/* Create an output layer. */
+		std::string layerHandle = Handle("|outputLayer") + std::to_string(i);
+		nsi.Create(layerHandle, "outputlayer");
+		nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
 
-        /* Have the buffer set some of the attributes. */
-        static_cast<HdNSIRenderBuffer*>(aov.renderBuffer)
-            ->SetNSILayerAttributes(nsi, layerHandle, aov.aovName);
+		/* Have the buffer set some of the attributes. */
+		static_cast<HdNSIRenderBuffer*>(aov.renderBuffer)
+			->SetNSILayerAttributes(nsi, layerHandle, aov.aovName);
 
-        if( aov.aovName == HdAovTokens->depth )
-        {
-            /* Depth AOV needs extra data for the projection. */
-            nsi.SetAttribute(layerHandle,
-                NSI::PointerArg("projectdepth", &_depthProj));
-        }
+		if( aov.aovName == HdAovTokens->depth )
+		{
+			/* Depth AOV needs extra data for the projection. */
+			nsi.SetAttribute(layerHandle,
+				NSI::PointerArg("projectdepth", &_depthProj));
+		}
 
-        /* Create an output driver. */
-        std::string driverHandle = Handle("|outputDriver") + std::to_string(i);
-        nsi.Create(driverHandle, "outputdriver");
-        nsi.SetAttribute(driverHandle, (
-            NSI::StringArg("drivername", "HdNSI"),
-            NSI::StringArg("imagefilename", aov.aovName.GetString())));
+		/* Create an output driver. */
+		std::string driverHandle = Handle("|outputDriver") + std::to_string(i);
+		nsi.Create(driverHandle, "outputdriver");
+		nsi.SetAttribute(driverHandle, (
+			NSI::StringArg("drivername", "HdNSI"),
+			NSI::StringArg("imagefilename", aov.aovName.GetString())));
 
-        /* Connect everything together. */
-        nsi.Connect(driverHandle, "", layerHandle, "outputdrivers");
-        nsi.Connect(layerHandle, "", ScreenHandle(), "outputlayers");
+		/* Connect everything together. */
+		nsi.Connect(driverHandle, "", layerHandle, "outputdrivers");
+		nsi.Connect(layerHandle, "", ScreenHandle(), "outputlayers");
 
-        /* Record the nodes so we can delete them on the next update. */
-        _outputNodes.push_back(layerHandle);
-        _outputNodes.push_back(driverHandle);
+		/* Record the nodes so we can delete them on the next update. */
+		_outputNodes.push_back(layerHandle);
+		_outputNodes.push_back(driverHandle);
 
-        ++i;
-    }
+		++i;
+	}
 }
 
 std::string HdNSIRenderPass::Handle(const char *suffix) const
 {
-    return _handlesPrefix + suffix;
+	return _handlesPrefix + suffix;
 }
 
 std::string HdNSIRenderPass::ScreenHandle() const
 {
-    return Handle("|screen1");
+	return Handle("|screen1");
 }
 
 void HdNSIRenderPass::SetOversampling() const
 {
-    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
-    VtValue s = _renderDelegate->GetRenderSetting(
-        HdNSIRenderSettingsTokens->pixelSamples);
+	VtValue s = _renderDelegate->GetRenderSetting(
+		HdNSIRenderSettingsTokens->pixelSamples);
 
 	_renderParam->StopRender();
 
-    nsi.SetAttribute(ScreenHandle(),
-        NSI::IntegerArg("oversampling", s.Get<int>()));
+	nsi.SetAttribute(ScreenHandle(),
+		NSI::IntegerArg("oversampling", s.Get<int>()));
 }
 
 std::string HdNSIRenderPass::ExportNSIHeadLightShader()
 {
-    NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
-    std::string handle = Handle("|headlightShader1");
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
+	std::string handle = Handle("|headlightShader1");
 
-    nsi.Create(handle, "shader");
+	nsi.Create(handle, "shader");
 
-    NSI::ArgumentList args;
+	NSI::ArgumentList args;
 
-    const std::string &directionalLightShaderPath =
-        _renderDelegate->GetDelight() + "/maya/osl/directionalLight";
+	const std::string &directionalLightShaderPath =
+		_renderDelegate->GetDelight() + "/maya/osl/directionalLight";
 
-    args.Add(new NSI::StringArg("shaderfilename",
-        directionalLightShaderPath));
+	args.Add(new NSI::StringArg("shaderfilename",
+		directionalLightShaderPath));
 
-    float light_shader_color_data[3] = { 1, 1, 1 };
-    args.Add(new NSI::ColorArg("i_color", light_shader_color_data));
+	float light_shader_color_data[3] = { 1, 1, 1 };
+	args.Add(new NSI::ColorArg("i_color", light_shader_color_data));
 
-    VtValue intensity = _renderDelegate->GetRenderSetting(
-        HdNSIRenderSettingsTokens->cameraLightIntensity);
-    /*
-        This ugly mess is because we need the initial value to be a float or
-        the UI won't build itself. But said UI then sets any new value as a
-        double.
-    */
-    float intensity_value = intensity.IsHolding<float>()
-        ? intensity.Get<float>() : intensity.Get<double>();
-    args.Add(new NSI::FloatArg("intensity", intensity_value));
+	VtValue intensity = _renderDelegate->GetRenderSetting(
+		HdNSIRenderSettingsTokens->cameraLightIntensity);
+	/*
+		This ugly mess is because we need the initial value to be a float or
+		the UI won't build itself. But said UI then sets any new value as a
+		double.
+	*/
+	float intensity_value = intensity.IsHolding<float>()
+		? intensity.Get<float>() : intensity.Get<double>();
+	args.Add(new NSI::FloatArg("intensity", intensity_value));
 
-    args.Add(new NSI::FloatArg("diffuse_contribution", 1));
-    args.Add(new NSI::FloatArg("specular_contribution", 1));
+	args.Add(new NSI::FloatArg("diffuse_contribution", 1));
+	args.Add(new NSI::FloatArg("specular_contribution", 1));
 
-    nsi.SetAttribute(handle, args);
-    return handle;
+	nsi.SetAttribute(handle, args);
+	return handle;
 }
 
 void HdNSIRenderPass::UpdateHeadlight(
@@ -303,7 +304,7 @@ void HdNSIRenderPass::UpdateHeadlight(
 	std::string attr_handle = Handle("|headlight|attr");
 
 	if (!enable)
-    {
+	{
 		/* Don't mark the scene as edited if we have nothing to do. */
 		if (m_headlight_xform.empty())
 			return;
@@ -312,8 +313,8 @@ void HdNSIRenderPass::UpdateHeadlight(
 		nsi.Delete(geo_handle);
 		nsi.Delete(attr_handle);
 		m_headlight_xform.clear();
-        return;
-    }
+		return;
+	}
 
 	/* Don't mark the scene as edited if we have nothing to do. */
 	if (m_headlight_xform == camera->GetTransformNode())
