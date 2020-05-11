@@ -315,7 +315,6 @@ void HdNSIRenderDelegate::SetRenderSetting(
     }
 
     _exportedSettings[key] = newvalue;
-    _renderParam->SyncRender();
 }
 
 HdRenderSettingDescriptorList
