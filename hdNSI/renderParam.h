@@ -80,7 +80,7 @@ public:
 
 	bool IsRendering() const { return _rendering; }
 
-	void StartRender()
+	void StartRender(bool batch)
 	{
 		assert(!_rendering);
 		_rendering = true;
@@ -88,8 +88,8 @@ public:
 			NSI::CStringPArg("action", "start"),
 			NSI::PointerArg("stoppedcallback", (void*)StatusCB),
 			NSI::PointerArg("stoppedcallbackdata", this),
-			NSI::IntegerArg("interactive", 1),
-			NSI::IntegerArg("progressive", 1)));
+			NSI::IntegerArg("interactive", batch ? 0 : 1),
+			NSI::IntegerArg("progressive", batch ? 0 : 1)));
 	}
 
 	void StopRender()
@@ -112,6 +112,8 @@ private:
 	static void StatusCB(void *data, NSIContext_t ctx, int status)
 	{
 		auto param = (HdNSIRenderParam*)data;
+		if (status == NSIRenderCompleted)
+			param->_isConverged = true;
 		if (status == NSIRenderSynchronized)
 			param->_isConverged = true;
 		if (status == NSIRenderRestarted)

@@ -558,6 +558,19 @@ DlShaderInfo* HdNSIRenderDelegate::GetShaderInfo(
     return m_DlGetShaderInfo(i_shader.c_str());
 }
 
+/*
+    Returns true if this is a batch UsdRender job.
+
+    It's not clear if there's an official way to check this. For now, use a
+    setting provided by Houdini's husk.
+*/
+bool HdNSIRenderDelegate::IsBatch() const
+{
+    static const TfToken renderMode{"renderMode"};
+    static const TfToken batch{"batch"};
+    return GetRenderSetting(renderMode) == batch;
+}
+
 void HdNSIRenderDelegate::SetShadingSamples() const
 {
     VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->shadingSamples);

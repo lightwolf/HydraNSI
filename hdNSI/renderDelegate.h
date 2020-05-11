@@ -219,6 +219,8 @@ public:
 
     const char* DefaultMaterialHandle() const { return "defaultShader"; }
 
+    bool IsBatch() const;
+
 private:
     void SetShadingSamples() const;
     void SetVolumeSamples() const;

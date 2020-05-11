@@ -103,8 +103,6 @@ void HdNSIRenderPass::_Execute(
 	HdRenderPassStateSharedPtr const& renderPassState,
 	TfTokenVector const &renderTags)
 {
-	NSI::Context &nsi = _renderParam->GetNSIContext();
-
 	GfVec4f vp = renderPassState->GetViewport();
 	auto *camera = static_cast<const HdNSICamera*>(
 		renderPassState->GetCamera());
@@ -158,7 +156,7 @@ void HdNSIRenderPass::_Execute(
 	if (!_renderParam->IsRendering())
 	{
 		/* Start (or restart) rendering. */
-		_renderParam->StartRender();
+		_renderParam->StartRender(_renderDelegate->IsBatch());
 	}
 	else if (_renderParam->SceneEdited())
 	{
@@ -190,7 +188,7 @@ void HdNSIRenderPass::_Execute(
 void HdNSIRenderPass::UpdateOutputs(
 	const HdRenderPassAovBindingVector &bindings)
 {
-	NSI::Context &nsi = _renderParam->GetNSIContext();
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
 	/* Delete the NSI nodes from the previous output specification. */
 	for( const std::string &h : _outputNodes )
