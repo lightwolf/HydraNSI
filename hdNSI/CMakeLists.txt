@@ -58,7 +58,7 @@ set_target_properties(hdNSI PROPERTIES
 target_link_libraries(hdNSI 3Delight::3DelightAPI)
 
 target_link_libraries(hdNSI
-	arch plug tf vt gf work hf hd hdx usdLux usdRender ndr sdf trace pxOsd)
+	arch cameraUtil plug tf vt gf work hf hd hdx usdLux usdRender ndr sdf trace pxOsd)
 
 # This should probably be in USD's interface.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
