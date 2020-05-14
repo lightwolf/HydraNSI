@@ -8,6 +8,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+class HdNSIRenderParam;
+
 class HdNSICamera final : public HdCamera
 {
 public:
@@ -35,11 +37,18 @@ public:
 
 private:
 	bool IsPerspective() const;
-	void Create(NSI::Context &nsi);
+	void Create(
+		HdNSIRenderParam *renderParam,
+		NSI::Context &nsi);
 
 	/* NSI handles. */
 	std::string m_camera_handle;
-	std::string m_xform_handle;;
+	std::string m_xform_handle;
+
+	/* Camera node iteration, for type changes. */
+	int m_camera_gen{0};
+	/* True if the created camera node is perspective type. */
+	bool m_is_perspective{0};
 
 	GfVec2d m_aperture_min{-1.0}, m_aperture_max{1.0};
 };

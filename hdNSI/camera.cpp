@@ -4,8 +4,6 @@
 
 #include <pxr/imaging/hd/sceneDelegate.h>
 
-#include <iostream>
-
 PXR_NAMESPACE_OPEN_SCOPE
 
 HdNSICamera::HdNSICamera(
@@ -30,7 +28,7 @@ void HdNSICamera::Sync(
 	assert(*dirtyBits == Clean);
 
 	/* Create the nodes now that we know which kind of projection is used. */
-	Create(nsi);
+	Create(nsiRenderParam, nsi);
 
 	NSI::ArgumentList args;
 
@@ -174,16 +172,39 @@ bool HdNSICamera::IsPerspective() const
 	return GetProjectionMatrix()[3][3] == 0.0;
 }
 
-void HdNSICamera::Create(NSI::Context &nsi)
+void HdNSICamera::Create(
+	HdNSIRenderParam *renderParam,
+	NSI::Context &nsi)
 {
-	if (!m_camera_handle.empty())
+	bool is_perspective = IsPerspective();
+
+	if (!m_camera_handle.empty() && is_perspective == m_is_perspective)
 		return;
 
+	if (!m_camera_handle.empty())
+	{
+		/*
+			Camera type change requires replacing the node. This amounts to a
+			camera change, which requires stopping the render. We'll create the
+			new node with a different name so the render delegate triggers a
+			screen update as well, to connect the screen to the new camera.
+
+			We don't check if this camera is the one actually being rendered
+			because the only case I've seen of this so far is usdview's camera
+			which sometimes gets initialized with an identity matrix before
+			being given its correct projection. It is somewhat random.
+		*/
+		renderParam->StopRender();
+		nsi.Delete(m_camera_handle);
+		++m_camera_gen;
+	}
+
 	const SdfPath &id = GetId();
-	m_camera_handle = id.GetString() + "|camera";
+	m_camera_handle = id.GetString() + "|camera" + std::to_string(m_camera_gen);
 	m_xform_handle = id.GetString();
 
-	nsi.Create(m_camera_handle, IsPerspective()
+	m_is_perspective = is_perspective;
+	nsi.Create(m_camera_handle, is_perspective
 		? "perspectivecamera" : "orthographiccamera");
 	nsi.Create(m_xform_handle, "transform");
 	nsi.Connect(m_camera_handle, "", m_xform_handle, "objects");
