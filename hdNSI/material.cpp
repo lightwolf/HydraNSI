@@ -254,7 +254,7 @@ void FixRamps(
 				conversion.
 			*/
 			auto it = node.parameters.find(TfToken(param.name.string()));
-			if (param.type.elementtype() == NSITypeInteger &&
+			if (param.type.elementtype == NSITypeInteger &&
 			    it != node.parameters.end() &&
 			    it->second.IsHolding<std::string>())
 			{
