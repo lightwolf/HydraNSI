@@ -160,6 +160,7 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
 		NSI::PointerArg("buffer", this));
 
     HdFormat componentFormat = HdGetComponentFormat(_format);
+    bool draw_outlines = false;
     TfToken aovName = aov.aovName;
 
 	if( componentFormat == HdFormatFloat32 ||
@@ -181,6 +182,7 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
 
 	if( aovName == HdAovTokens->color )
 	{
+        draw_outlines = true;
 		nsi.SetAttribute(layerHandle, (
             NSI::StringArg("variablename", "Ci"),
             NSI::StringArg("layertype", "color"),
@@ -231,13 +233,14 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
     {
         /* This case handles UsdRenderVar. */
         VtValue sourceName = GetAovSetting(aov, UsdRenderTokens->sourceName);
+        std::string name;
         if( sourceName.IsHolding<std::string>() )
         {
-            std::string name = sourceName.Get<std::string>();
+            name = sourceName.Get<std::string>();
             /* Parse any source prefix which might be in the name. */
             const std::string sources[] =
                 {"shader:", "builtin:", "attribute:"};
-            std::string source = sources[0]; /* default to "shader" */
+            std::string source = "shader";
 
             for( const std::string &s : sources )
             {
@@ -252,6 +255,9 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             nsi.SetAttribute(layerHandle, (
                 NSI::StringArg("variablename", name),
                 NSI::StringArg("variablesource", source)));
+
+            if( name == "Ci" || name == "outlines" )
+                draw_outlines = true;
         }
 
         VtValue dataType = GetAovSetting(aov, UsdRenderTokens->dataType);
@@ -277,10 +283,18 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
         }
         else if( dataType == _tokens->float4 )
         {
-            /* This should probably be "quad" but it does not quite work yet. */
-            nsi.SetAttribute(layerHandle, (
-                NSI::StringArg("layertype", "color"),
-                NSI::IntegerArg("withalpha", 1)));
+            if( name == "outlines" )
+            {
+                nsi.SetAttribute(layerHandle,
+                    NSI::StringArg("layertype", "quad"));
+            }
+            else
+            {
+                /* Should probably fix 3Delight so 'quad' always works. */
+                nsi.SetAttribute(layerHandle, (
+                    NSI::StringArg("layertype", "color"),
+                    NSI::IntegerArg("withalpha", 1)));
+            }
         }
     }
     else
@@ -293,6 +307,11 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
                 NSI::StringArg("variablesource", "attribute"),
                 NSI::StringArg("layertype", "color")));
         }
+    }
+
+    if( draw_outlines )
+    {
+        nsi.SetAttribute(layerHandle, NSI::IntegerArg("drawoutlines", 1));
     }
 }
 
