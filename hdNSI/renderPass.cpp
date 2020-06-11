@@ -207,7 +207,7 @@ void HdNSIRenderPass::UpdateOutputs(
 
 		/* Have the buffer set some of the attributes. */
 		static_cast<HdNSIRenderBuffer*>(aov.renderBuffer)
-			->SetNSILayerAttributes(nsi, layerHandle, aov.aovName);
+			->SetNSILayerAttributes(nsi, layerHandle, aov);
 
 		if( aov.aovName == HdAovTokens->depth )
 		{

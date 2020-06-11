@@ -27,8 +27,17 @@
 #include "renderParam.h"
 
 #include <pxr/base/gf/half.h>
+#include <pxr/usd/usdRender/tokens.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
+
+TF_DEFINE_PRIVATE_TOKENS(
+	_tokens,
+    (vector3f)
+    (normal3f)
+    ((_float, "float"))
+    (float4)
+);
 
 HdNSIRenderBuffer::HdNSIRenderBuffer(SdfPath const& id)
     : HdRenderBuffer(id)
@@ -131,15 +140,27 @@ void HdNSIRenderBuffer::Resolve()
 {
 }
 
+namespace
+{
+VtValue GetAovSetting(const HdRenderPassAovBinding &aov, const TfToken &name)
+{
+    auto it = aov.aovSettings.find(name);
+    if (it == aov.aovSettings.end())
+        return {};
+    return it->second;
+}
+}
+
 void HdNSIRenderBuffer::SetNSILayerAttributes(
 	NSI::Context &nsi,
 	const std::string &layerHandle,
-	TfToken aovName) const
+	const HdRenderPassAovBinding &aov) const
 {
 	nsi.SetAttribute(layerHandle,
 		NSI::PointerArg("buffer", this));
 
     HdFormat componentFormat = HdGetComponentFormat(_format);
+    TfToken aovName = aov.aovName;
 
 	if( componentFormat == HdFormatFloat32 ||
 	    componentFormat == HdFormatInt32 )
@@ -204,6 +225,63 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             NSI::FloatArg("backgroundvalue", -1.0f),
             NSI::StringArg("filter", "zmin"),
             NSI::DoubleArg("filterwidth", 1.0)));
+    }
+    else if( GetAovSetting(aov, UsdRenderTokens->sourceType) ==
+        UsdRenderTokens->raw )
+    {
+        /* This case handles UsdRenderVar. */
+        VtValue sourceName = GetAovSetting(aov, UsdRenderTokens->sourceName);
+        if( sourceName.IsHolding<std::string>() )
+        {
+            std::string name = sourceName.Get<std::string>();
+            /* Parse any source prefix which might be in the name. */
+            const std::string sources[] =
+                {"shader:", "builtin:", "attribute:"};
+            std::string source = sources[0]; /* default to "shader" */
+
+            for( const std::string &s : sources )
+            {
+                if( 0 == name.compare(0, s.size(), s) )
+                {
+                    source = s.substr(0, s.size() - 1);
+                    name = name.substr(s.size());
+                    break;
+                }
+            }
+
+            nsi.SetAttribute(layerHandle, (
+                NSI::StringArg("variablename", name),
+                NSI::StringArg("variablesource", source)));
+        }
+
+        VtValue dataType = GetAovSetting(aov, UsdRenderTokens->dataType);
+        if( dataType == UsdRenderTokens->color3f )
+        {
+            nsi.SetAttribute(layerHandle,
+                NSI::StringArg("layertype", "color"));
+        }
+        else if( dataType == _tokens->vector3f )
+        {
+            nsi.SetAttribute(layerHandle,
+                NSI::StringArg("layertype", "vector"));
+        }
+        else if( dataType == _tokens->normal3f )
+        {
+            nsi.SetAttribute(layerHandle,
+                NSI::StringArg("layertype", "normal"));
+        }
+        else if( dataType == _tokens->_float )
+        {
+            nsi.SetAttribute(layerHandle,
+                NSI::StringArg("layertype", "scalar"));
+        }
+        else if( dataType == _tokens->float4 )
+        {
+            /* This should probably be "quad" but it does not quite work yet. */
+            nsi.SetAttribute(layerHandle, (
+                NSI::StringArg("layertype", "color"),
+                NSI::IntegerArg("withalpha", 1)));
+        }
     }
     else
     {

@@ -27,6 +27,7 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/base/gf/vec4f.h>
+#include <pxr/imaging/hd/aov.h>
 #include <pxr/imaging/hd/renderBuffer.h>
 #include <pxr/pxr.h>
 
@@ -78,7 +79,7 @@ public:
     void SetNSILayerAttributes(
         NSI::Context &nsi,
         const std::string &layerHandle,
-        TfToken aovName) const;
+        const HdRenderPassAovBinding &aov) const;
 
 private:
     // Release any allocated resources.
