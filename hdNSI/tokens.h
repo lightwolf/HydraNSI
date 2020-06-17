@@ -14,7 +14,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 	((maximumDiffuseDepth, "nsi:global:maximumdiffusedepth")) \
 	((maximumReflectionDepth, "nsi:global:maximumreflectiondepth")) \
 	((maximumRefractionDepth, "nsi:global:maximumrefractiondepth")) \
-	((maximumHairDepth, "nsi:global:maximumhairdeph")) \
+	((maximumHairDepth, "nsi:global:maximumhairdepth")) \
 	((maximumDistance, "nsi:global:maximumdistance")) \
 	(cameraLightIntensity)
 
