@@ -189,6 +189,26 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
         VtValue(TfGetenvInt("HDNSI_PIXEL_SAMPLES", 8))});
 
     _settingDescriptors.push_back({
+        "Maximum Diffuse Depth",
+        HdNSIRenderSettingsTokens->maximumDiffuseDepth, VtValue(2)});
+
+    _settingDescriptors.push_back({
+        "Maximum Reflection Depth",
+        HdNSIRenderSettingsTokens->maximumReflectionDepth, VtValue(2)});
+
+    _settingDescriptors.push_back({
+        "Maximum Refraction Depth",
+        HdNSIRenderSettingsTokens->maximumRefractionDepth, VtValue(4)});
+
+    _settingDescriptors.push_back({
+        "Maximum Hair Depth",
+        HdNSIRenderSettingsTokens->maximumHairDepth, VtValue(5)});
+
+    _settingDescriptors.push_back({
+        "Maximum Distance",
+        HdNSIRenderSettingsTokens->maximumDistance, VtValue( float(1000.f))} );
+
+    _settingDescriptors.push_back({
         "Camera light intensity",
         HdNSIRenderSettingsTokens->cameraLightIntensity,
         VtValue(float(TfGetenvDouble("HDNSI_CAMERA_LIGHT_INTENSITY", 1.0)))});
@@ -200,6 +220,13 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
     // Set global parameters.
     SetShadingSamples();
     SetVolumeSamples();
+
+    SetMaxDiffuseDepth();
+    SetMaxReflectionDepth();
+    SetMaxRefractionDepth();
+    SetMaxHairDepth();
+    SetMaxDistance();
+
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
         NSI::StringArg("bucketorder", "spiral"),
@@ -284,6 +311,26 @@ void HdNSIRenderDelegate::SetRenderSetting(
     if (key == HdNSIRenderSettingsTokens->volumeSamples)
     {
         SetVolumeSamples();
+    }
+    if( key == HdNSIRenderSettingsTokens->maximumDiffuseDepth )
+    {
+        SetMaxDiffuseDepth();
+    }
+    if( key == HdNSIRenderSettingsTokens->maximumReflectionDepth )
+    {
+        SetMaxReflectionDepth();
+    }
+    if( key == HdNSIRenderSettingsTokens->maximumRefractionDepth )
+    {
+        SetMaxRefractionDepth();
+    }
+    if( key == HdNSIRenderSettingsTokens->maximumHairDepth )
+    {
+        SetMaxHairDepth();
+    }
+    if( key == HdNSIRenderSettingsTokens->maximumDistance )
+    {
+        SetMaxDistance();
     }
     for (HdNSIRenderPass *pass : _renderPasses)
     {
@@ -585,6 +632,46 @@ void HdNSIRenderDelegate::SetVolumeSamples() const
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
         NSI::IntegerArg("quality.volumesamples", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetMaxDiffuseDepth() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumDiffuseDepth);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("maximumraydepth.diffuse", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetMaxReflectionDepth() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumReflectionDepth);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("maximumraydepth.reflection", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetMaxRefractionDepth() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumRefractionDepth);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("maximumraydepth.refraction", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetMaxHairDepth() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumHairDepth);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::IntegerArg("maximumraydepth.hair", s.Get<int>()));
+}
+
+void HdNSIRenderDelegate::SetMaxDistance() const
+{
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumDistance);
+
+    _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+        NSI::DoubleArg("maximumraylength", s.Get<double>()));
 }
 
 /*

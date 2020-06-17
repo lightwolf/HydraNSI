@@ -11,6 +11,11 @@ PXR_NAMESPACE_OPEN_SCOPE
 	((shadingSamples, "nsi:global:shadingsamples")) \
 	((volumeSamples, "nsi:global:volumesamples")) \
 	((pixelSamples, "nsi:global:pixelsamples")) \
+	((maximumDiffuseDepth, "nsi:global:maximumdiffusedepth")) \
+	((maximumReflectionDepth, "nsi:global:maximumreflectiondepth")) \
+	((maximumRefractionDepth, "nsi:global:maximumrefractiondepth")) \
+	((maximumHairDepth, "nsi:global:maximumhairdeph")) \
+	((maximumDistance, "nsi:global:maximumdistance")) \
 	(cameraLightIntensity)
 
 TF_DECLARE_PUBLIC_TOKENS(

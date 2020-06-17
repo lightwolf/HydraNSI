@@ -224,6 +224,11 @@ public:
 private:
     void SetShadingSamples() const;
     void SetVolumeSamples() const;
+    void SetMaxDiffuseDepth() const;
+    void SetMaxReflectionDepth() const;
+    void SetMaxRefractionDepth() const;
+    void SetMaxHairDepth() const;
+    void SetMaxDistance() const;
     void ExportDefaultMaterial() const;
 
 private:
