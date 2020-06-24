@@ -41,6 +41,21 @@ private:
 		const std::string &geoHandle,
 		const VtIntArray &vertexIndices,
 		const HdPrimvarDescriptor &primvar);
+
+	void SetObjectAttributes(
+		HdSceneDelegate *sceneDelegate,
+		NSI::Context &nsi,
+		const SdfPath &primId,
+		const std::string &geoHandle,
+		const HdPrimvarDescriptor &primvar);
+
+	void SetVisibilityAttributes(
+		HdSceneDelegate *sceneDelegate,
+		NSI::Context &nsi,
+		const SdfPath &primId,
+		const std::string &geoHandle,
+		const HdPrimvarDescriptor &primvar);
+
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

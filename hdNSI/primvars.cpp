@@ -42,13 +42,24 @@ void HdNSIPrimvars::Sync(
 				continue;
 			}
 
+			const std::string &primvar_name = primvar.name.GetString();
+
 			/* Ignore the ones starting with '__' for now. Specifically, we
 			   have no need for __faceindex on subdivs. */
-			if (primvar.name.GetString().substr(0, 2) == "__")
+			if (primvar_name.substr(0, 2) == "__")
 				continue;
 
-			SetOnePrimvar(
-				sceneDelegate, nsi, primId, geoHandle, vertexIndices, primvar);
+			if( primvar_name.find("nsi:object:") == 0 )
+			{
+				/* This is object-level attributes */
+				SetObjectAttributes(
+					sceneDelegate, nsi, primId, geoHandle, primvar);
+			}
+			else
+			{
+				SetOnePrimvar(
+					sceneDelegate, nsi, primId, geoHandle, vertexIndices, primvar);
+			}
 		}
 	}
 
@@ -126,6 +137,59 @@ bool HdNSIPrimvars::SetAttributeFromValue(
 		return false;
 	}
 	return true;
+}
+
+/**
+	\brief Deal with USD primvars that translate to NSI attributes
+	(e.g. visibility attributes)
+*/
+void HdNSIPrimvars::SetObjectAttributes(
+	HdSceneDelegate *sceneDelegate,
+	NSI::Context &nsi,
+	const SdfPath &primId,
+	const std::string &geoHandle,
+	const HdPrimvarDescriptor &primvar)
+{
+	if( primvar.name.GetString().find("nsi:object:visibility_") == 0 )
+	{
+		SetVisibilityAttributes(
+			sceneDelegate, nsi, primId, geoHandle, primvar );
+	}
+}
+
+/*
+	We transform USD attributes, that look like this:
+		"nsi:object:visibillity_camera"
+	to this:
+		"visibility.camera"
+
+	To set them directly on an NSI attributes node.
+*/
+void HdNSIPrimvars::SetVisibilityAttributes(
+	HdSceneDelegate *sceneDelegate,
+	NSI::Context &nsi,
+	const SdfPath &primId,
+	const std::string &geoHandle,
+	const HdPrimvarDescriptor &primvar)
+{
+	VtValue v = sceneDelegate->Get(primId, primvar.name);
+	if( v.IsEmpty() || !v.IsHolding<bool>() )
+	{
+		assert( false );
+		return;
+	}
+
+	/*  construct nsi attribute name */
+	std::string nsi_name = primvar.name.GetString();
+	nsi_name = nsi_name.c_str() + strlen("nsi:object:");
+	std::replace( nsi_name.begin(), nsi_name.end(), '_', '.');
+
+	/* create an attribute node and set the attribute. re-creating the same
+	attribute again and again is not a problem in NSI. */
+	std::string attribute_handle = geoHandle + "|visibility_attributes";
+	nsi.Create( attribute_handle, "attributes" );
+	nsi.SetAttribute( attribute_handle, NSI::IntegerArg(nsi_name, v.Get<bool>()) );
+	nsi.Connect( attribute_handle, "", geoHandle, "geometryattributes" );
 }
 
 void HdNSIPrimvars::SetOnePrimvar(
