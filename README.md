@@ -54,8 +54,44 @@ Building HydraNSI should be straightforward. Make sure the DELIGHT environment v
 
 ## Missing Features
 
-- UsdRender
 - UsdSkel
+- Motion Blur
+- Some Object and Light attributes
+
+## AOVS
+This is a list of what can go in the RenderVar nodes. The first value is what
+goes into "Source Name". The second is the "Data Type", when not the default of
+"color3f". Note that Houdini currently has trouble processing "vector3f" so you
+should actually leave those to "color3f" until this gets fixed.
+
+The "Format" field should be set to a float or half type which matches data
+type (eg. "float3" or "half3" for a color3f). This chooses if you end up with a
+16-bit or 32-bit exr file.
+
+For the beauty (and likely other AOVs but there's little point), using float4
+data type instead of color3f will give you an alpha channel. Likewise, use
+half4/float4 format instead of half3/float3.
+
+The houdini scene contains some mixed examples of all this.
+
+Ci
+diffuse
+subsurface
+reflection
+refraction
+volume
+incandescence
+toon_base
+toon_diffuse
+toon_specular
+outlines float4
+builtin:z float
+builtin:P.camera vector3f
+builtin:N.camera vector3f
+builtin:P.world vector3f
+builtin:N.world vector3f
+relighting_multiplier
+relighting_reference
 
 ## Testing
 
