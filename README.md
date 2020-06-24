@@ -74,24 +74,24 @@ half4/float4 format instead of half3/float3.
 
 The houdini scene contains some mixed examples of all this.
 
-Ci
-diffuse
-subsurface
-reflection
-refraction
-volume
-incandescence
-toon_base
-toon_diffuse
-toon_specular
-outlines float4
-builtin:z float
-builtin:P.camera vector3f
-builtin:N.camera vector3f
-builtin:P.world vector3f
-builtin:N.world vector3f
-relighting_multiplier
-relighting_reference
+- Ci
+- diffuse
+- subsurface
+- reflection
+- refraction
+- volume
+- incandescence
+- toon_base
+- toon_diffuse
+- toon_specular
+- outlines float4
+- builtin:z float
+- builtin:P.camera vector3f
+- builtin:N.camera vector3f
+- builtin:P.world vector3f
+- builtin:N.world vector3f
+- relighting_multiplier
+- relighting_reference
 
 ## Testing
 
