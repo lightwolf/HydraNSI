@@ -6,6 +6,11 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+/**
+	FIXME: when a primvar is deleted, we don't restore the default value.
+	This can be tested easily by changing visibilkity to camera to off
+	and then removing the attribute. The object will remain invisible.
+*/
 void HdNSIPrimvars::Sync(
 	HdSceneDelegate *sceneDelegate,
 	HdNSIRenderParam *renderParam,
