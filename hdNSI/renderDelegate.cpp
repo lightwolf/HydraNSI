@@ -206,7 +206,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
 
     _settingDescriptors.push_back({
         "Maximum Distance",
-        HdNSIRenderSettingsTokens->maximumDistance, VtValue(1000.0)} );
+        HdNSIRenderSettingsTokens->maximumDistance, VtValue(1000.0f)} );
 
     _settingDescriptors.push_back({
         "Camera light intensity",
@@ -669,9 +669,10 @@ void HdNSIRenderDelegate::SetMaxHairDepth() const
 void HdNSIRenderDelegate::SetMaxDistance() const
 {
     VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->maximumDistance);
+    double l = s.IsHolding<float>() ? s.Get<float>() : s.Get<double>();
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
-        NSI::DoubleArg("maximumraylength", s.Get<double>()));
+        NSI::DoubleArg("maximumraylength", l));
 }
 
 /*
