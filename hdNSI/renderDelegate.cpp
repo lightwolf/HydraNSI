@@ -206,7 +206,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
 
     _settingDescriptors.push_back({
         "Maximum Distance",
-        HdNSIRenderSettingsTokens->maximumDistance, VtValue( float(1000.f))} );
+        HdNSIRenderSettingsTokens->maximumDistance, VtValue(1000.0)} );
 
     _settingDescriptors.push_back({
         "Camera light intensity",
