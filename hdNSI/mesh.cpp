@@ -41,129 +41,132 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-HdNSIMesh::HdNSIMesh(SdfPath const& id,
-                     SdfPath const& instancerId)
-    : HdMesh(id, instancerId)
-    , _smoothNormals(false)
-    , _base{"mesh"}
+HdNSIMesh::HdNSIMesh(
+	SdfPath const& id,
+	SdfPath const& instancerId)
+:
+	HdMesh(id, instancerId)
+	, _smoothNormals(false)
+	, _base{"mesh"}
 {
 }
 
 void
 HdNSIMesh::Finalize(HdRenderParam *renderParam)
 {
-    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
+	_base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
 HdNSIMesh::GetInitialDirtyBitsMask() const
 {
-    // The initial dirty bits control what data is available on the first
-    // run through _PopulateRtMesh(), so it should list every data item
-    // that _PopulateRtMesh requests.
-    int mask = HdChangeTracker::Clean
-        | HdChangeTracker::InitRepr
-        | HdChangeTracker::DirtyPrimID
-        | HdChangeTracker::DirtyPoints
-        | HdChangeTracker::DirtyTopology
-        | HdChangeTracker::DirtyTransform
-        | HdChangeTracker::DirtyVisibility
-        | HdChangeTracker::DirtyCullStyle
-        | HdChangeTracker::DirtyDoubleSided
-        | HdChangeTracker::DirtyDisplayStyle
-        | HdChangeTracker::DirtySubdivTags
-        | HdChangeTracker::DirtyPrimvar
-        | HdChangeTracker::DirtyNormals
-        | HdChangeTracker::DirtyInstanceIndex
-        | HdChangeTracker::DirtyMaterialId
-        ;
+	// The initial dirty bits control what data is available on the first
+	// run through _PopulateRtMesh(), so it should list every data item
+	// that _PopulateRtMesh requests.
+	int mask = HdChangeTracker::Clean
+		| HdChangeTracker::InitRepr
+		| HdChangeTracker::DirtyPrimID
+		| HdChangeTracker::DirtyPoints
+		| HdChangeTracker::DirtyTopology
+		| HdChangeTracker::DirtyTransform
+		| HdChangeTracker::DirtyVisibility
+		| HdChangeTracker::DirtyCullStyle
+		| HdChangeTracker::DirtyDoubleSided
+		| HdChangeTracker::DirtyDisplayStyle
+		| HdChangeTracker::DirtySubdivTags
+		| HdChangeTracker::DirtyPrimvar
+		| HdChangeTracker::DirtyNormals
+		| HdChangeTracker::DirtyInstanceIndex
+		| HdChangeTracker::DirtyMaterialId
+		;
 
-    return (HdDirtyBits)mask;
+	return (HdDirtyBits)mask;
 }
 
 HdDirtyBits
 HdNSIMesh::_PropagateDirtyBits(HdDirtyBits bits) const
 {
-    return bits;
+	return bits;
 }
 
-void
-HdNSIMesh::_InitRepr(TfToken const &reprName,
-                        HdDirtyBits *dirtyBits)
+void HdNSIMesh::_InitRepr(
+	TfToken const &reprName,
+	HdDirtyBits *dirtyBits)
 {
-    TF_UNUSED(dirtyBits);
+	TF_UNUSED(dirtyBits);
 
-    // Create an empty repr.
-    _ReprVector::iterator it = std::find_if(_reprs.begin(), _reprs.end(),
-                                            _ReprComparator(reprName));
-    if (it == _reprs.end()) {
-        _reprs.emplace_back(reprName, HdReprSharedPtr());
-    }
+	// Create an empty repr.
+	_ReprVector::iterator it = std::find_if(
+		_reprs.begin(), _reprs.end(), _ReprComparator(reprName));
+	if (it == _reprs.end())
+	{
+		_reprs.emplace_back(reprName, HdReprSharedPtr());
+	}
 }
 
-void
-HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
-                 HdRenderParam*   renderParam,
-                 HdDirtyBits*     dirtyBits,
-                 TfToken const&   reprName)
+void HdNSIMesh::Sync(
+	HdSceneDelegate* sceneDelegate,
+	HdRenderParam*   renderParam,
+	HdDirtyBits*     dirtyBits,
+	TfToken const&   reprName)
 {
-    HD_TRACE_FUNCTION();
-    HF_MALLOC_TAG_FUNCTION();
+	HD_TRACE_FUNCTION();
+	HF_MALLOC_TAG_FUNCTION();
 
-    // XXX: Meshes can have multiple reprs; this is done, for example, when
-    // the drawstyle specifies different rasterizing modes between front faces
-    // and back faces. With raytracing, this concept makes less sense, but
-    // combining semantics of two HdMeshReprDesc is tricky in the general case.
-    // For now, HdNSIMesh only respects the first desc; this should be fixed.
-    _MeshReprConfig::DescArray descs = _GetReprDesc(reprName);
-    const HdMeshReprDesc &desc = descs[0];
+	// XXX: Meshes can have multiple reprs; this is done, for example, when
+	// the drawstyle specifies different rasterizing modes between front faces
+	// and back faces. With raytracing, this concept makes less sense, but
+	// combining semantics of two HdMeshReprDesc is tricky in the general case.
+	// For now, HdNSIMesh only respects the first desc; this should be fixed.
+	_MeshReprConfig::DescArray descs = _GetReprDesc(reprName);
+	const HdMeshReprDesc &desc = descs[0];
 
-    // Pull top-level NSI state out of the render param.
-    auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
-    NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
+	// Pull top-level NSI state out of the render param.
+	auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
-    /* The base rprim class tracks this but does not update it itself. */
-    if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, GetId()))
-    {
-        _UpdateVisibility(sceneDelegate, dirtyBits);
-    }
+	/* The base rprim class tracks this but does not update it itself. */
+	if (HdChangeTracker::IsVisibilityDirty(*dirtyBits, GetId()))
+	{
+		_UpdateVisibility(sceneDelegate, dirtyBits);
+	}
 
-    /* This creates the NSI nodes so it comes before other attributes. */
-    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+	/* This creates the NSI nodes so it comes before other attributes. */
+	_base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
-    // Create NSI geometry objects.
-    _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
+	// Create NSI geometry objects.
+	_PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
 
-void
-HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
-                           HdNSIRenderParam *renderParam,
-                           NSI::Context &nsi,
-                           HdDirtyBits* dirtyBits,
-                           HdMeshReprDesc const &desc)
+void HdNSIMesh::_PopulateRtMesh(
+	HdSceneDelegate* sceneDelegate,
+	HdNSIRenderParam *renderParam,
+	NSI::Context &nsi,
+	HdDirtyBits* dirtyBits,
+	HdMeshReprDesc const &desc)
 {
-    HD_TRACE_FUNCTION();
-    HF_MALLOC_TAG_FUNCTION();
+	HD_TRACE_FUNCTION();
+	HF_MALLOC_TAG_FUNCTION();
 
-    SdfPath const& id = GetId();
+	SdfPath const& id = GetId();
 
 	bool dirty_points = HdChangeTracker::IsPrimvarDirty(
 		*dirtyBits, id, HdTokens->points);
 	bool dirty_topology = HdChangeTracker::IsTopologyDirty(*dirtyBits, id);
 
 	if (dirty_topology)
-    {
-        /*
-            Note that the refine level comes from
-            HdSceneDelegate::GetDisplayStyle() and the subdiv tags from
-            HdSceneDelegate::GetSubdivTags(). They both have their own dirty
-            bits. So the value we get here with topology should not be used.
-        */
-        _topology = GetMeshTopology(sceneDelegate);
+	{
+		/*
+			Note that the refine level comes from
+			HdSceneDelegate::GetDisplayStyle() and the subdiv tags from
+			HdSceneDelegate::GetSubdivTags(). They both have their own dirty
+			bits. So the value we get here with topology should not be used.
+		*/
+		_topology = GetMeshTopology(sceneDelegate);
 
 		VtIntArray faceVertexCounts = _topology.GetFaceVertexCounts();
-        _faceVertexIndices = _topology.GetFaceVertexIndices();
+		_faceVertexIndices = _topology.GetFaceVertexIndices();
 
 		NSI::ArgumentList attrs;
 
@@ -173,85 +176,85 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 			->SetCount(faceVertexCounts.size())
 			->SetValuePointer(faceVertexCounts.cdata()));
 
-        /* Set winding order. */
+		/* Set winding order. */
 		attrs.push(new NSI::IntegerArg("clockwisewinding",
-            _topology.GetOrientation() == HdTokens->leftHanded ? 1 : 0));
+			_topology.GetOrientation() == HdTokens->leftHanded ? 1 : 0));
 
-        /* Enable (or not) subdivision. */
-        bool subdiv =
-            _topology.GetScheme() == PxOsdOpenSubdivTokens->catmullClark;
+		/* Enable (or not) subdivision. */
+		bool subdiv =
+			_topology.GetScheme() == PxOsdOpenSubdivTokens->catmullClark;
 		attrs.push(new NSI::CStringPArg("subdivision.scheme",
-                subdiv ? "catmull-clark" : ""));
+				subdiv ? "catmull-clark" : ""));
 
 		nsi.SetAttribute(_base.Shape(), attrs);
-    }
+	}
 
-    if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id))
-    {
-        NSI::ArgumentList attrs;
-        PxOsdSubdivTags subdivTags = sceneDelegate->GetSubdivTags(id);
+	if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id))
+	{
+		NSI::ArgumentList attrs;
+		PxOsdSubdivTags subdivTags = sceneDelegate->GetSubdivTags(id);
 
-        const VtIntArray &cornerIndices = subdivTags.GetCornerIndices();
-        const VtFloatArray &cornerSharpness = subdivTags.GetCornerWeights();
-        if (!cornerIndices.empty() && !cornerSharpness.empty())
-        {
-            attrs.push(NSI::Argument::New("subdivision.cornervertices")
-                ->SetType(NSITypeInteger)
-                ->SetCount(cornerIndices.size())
-                ->SetValuePointer(cornerIndices.data()));
-            attrs.push(NSI::Argument::New("subdivision.cornersharpness")
-                ->SetType(NSITypeFloat)
-                ->SetCount(cornerSharpness.size())
-                ->SetValuePointer(cornerSharpness.data()));
-        }
+		const VtIntArray &cornerIndices = subdivTags.GetCornerIndices();
+		const VtFloatArray &cornerSharpness = subdivTags.GetCornerWeights();
+		if (!cornerIndices.empty() && !cornerSharpness.empty())
+		{
+			attrs.push(NSI::Argument::New("subdivision.cornervertices")
+				->SetType(NSITypeInteger)
+				->SetCount(cornerIndices.size())
+				->SetValuePointer(cornerIndices.data()));
+			attrs.push(NSI::Argument::New("subdivision.cornersharpness")
+				->SetType(NSITypeFloat)
+				->SetCount(cornerSharpness.size())
+				->SetValuePointer(cornerSharpness.data()));
+		}
 
-        const VtIntArray &creaseIndices = subdivTags.GetCreaseIndices();
-        const VtFloatArray &creaseSharpness = subdivTags.GetCreaseWeights();
-        if (!creaseIndices.empty() && !creaseSharpness.empty())
-        {
-            attrs.push(NSI::Argument::New("subdivision.creasevertices")
-                ->SetType(NSITypeInteger)
-                ->SetCount(creaseIndices.size())
-                ->SetValuePointer(creaseIndices.data()));
-            attrs.push(NSI::Argument::New("subdivision.creasesharpness")
-                ->SetType(NSITypeFloat)
-                ->SetCount(creaseSharpness.size())
-                ->SetValuePointer(creaseSharpness.data()));
-        }
+		const VtIntArray &creaseIndices = subdivTags.GetCreaseIndices();
+		const VtFloatArray &creaseSharpness = subdivTags.GetCreaseWeights();
+		if (!creaseIndices.empty() && !creaseSharpness.empty())
+		{
+			attrs.push(NSI::Argument::New("subdivision.creasevertices")
+				->SetType(NSITypeInteger)
+				->SetCount(creaseIndices.size())
+				->SetValuePointer(creaseIndices.data()));
+			attrs.push(NSI::Argument::New("subdivision.creasesharpness")
+				->SetType(NSITypeFloat)
+				->SetCount(creaseSharpness.size())
+				->SetValuePointer(creaseSharpness.data()));
+		}
 
-        if (!attrs.empty())
-        {
-            nsi.SetAttribute(_base.Shape(), attrs);
-        }
-    }
+		if (!attrs.empty())
+		{
+			nsi.SetAttribute(_base.Shape(), attrs);
+		}
+	}
 
-    ////////////////////////////////////////////////////////////////////////
-    // 2. Resolve drawstyles
+	////////////////////////////////////////////////////////////////////////
+	// 2. Resolve drawstyles
 
-    // The repr defines whether we should compute smooth normals for this mesh:
-    // per-vertex normals taken as an average of adjacent faces, and
-    // interpolated smoothly across faces.
-    _smoothNormals = !desc.flatShadingEnabled;
+	// The repr defines whether we should compute smooth normals for this mesh:
+	// per-vertex normals taken as an average of adjacent faces, and
+	// interpolated smoothly across faces.
+	_smoothNormals = !desc.flatShadingEnabled;
 
-    // If the subdivision scheme is "none" or "bilinear", force us not to use
-    // smooth normals.
+	// If the subdivision scheme is "none" or "bilinear", force us not to use
+	// smooth normals.
 #if 0
-    _smoothNormals = _smoothNormals &&
-        (_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
-        (_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
+	_smoothNormals = _smoothNormals &&
+		(_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
+		(_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
 #endif
-    /* Don't compute smooth normals on a subdiv. They are implicitly smooth. */
-    _smoothNormals = _smoothNormals &&
-        _topology.GetScheme() != PxOsdOpenSubdivTokens->catmullClark;
+	/* Don't compute smooth normals on a subdiv. They are implicitly smooth. */
+	_smoothNormals = _smoothNormals &&
+		_topology.GetScheme() != PxOsdOpenSubdivTokens->catmullClark;
 
 
-    _material.Sync(
-        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape());
+	_material.Sync(
+		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+		_base.Shape());
 
-    _primvars.Sync(
-        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape(), _faceVertexIndices);
+	_primvars.Sync(
+		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
+		_base.Shape(), _faceVertexIndices);
 
 	/*
 		Update the generated smooth normals, if required. If there are no
@@ -290,8 +293,8 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 		}
 	}
 
-    // Clean all dirty bits.
-    *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;
+	// Clean all dirty bits.
+	*dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
