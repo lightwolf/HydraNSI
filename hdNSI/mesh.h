@@ -160,29 +160,19 @@ private:
                          HdDirtyBits *dirtyBits,
                          HdMeshReprDesc const &desc);
 
-    // Utility function to create a NSI triangle mesh and populate topology.
-    void _SetNSIMeshAttributes(NSI::Context &nsi);
-
 private:
     // Cached scene data. VtArrays are reference counted, so as long as we
     // only call const accessors keeping them around doesn't incur a buffer
     // copy.
     HdMeshTopology _topology;
-    VtVec3fArray _points;
-    VtIntArray _faceVertexCounts;
     VtIntArray _faceVertexIndices;
 
     Hd_VertexAdjacency _adjacency;
-    VtVec3fArray _normals;
-    HdInterpolation _normalsInterpolation;
-    bool _adjacencyValid;
-    bool _computedNormalsValid;
-    bool _authoredNormals;
     bool _smoothNormals;
 
     HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
-    HdNSIPrimvars _primvars;
+    HdNSIPrimvars _primvars{true};
 
     // This class does not support copying.
     HdNSIMesh(const HdNSIMesh&)             = delete;

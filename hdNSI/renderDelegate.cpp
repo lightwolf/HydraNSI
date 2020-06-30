@@ -45,6 +45,7 @@
 #include <pxr/base/tf/getenv.h>
 #include <pxr/base/tf/fileUtils.h>
 #include <pxr/imaging/hd/camera.h>
+#include <pxr/imaging/hd/extComputation.h>
 #include <pxr/imaging/hd/resourceRegistry.h>
 
 #include <delight.h>
@@ -77,7 +78,8 @@ const TfTokenVector HdNSIRenderDelegate::SUPPORTED_SPRIM_TYPES =
     HdPrimTypeTokens->distantLight,
     HdPrimTypeTokens->domeLight,
     HdPrimTypeTokens->rectLight,
-    HdPrimTypeTokens->sphereLight
+    HdPrimTypeTokens->sphereLight,
+    HdPrimTypeTokens->extComputation,
 };
 
 const TfTokenVector HdNSIRenderDelegate::SUPPORTED_BPRIM_TYPES =
@@ -484,6 +486,10 @@ HdNSIRenderDelegate::CreateSprim(TfToken const& typeId,
     {
         return new HdNSIMaterial(sprimId);
     }
+    else if (typeId == HdPrimTypeTokens->extComputation)
+    {
+        return new HdExtComputation(sprimId);
+    }
     else
     {
         TF_CODING_ERROR("Unknown Sprim Type %s", typeId.GetText());
@@ -515,6 +521,10 @@ HdNSIRenderDelegate::CreateFallbackSprim(TfToken const& typeId)
         typeId == HdPrimTypeTokens->sphereLight )
     {
         /* Not sure this is of any use to us so don't create any for now. */
+        return nullptr;
+    }
+    else if (typeId == HdPrimTypeTokens->extComputation)
+    {
         return nullptr;
     }
     else

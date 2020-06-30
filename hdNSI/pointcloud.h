@@ -161,7 +161,7 @@ private:
 private:
     HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
-    HdNSIPrimvars _primvars;
+    HdNSIPrimvars _primvars{false};
 
     // This class does not support copying.
     HdNSIPointCloud(const HdNSIPointCloud&)             = delete;

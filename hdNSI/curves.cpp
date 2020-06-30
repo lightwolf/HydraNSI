@@ -144,40 +144,6 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
 
     SdfPath const& id = GetId();
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points))
-    {
-        VtValue pointsVal = GetPrimvar(sceneDelegate, HdTokens->points);
-        const auto &points = pointsVal.Get<VtVec3fArray>();
-
-        nsi.SetAttribute(_base.Shape(),
-            *NSI::Argument("P")
-            .SetType(NSITypePoint)
-            ->SetCount(points.size())
-            ->SetValuePointer(points.cdata()));
-    }
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals))
-    {
-        VtValue normalsVal = GetPrimvar(sceneDelegate, HdTokens->normals);
-        const auto &normals = normalsVal.Get<VtVec3fArray>();
-        nsi.SetAttribute(_base.Shape(),
-            *NSI::Argument("N")
-            .SetType(NSITypeNormal)
-            ->SetCount(normals.size())
-            ->SetValuePointer(normals.cdata()));
-    }
-
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->widths))
-    {
-        VtValue widthsVal = GetPrimvar(sceneDelegate, HdTokens->widths);
-        const auto &widths = widthsVal.Get<VtFloatArray>();
-        nsi.SetAttribute(_base.Shape(),
-            *NSI::Argument("width")
-            .SetType(NSITypeFloat)
-            ->SetCount(widths.size())
-            ->SetValuePointer(widths.cdata()));
-    }
-
     if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id))
     {
         const HdBasisCurvesTopology &topology =

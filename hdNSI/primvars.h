@@ -17,6 +17,17 @@ class HdNSIRenderParam;
 class HdNSIPrimvars
 {
 public:
+	/**
+		\param keep_points
+			If true, a reference is kept on exported points so they can be used
+			by external code. This is meant for the mesh normal generation.
+	*/
+	HdNSIPrimvars(bool keep_points)
+	:
+		m_keep_points{keep_points}
+	{
+	}
+
 	void Sync(
 		HdSceneDelegate *sceneDelegate,
 		HdNSIRenderParam *renderParam,
@@ -33,6 +44,9 @@ public:
 		const VtValue &value,
 		int flags);
 
+	bool HasNormals() const { return m_has_normals; }
+	const VtVec3fArray& GetPoints() const { return m_points; }
+
 private:
 	void SetOnePrimvar(
 		HdSceneDelegate *sceneDelegate,
@@ -40,7 +54,8 @@ private:
 		const SdfPath &primId,
 		const std::string &geoHandle,
 		const VtIntArray &vertexIndices,
-		const HdPrimvarDescriptor &primvar);
+		const HdPrimvarDescriptor &primvar,
+		const VtValue value);
 
 	void SetObjectAttributes(
 		HdSceneDelegate *sceneDelegate,
@@ -56,6 +71,12 @@ private:
 		const std::string &geoHandle,
 		const HdPrimvarDescriptor &primvar);
 
+	/* Track if we exported the normals primvar. */
+	bool m_has_normals{false};
+	/* If true, keep a reference to exported points. */
+	bool m_keep_points{false};
+	/* The exported points, if above var is true. */
+	VtVec3fArray m_points;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

@@ -44,10 +44,6 @@ PXR_NAMESPACE_OPEN_SCOPE
 HdNSIMesh::HdNSIMesh(SdfPath const& id,
                      SdfPath const& instancerId)
     : HdMesh(id, instancerId)
-    , _normalsInterpolation(HdInterpolationFaceVarying)
-    , _adjacencyValid(false)
-    , _computedNormalsValid(false)
-    , _authoredNormals(false)
     , _smoothNormals(false)
     , _base{"mesh"}
 {
@@ -139,47 +135,6 @@ HdNSIMesh::Sync(HdSceneDelegate* sceneDelegate,
     _PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
 }
 
-void
-HdNSIMesh::_SetNSIMeshAttributes(NSI::Context &nsi)
-{
-    NSI::ArgumentList attrs;
-
-    // "nvertices"
-    attrs.push(NSI::Argument::New("nvertices")
-        ->SetType(NSITypeInteger)
-        ->SetCount(_faceVertexCounts.size())
-        ->SetValuePointer(_faceVertexCounts.cdata()));
-
-    // "P"
-    attrs.push(NSI::Argument::New("P")
-        ->SetType(NSITypePoint)
-        ->SetCount(_points.size())
-        ->SetValuePointer(_points.cdata()));
-
-    // "P.indices"
-    attrs.push(NSI::Argument::New("P.indices")
-        ->SetType(NSITypeInteger)
-        ->SetCount(_faceVertexIndices.size())
-        ->SetValuePointer(_faceVertexIndices.cdata()));
-
-    // "N"
-    if (_normals.size()) {
-        attrs.push(NSI::Argument::New("N")
-            ->SetType(NSITypeNormal)
-            ->SetCount(_normals.size())
-            ->SetValuePointer(_normals.cdata()));
-
-        if (_normalsInterpolation == HdInterpolationVertex)
-        {
-            attrs.push(NSI::Argument::New("N.indices")
-                ->SetType(NSITypeInteger)
-                ->SetCount(_faceVertexIndices.size())
-                ->SetValuePointer(_faceVertexIndices.cdata()));
-        }
-    }
-
-    nsi.SetAttribute(_base.Shape(), attrs);
-}
 
 void
 HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
@@ -193,16 +148,11 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
 
     SdfPath const& id = GetId();
 
-    ////////////////////////////////////////////////////////////////////////
-    // 1. Pull scene data.
+	bool dirty_points = HdChangeTracker::IsPrimvarDirty(
+		*dirtyBits, id, HdTokens->points);
+	bool dirty_topology = HdChangeTracker::IsTopologyDirty(*dirtyBits, id);
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        VtValue pointsValue = sceneDelegate->Get(id, HdTokens->points);
-        _points = pointsValue.Get<VtVec3fArray>();
-        _computedNormalsValid = false;
-    }
-
-    if (HdChangeTracker::IsTopologyDirty(*dirtyBits, id))
+	if (dirty_topology)
     {
         /*
             Note that the refine level comes from
@@ -212,20 +162,28 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         */
         _topology = GetMeshTopology(sceneDelegate);
 
-        _faceVertexCounts = _topology.GetFaceVertexCounts();
+		VtIntArray faceVertexCounts = _topology.GetFaceVertexCounts();
         _faceVertexIndices = _topology.GetFaceVertexIndices();
-        _adjacencyValid = false;
-        _computedNormalsValid = false;
+
+		NSI::ArgumentList attrs;
+
+		/* Number of vertices for each face. */
+		attrs.push(NSI::Argument::New("nvertices")
+			->SetType(NSITypeInteger)
+			->SetCount(faceVertexCounts.size())
+			->SetValuePointer(faceVertexCounts.cdata()));
 
         /* Set winding order. */
-        nsi.SetAttribute(_base.Shape(), NSI::IntegerArg("clockwisewinding",
+		attrs.push(new NSI::IntegerArg("clockwisewinding",
             _topology.GetOrientation() == HdTokens->leftHanded ? 1 : 0));
 
         /* Enable (or not) subdivision. */
         bool subdiv =
             _topology.GetScheme() == PxOsdOpenSubdivTokens->catmullClark;
-        nsi.SetAttribute(_base.Shape(), NSI::CStringPArg("subdivision.scheme",
+		attrs.push(new NSI::CStringPArg("subdivision.scheme",
                 subdiv ? "catmull-clark" : ""));
+
+		nsi.SetAttribute(_base.Shape(), attrs);
     }
 
     if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id))
@@ -267,25 +225,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         }
     }
 
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->normals)) {
-        // TODO: support other interpolations than FaceVarying (ie, uniform, vertex)
-
-        // If we just do "GetNormals" when there are no normals,  it will
-        // raise a scary error... but there's no "easy" way to check if normals
-        // are defined - so we use GetPrimvarDescriptors, and iterate through all
-        auto primvars = GetPrimvarDescriptors(sceneDelegate, HdInterpolationFaceVarying);
-        for (HdPrimvarDescriptor const& pv: primvars) {
-            if (pv.name == HdTokens->normals) {
-                VtValue normalsValue = GetNormals(sceneDelegate);
-                if (normalsValue.IsHolding<VtVec3fArray>()) {
-                    _normals = normalsValue.UncheckedGet<VtVec3fArray>();
-                    _authoredNormals = true;
-                    _normalsInterpolation = pv.interpolation;
-                }
-            }
-        }
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // 2. Resolve drawstyles
 
@@ -305,35 +244,6 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
     _smoothNormals = _smoothNormals &&
         _topology.GetScheme() != PxOsdOpenSubdivTokens->catmullClark;
 
-    ////////////////////////////////////////////////////////////////////////
-    // 3. Populate NSI prototype object.
-
-    // Update normals
-    if (!_authoredNormals && _smoothNormals) {
-        _normalsInterpolation = HdInterpolationVertex;
-        // Update the smooth normals in steps:
-       // 1. If the topology is dirty, update the adjacency table, a processed
-       //    form of the topology that helps calculate smooth normals quickly.
-       // 2. If the points are dirty, update the smooth normal buffer itself.
-        if (!_adjacencyValid) {
-            _adjacency.BuildAdjacencyTable(&_topology);
-            _adjacencyValid = true;
-            // If we rebuilt the adjacency table, force a rebuild of normals.
-            _computedNormalsValid = false;
-        }
-        if (!_computedNormalsValid) {
-            _normals = Hd_SmoothNormals::ComputeSmoothNormals(
-                &_adjacency, _points.size(), _points.cdata());
-            _computedNormalsValid = true;
-        }
-    }
-    // If we have no authored normals, but we're not doing smooth normals, we just let
-    // 3delight use it's own default normals
-
-    // Populate/update points in the NSI mesh.
-    if (HdChangeTracker::IsPrimvarDirty(*dirtyBits, id, HdTokens->points)) {
-        _SetNSIMeshAttributes(nsi);
-    }
 
     _material.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
@@ -343,9 +253,46 @@ HdNSIMesh::_PopulateRtMesh(HdSceneDelegate* sceneDelegate,
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
         _base.Shape(), _faceVertexIndices);
 
+	/*
+		Update the generated smooth normals, if required. If there are no
+		authored normals and no need for smooth normals, we let 3Delight use
+		its own default normals.
+	*/
+	if (!_primvars.HasNormals() && _smoothNormals)
+	{
+		/*
+			If the topology is dirty, update the adjacency table, a processed
+			form of the topology that helps calculate smooth normals quickly.
+		*/
+		if (dirty_topology)
+		{
+			_adjacency.BuildAdjacencyTable(&_topology);
+		}
+		/*
+			If the points are dirty, or the topology above changed, update the
+			smooth normals.
+		*/
+		if( dirty_topology || dirty_points )
+		{
+			const VtVec3fArray &points = _primvars.GetPoints();
+			VtVec3fArray normals = Hd_SmoothNormals::ComputeSmoothNormals(
+				&_adjacency, points.size(), points.cdata());
+
+			nsi.SetAttribute(_base.Shape(), (
+				*NSI::Argument("N")
+					.SetType(NSITypeNormal)
+					->SetCount(normals.size())
+					->SetValuePointer(normals.cdata()),
+				*NSI::Argument("N.indices")
+					.SetType(NSITypeInteger)
+					->SetCount(_faceVertexIndices.size())
+					->SetValuePointer(_faceVertexIndices.cdata())));
+		}
+	}
+
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
-// vim: set softtabstop=4 expandtab shiftwidth=4:
+// vim: set softtabstop=0 noexpandtab shiftwidth=4:
