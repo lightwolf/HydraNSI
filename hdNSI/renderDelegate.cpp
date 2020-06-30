@@ -672,7 +672,7 @@ void HdNSIRenderDelegate::SetMaxDistance() const
     double l = s.IsHolding<float>() ? s.Get<float>() : s.Get<double>();
 
     _nsi->SetAttribute(NSI_SCENE_GLOBAL,
-        NSI::DoubleArg("maximumraylength", l));
+        NSI::DoubleArg("maximumraylength.diffuse", l));
 }
 
 /*
