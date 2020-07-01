@@ -2,6 +2,7 @@
 #define HDNSI_PRIMVARS_H
 
 #include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/imaging/hd/timeSampleArray.h>
 
 #include <nsi.hpp>
 
@@ -28,6 +29,19 @@ public:
 	{
 	}
 
+	class SampleArray : public HdTimeSampleArray<VtValue, 4>
+	{
+	public:
+		SampleArray() = default;
+		/* Convenience constructor for the case with no motion blur. */
+		SampleArray(const VtValue &value)
+		{
+			Resize(1);
+			times[0] = 0.0f;
+			values[0] = value;
+		}
+	};
+
 	void Sync(
 		HdSceneDelegate *sceneDelegate,
 		HdNSIRenderParam *renderParam,
@@ -42,7 +56,9 @@ public:
 		const std::string &nodeHandle,
 		const HdPrimvarDescriptor &primvar,
 		const VtValue &value,
-		int flags);
+		int flags,
+		double sample_time,
+		bool use_time);
 
 	bool HasNormals() const { return m_has_normals; }
 	const VtVec3fArray& GetPoints() const { return m_points; }
@@ -55,7 +71,7 @@ private:
 		const std::string &geoHandle,
 		const VtIntArray &vertexIndices,
 		const HdPrimvarDescriptor &primvar,
-		const VtValue value);
+		const SampleArray &values);
 
 	void SetObjectAttributes(
 		HdSceneDelegate *sceneDelegate,

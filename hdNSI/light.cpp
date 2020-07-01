@@ -2,6 +2,7 @@
 
 #include "renderDelegate.h"
 #include "renderParam.h"
+#include "rprimBase.h"
 
 #include <pxr/imaging/hd/changeTracker.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
@@ -42,17 +43,8 @@ void HdNSILight::Sync(
 
 	if (0 != (*dirtyBits & DirtyTransform))
 	{
-		/* sceneDelegate->GetTransform() does not work on lights. */
-		constexpr int kMaxSamples = 4;
-		GfMatrix4d trs[kMaxSamples];
-		float t[kMaxSamples];
-		size_t n = sceneDelegate->SampleTransform(
-			GetId(), kMaxSamples, &t[0], &trs[0]);
-		for (size_t i = 0; i < n; ++i)
-		{
-			nsi.SetAttributeAtTime(xform_handle, t[i],
-				NSI::DoubleMatrixArg("transformationmatrix", trs[i].data()));
-		}
+		HdNSIRprimBase::ExportTransform(
+			sceneDelegate, GetId(), nsi, xform_handle);
 	}
 
 	if (0 != (*dirtyBits & DirtyParams))

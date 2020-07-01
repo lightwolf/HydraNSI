@@ -33,6 +33,12 @@ public:
 	const std::string& Shape() const { return _masterShapeHandle; }
 	const std::string& Attrs() const { return _attrsHandle; }
 
+	static void ExportTransform(
+		HdSceneDelegate *sceneDelegate,
+		const SdfPath &id,
+		NSI::Context &nsi,
+		const std::string &handle);
+
 private:
 	void Create(
 		NSI::Context &nsi,

@@ -305,7 +305,7 @@ void HdNSIInstancer::ExportInstancePrimvars(
         }
 
         HdNSIPrimvars::SetAttributeFromValue(
-            nsi, instancesHandle, item.second.descriptor, newv, 0);
+            nsi, instancesHandle, item.second.descriptor, newv, 0, 0.0, false);
     }
 }
 

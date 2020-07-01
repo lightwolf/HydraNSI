@@ -58,9 +58,7 @@ void HdNSIRprimBase::Sync(
 	/* The transform of the rprim itself. */
 	if (HdChangeTracker::IsTransformDirty(*dirtyBits, id))
 	{
-		GfMatrix4d transform = sceneDelegate->GetTransform(id);
-		nsi.SetAttribute(_xformHandle,
-			NSI::DoubleMatrixArg("transformationmatrix", transform.GetArray()));
+		ExportTransform(sceneDelegate, id, nsi, _xformHandle);
 	}
 
 	/* Output the primId. */
@@ -100,6 +98,34 @@ void HdNSIRprimBase::Finalize(HdNSIRenderParam *renderParam)
 
 	nsi.Delete(_attrsHandle);
 	_attrsHandle.clear();
+}
+
+void HdNSIRprimBase::ExportTransform(
+	HdSceneDelegate *sceneDelegate,
+	const SdfPath &id,
+	NSI::Context &nsi,
+	const std::string &handle)
+{
+	HdTimeSampleArray<GfMatrix4d, 4> samples;
+	sceneDelegate->SampleTransform(id, &samples);
+	if( samples.count == 1 )
+	{
+		nsi.SetAttribute(handle,
+			NSI::DoubleMatrixArg("transformationmatrix",
+				samples.values[0].GetArray()));
+	}
+	else
+	{
+		/* Delete previous motion samples so we don't add to them. */
+		nsi.DeleteAttribute(handle, "transformationmatrix");
+		/* Output the new samples. */
+		for (size_t i = 0; i < samples.count; ++i )
+		{
+			nsi.SetAttributeAtTime(handle, samples.times[i],
+				NSI::DoubleMatrixArg("transformationmatrix",
+					samples.values[i].GetArray()));
+		}
+	}
 }
 
 void HdNSIRprimBase::Create(

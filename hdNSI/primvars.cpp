@@ -66,7 +66,8 @@ void HdNSIPrimvars::Sync(
 			}
 			else
 			{
-				VtValue v = sceneDelegate->Get(primId, primvar.name);
+				SampleArray v;
+				sceneDelegate->SamplePrimvar(primId, primvar.name, &v);
 				SetOnePrimvar(
 					sceneDelegate, nsi, primId, geoHandle, vertexIndices,
 					primvar, v);
@@ -137,12 +138,33 @@ std::string TokenToAttName(const TfToken &token)
 }
 }
 
+/**
+	\param nsi
+		The nsi context to use.
+	\param nodeHandle
+		The nsi node handle to set the attribute for.
+	\param primvar
+		The primvar description of the attribute to set.
+	\param value
+		The value to set the attribute to.
+	\param flags
+		The nsi flags to use when setting the attribute.
+	\param sample_time
+		The time at which the value should be set.
+	\param use_time
+		If true, we set the attribute for a specific time. If false, the
+		attribute is set without a time value and applies for all times.
+	\returns
+		true on success, false if the attribute has a type we could not handle.
+*/
 bool HdNSIPrimvars::SetAttributeFromValue(
 	NSI::Context &nsi,
 	const std::string &nodeHandle,
 	const HdPrimvarDescriptor &primvar,
 	const VtValue &value,
-	int flags)
+	int flags,
+	double sample_time,
+	bool use_time)
 {
 	const std::string &argName = TokenToAttName(primvar.name);
 
@@ -159,29 +181,53 @@ bool HdNSIPrimvars::SetAttributeFromValue(
 	else if (value.IsHolding<VtArray<float>>())
 	{
 		const auto &v_array = value.Get<VtArray<float>>();
-		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
-			.SetType(NSITypeFloat)
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()));
+		NSI::Argument arg(argName);
+		arg.SetType(NSITypeFloat);
+		arg.SetCount(v_array.size());
+		arg.SetFlags(flags);
+		arg.SetValuePointer(v_array.cdata());
+		if (use_time)
+		{
+			nsi.SetAttributeAtTime(nodeHandle, sample_time, arg);
+		}
+		else
+		{
+			nsi.SetAttribute(nodeHandle, arg);
+		}
 	}
 	else if (value.IsHolding<VtArray<GfVec2f>>())
 	{
 		const auto &v_array = value.Get<VtArray<GfVec2f>>();
-		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
-			.SetArrayType(NSITypeFloat, 2)
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()->data()));
+		NSI::Argument arg(argName);
+		arg.SetArrayType(NSITypeFloat, 2);
+		arg.SetCount(v_array.size());
+		arg.SetFlags(flags);
+		arg.SetValuePointer(v_array.cdata()->data());
+		if (use_time)
+		{
+			nsi.SetAttributeAtTime(nodeHandle, sample_time, arg);
+		}
+		else
+		{
+			nsi.SetAttribute(nodeHandle, arg);
+		}
 	}
 	else if (value.IsHolding<VtArray<GfVec3f>>())
 	{
 		const auto &v_array = value.Get<VtArray<GfVec3f>>();
-		nsi.SetAttribute(nodeHandle, *NSI::Argument(argName)
-			.SetType(RoleTo3fType(primvar.role))
-			->SetCount(v_array.size())
-			->SetFlags(flags)
-			->SetValuePointer(v_array.cdata()->data()));
+		NSI::Argument arg(argName);
+		arg.SetType(RoleTo3fType(primvar.role));
+		arg.SetCount(v_array.size());
+		arg.SetFlags(flags);
+		arg.SetValuePointer(v_array.cdata()->data());
+		if (use_time)
+		{
+			nsi.SetAttributeAtTime(nodeHandle, sample_time, arg);
+		}
+		else
+		{
+			nsi.SetAttribute(nodeHandle, arg);
+		}
 	}
 	else if (value.IsHolding<int>())
 	{
@@ -255,28 +301,42 @@ void HdNSIPrimvars::SetOnePrimvar(
 	const std::string &geoHandle,
 	const VtIntArray &vertexIndices,
 	const HdPrimvarDescriptor &primvar,
-	const VtValue value)
+	const SampleArray &values)
 {
-	if (value.IsEmpty())
-		return;
-
-	/* Track of we export normals. */
-	m_has_normals = m_has_normals || primvar.name == HdTokens->normals;
-	/* Hold onto points if requested. */
-	if (m_keep_points && primvar.name == HdTokens->points &&
-	    value.IsHolding<VtVec3fArray>())
+	bool has_motion = values.count > 1;
+	if (has_motion)
 	{
-		m_points = value.Get<VtVec3fArray>();
+		/* Delete previous motion samples so we don't add to them. */
+		nsi.DeleteAttribute(geoHandle, TokenToAttName(primvar.name));
 	}
-
-	int flags = 0;
-	if (primvar.interpolation == HdInterpolationVarying)
+	for (size_t i = 0; i < values.count; ++i )
 	{
-		flags |= NSIParamInterpolateLinear;
-	}
+		const VtValue &value = values.values[i];
+		if (value.IsEmpty())
+			return;
 
-	if (!SetAttributeFromValue(nsi, geoHandle, primvar, value, flags))
-		return;
+		/* Track if we export normals. */
+		m_has_normals = m_has_normals || primvar.name == HdTokens->normals;
+		/* Hold onto points if requested. */
+		if (m_keep_points && primvar.name == HdTokens->points &&
+			value.IsHolding<VtVec3fArray>())
+		{
+			m_points = value.Get<VtVec3fArray>();
+		}
+
+		int flags = 0;
+		if (primvar.interpolation == HdInterpolationVarying)
+		{
+			flags |= NSIParamInterpolateLinear;
+		}
+
+		if (!SetAttributeFromValue(
+				nsi, geoHandle, primvar, value, flags,
+				values.times[i], has_motion))
+		{
+			return;
+		}
+	}
 
 	/* Output indices if needed. */
 	if (primvar.interpolation == HdInterpolationVertex && !vertexIndices.empty())
