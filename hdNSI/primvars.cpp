@@ -36,7 +36,8 @@ void HdNSIPrimvars::Sync(
 		HdInterpolationUniform,
 		HdInterpolationVarying,
 		HdInterpolationVertex,
-		HdInterpolationFaceVarying
+		HdInterpolationFaceVarying,
+		HdInterpolationInstance
 	};
 
 	if (0 != (*dirtyBits & HdChangeTracker::DirtyNormals))
@@ -51,6 +52,9 @@ void HdNSIPrimvars::Sync(
 
 		for (const HdPrimvarDescriptor &primvar : primvars)
 		{
+			if (!ShouldUpdateVar(*dirtyBits, primId, primvar.name))
+				continue;
+
 			const std::string &primvar_name = primvar.name.GetString();
 
 			/* Ignore the ones starting with '__' for now. Specifically, we
@@ -80,8 +84,7 @@ void HdNSIPrimvars::Sync(
 		HdExtComputationPrimvarDescriptorVector dirty_comp;
 		for (const HdExtComputationPrimvarDescriptor &primvar : compvars)
 		{
-			if (HdChangeTracker::IsPrimvarDirty(
-					*dirtyBits, primId, primvar.name))
+			if (ShouldUpdateVar(*dirtyBits, primId, primvar.name))
 			{
 				dirty_comp.emplace_back(primvar);
 			}
@@ -239,6 +242,25 @@ bool HdNSIPrimvars::SetAttributeFromValue(
 		return false;
 	}
 	return true;
+}
+
+/**
+	\returns
+		true if a specific primvar should be processed.
+*/
+bool HdNSIPrimvars::ShouldUpdateVar(
+	HdDirtyBits dirtyBits,
+	const SdfPath &id,
+	const TfToken &var) const
+{
+	/* Check the skip list. */
+	for( const TfToken &t : m_skip )
+	{
+		if (t == var)
+			return false;
+	}
+	/* Only process the dirty ones. */
+	return HdChangeTracker::IsPrimvarDirty(dirtyBits, id, var);
 }
 
 /**

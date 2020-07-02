@@ -29,11 +29,11 @@
 #include "camera.h"
 #include "curves.h"
 #include "field.h"
-#include "instancer.h"
 #include "light.h"
 #include "material.h"
 #include "mesh.h"
 #include "pointcloud.h"
+#include "pointInstancer.h"
 #include "renderBuffer.h"
 #include "renderParam.h"
 #include "renderPass.h"
@@ -429,12 +429,13 @@ HdNSIRenderDelegate::CreateInstancer(HdSceneDelegate *delegate,
                                         SdfPath const& id,
                                         SdfPath const& instancerId)
 {
-    return new HdNSIInstancer(delegate, id, instancerId);
+    return new HdNSIPointInstancer(delegate, id, instancerId);
 }
 
 void
 HdNSIRenderDelegate::DestroyInstancer(HdInstancer *instancer)
 {
+    static_cast<HdNSIPointInstancer*>(instancer)->Destroy(_renderParam.get());
     delete instancer;
 }
 

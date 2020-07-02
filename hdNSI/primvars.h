@@ -63,7 +63,15 @@ public:
 	bool HasNormals() const { return m_has_normals; }
 	const VtVec3fArray& GetPoints() const { return m_points; }
 
+	/* Set primvars which will not be processed. */
+	void SetSkipVars(const TfTokenVector &skip) { m_skip = skip; }
+
 private:
+	bool ShouldUpdateVar(
+		HdDirtyBits dirtyBits,
+		const SdfPath &id,
+		const TfToken &var) const;
+
 	void SetOnePrimvar(
 		HdSceneDelegate *sceneDelegate,
 		NSI::Context &nsi,
@@ -93,6 +101,9 @@ private:
 	bool m_keep_points{false};
 	/* The exported points, if above var is true. */
 	VtVec3fArray m_points;
+	/* Skipped primvars. */
+	TfTokenVector m_skip;
+
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

@@ -19,7 +19,6 @@ add_library(
 	curves.cpp
 	discoveryPlugin.cpp
 	field.cpp
-	instancer.cpp
 	light.cpp
 	materialAssign.cpp
 	material.cpp
@@ -27,6 +26,7 @@ add_library(
 	osoParserPlugin.cpp
 	outputDriver.cpp
 	pointcloud.cpp
+	pointInstancer.cpp
 	primvars.cpp
 	renderBuffer.cpp
 	renderDelegate.cpp

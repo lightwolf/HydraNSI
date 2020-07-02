@@ -44,7 +44,7 @@ void HdNSILight::Sync(
 	if (0 != (*dirtyBits & DirtyTransform))
 	{
 		HdNSIRprimBase::ExportTransform(
-			sceneDelegate, GetId(), nsi, xform_handle);
+			sceneDelegate, GetId(), false, nsi, xform_handle);
 	}
 
 	if (0 != (*dirtyBits & DirtyParams))

@@ -1,6 +1,6 @@
 #include "rprimBase.h"
 
-#include "instancer.h"
+#include "pointInstancer.h"
 #include "renderDelegate.h"
 
 #include <pxr/imaging/hd/rprim.h>
@@ -16,6 +16,7 @@ void HdNSIRprimBase::Sync(
 	const HdRprim &rprim)
 {
 	NSI::Context &nsi = renderParam->AcquireSceneForEdit();
+	bool first = _masterShapeHandle.empty();
 
 	/* Make sure the nodes are created. */
 	Create(nsi, rprim);
@@ -24,41 +25,20 @@ void HdNSIRprimBase::Sync(
 
 	SdfPath const& id = rprim.GetId();
 
-	/* Update instance transforms. */
+	/* Update instancer. */
 	/* FIXME: Track invalidation properly instead of always updating. */
 	if (!rprim.GetInstancerId().IsEmpty())
 	{
-		/* Retrieve instance transforms from the instancer. */
 		HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
-		HdNSIInstancer *instancer = static_cast<HdNSIInstancer*>(
+		auto instancer = static_cast<HdNSIPointInstancer*>(
 			renderIndex.GetInstancer(rprim.GetInstancerId()));
-		const VtMatrix4dArray &transforms = instancer->
-			ComputeInstanceTransforms(id);
-
-		/* Hope GfMatrix4d* and double* are equivalent :) */
-		nsi.SetAttribute(_instancesHandle,
-			*NSI::Argument("transformationmatrices")
-			.SetType(NSITypeDoubleMatrix)
-			->SetCount(transforms.size())
-			->SetValuePointer(transforms.data()));
-
-        /* Add the instanceId attribute for that AOV. */
-        std::vector<int> instanceid(transforms.size());
-        std::iota(instanceid.begin(), instanceid.end(), 0);
-        nsi.SetAttribute(_instancesHandle,
-            *NSI::Argument("instanceId")
-            .SetType(NSITypeInteger)
-            ->SetCount(instanceid.size())
-            ->SetValuePointer(instanceid.data()));
-
-		/* Export generic instance primvars. */
-		instancer->ExportInstancePrimvars(id, renderParam, _instancesHandle);
+		instancer->SyncPrototype(renderParam, id, _xformHandle, first);
 	}
 
 	/* The transform of the rprim itself. */
 	if (HdChangeTracker::IsTransformDirty(*dirtyBits, id))
 	{
-		ExportTransform(sceneDelegate, id, nsi, _xformHandle);
+		ExportTransform(sceneDelegate, id, false, nsi, _xformHandle);
 	}
 
 	/* Output the primId. */
@@ -93,21 +73,41 @@ void HdNSIRprimBase::Finalize(HdNSIRenderParam *renderParam)
 	nsi.Delete(_xformHandle);
 	_xformHandle.clear();
 
-	nsi.Delete(_instancesHandle);
-	_instancesHandle.clear();
-
 	nsi.Delete(_attrsHandle);
 	_attrsHandle.clear();
 }
 
+/**
+	\brief Sample and export the transform for a prim.
+
+	\param sceneDelegate
+		The scene delegate. Duh.
+	\param id
+		The prim's id.
+	\param isInstancer
+		Because Hydra APIs are dumb and there is a different call to get the
+		transform of an instancer.
+	\param nsi
+		The NSI context.
+	\param handle
+		The transform node handle to export to.
+*/
 void HdNSIRprimBase::ExportTransform(
 	HdSceneDelegate *sceneDelegate,
 	const SdfPath &id,
+	bool isInstancer,
 	NSI::Context &nsi,
 	const std::string &handle)
 {
 	HdTimeSampleArray<GfMatrix4d, 4> samples;
-	sceneDelegate->SampleTransform(id, &samples);
+	if (isInstancer)
+	{
+		sceneDelegate->SampleInstancerTransform(id, &samples);
+	}
+	else
+	{
+		sceneDelegate->SampleTransform(id, &samples);
+	}
 	if( samples.count == 1 )
 	{
 		nsi.SetAttribute(handle,
@@ -150,11 +150,7 @@ void HdNSIRprimBase::Create(
 	}
 	else
 	{
-		/* Go through an instances node to have multiple instances. */
-		_instancesHandle = id.GetString() + "|instances";
-		nsi.Create(_instancesHandle, "instances");
-		nsi.Connect(_instancesHandle, "", NSI_SCENE_ROOT, "objects");
-		nsi.Connect(_xformHandle, "", _instancesHandle, "sourcemodels");
+		/* The instancer will connect the prototype to itself. */
 	}
 
 	/* Create the attributes node. */

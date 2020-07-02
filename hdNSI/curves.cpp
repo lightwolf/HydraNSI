@@ -26,7 +26,6 @@
 
 #include "curves.h"
 
-#include "instancer.h"
 #include "renderDelegate.h"
 #include "renderParam.h"
 #include "renderPass.h"

@@ -36,6 +36,7 @@ public:
 	static void ExportTransform(
 		HdSceneDelegate *sceneDelegate,
 		const SdfPath &id,
+		bool isInstancer,
 		NSI::Context &nsi,
 		const std::string &handle);
 
@@ -55,7 +56,6 @@ private:
 	/* NSI handles. */
 	std::string _masterShapeHandle;
 	std::string _xformHandle;
-	std::string _instancesHandle;
 	std::string _attrsHandle;
 
 	bool _firstSync{true};
