@@ -1,5 +1,6 @@
 #include "camera.h"
 
+#include "renderDelegate.h"
 #include "renderParam.h"
 
 #include <pxr/imaging/hd/sceneDelegate.h>
@@ -126,7 +127,28 @@ void HdNSICamera::Sync(
 		}
 		else
 		{
-			nsi.DeleteAttribute(m_camera_handle, "shutterrange");
+			/*
+				Look for a default shutter setting. This is a bit of a hack to
+				get motion blur in the houdini viewport until it gives us a
+				proper camera.
+			*/
+			static TfToken shutter_token{
+				"nsi:global:defaultshutter", TfToken::Immortal};
+			VtValue default_shutter = nsiRenderParam->GetRenderDelegate()
+				->GetRenderSetting(shutter_token);
+			if (default_shutter.IsHolding<GfVec2d>())
+			{
+				args.push(NSI::Argument::New("shutterrange")
+					->SetType(NSITypeDouble)
+					->SetCount(2)
+					->CopyValue(default_shutter.Get<GfVec2d>().data(),
+						2 * sizeof(double)));
+			}
+			else
+			{
+				/* You will have no motion blur today. */
+				nsi.DeleteAttribute(m_camera_handle, "shutterrange");
+			}
 		}
 	}
 
