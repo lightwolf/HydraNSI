@@ -353,7 +353,7 @@ HdAovDescriptor HdNSIRenderDelegate::GetDefaultAovDescriptor(
 {
     if (name == HdAovTokens->color)
     {
-        return HdAovDescriptor(HdFormatUNorm8Vec4, true, VtValue());
+        return HdAovDescriptor(HdFormatFloat32Vec4, true, VtValue());
     }
     else if (name == HdAovTokens->depth)
     {
