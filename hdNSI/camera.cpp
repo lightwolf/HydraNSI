@@ -2,6 +2,7 @@
 
 #include "renderDelegate.h"
 #include "renderParam.h"
+#include "rprimBase.h"
 
 #include <pxr/imaging/hd/sceneDelegate.h>
 
@@ -73,9 +74,8 @@ void HdNSICamera::Sync(
 
 	if (bits & DirtyViewMatrix)
 	{
-		nsi.SetAttribute(m_xform_handle,
-			NSI::DoubleMatrixArg("transformationmatrix",
-				GetViewInverseMatrix().data()));
+		HdNSIRprimBase::ExportTransform(
+			sceneDelegate, GetId(), false, nsi, m_xform_handle);
 	}
 
 	if (bits & DirtyWindowPolicy)
