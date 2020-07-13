@@ -218,6 +218,8 @@ public:
     DlShaderInfo* GetShaderInfo(const std::string &i_shader) const;
 
     const char* DefaultMaterialHandle() const { return "defaultShader"; }
+    const char* DefaultSurfaceNode() const
+        { return "defaultShader|PreviewSurface"; }
 
     bool IsBatch() const;
 

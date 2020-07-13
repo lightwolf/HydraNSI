@@ -61,6 +61,12 @@ public:
 	static const std::array<TfToken, 6>& VolumeNodeParameters();
 
 private:
+	void UseDefaultShader(
+		NSI::Context &nsi,
+		HdNSIRenderParam *renderParam,
+		const std::string &mat_handle,
+		bool use_default);
+
 	void ExportNetworks(
 		NSI::Context &nsi,
 		HdNSIRenderParam *renderParam,
@@ -72,14 +78,22 @@ private:
 		const HdMaterialNode &node);
 
 	void DeleteShaderNodes(NSI::Context &nsi);
+	void DeleteOneNetwork(
+		NSI::Context &nsi,
+		HdMaterialNetwork &network,
+		const HdMaterialNetwork &new_network);
 
 	static std::string EscapeOSLKeyword(const std::string &name);
 
 private:
 	/* true once the attributes node has been created. */
 	bool m_attributes_created;
-	/* Handles to all the nodes of the material's network. */
-	std::vector<std::string> m_network_nodes;
+	/* true when we've connected the default shader. */
+	bool m_use_default_shader{false};
+	/* Currently exported materials for the terminals we support. */
+	HdMaterialNetwork m_surface_network;
+	HdMaterialNetwork m_displacement_network;
+	HdMaterialNetwork m_volume_network;
 	/* Copy of the vdbVolume node, if we have one. */
 	std::unique_ptr<HdMaterialNode> m_vdbVolume;
 	/* List of the callbacks to invoke when the material changes. */

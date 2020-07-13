@@ -52,6 +52,7 @@ void HdNSIMaterial::Sync(
 	if (0 != (*dirtyBits & DirtyResource))
 	{
 		VtValue v = sceneDelegate->GetMaterialResource(GetId());
+		UseDefaultShader(nsi, nsiRenderParam, mat_handle, v.IsEmpty());
 		if (!v.IsEmpty())
 		{
 			ExportNetworks(
@@ -61,6 +62,39 @@ void HdNSIMaterial::Sync(
 	}
 
 	*dirtyBits = Clean;
+}
+
+void HdNSIMaterial::UseDefaultShader(
+	NSI::Context &nsi,
+	HdNSIRenderParam *renderParam,
+	const std::string &mat_handle,
+	bool use_default)
+{
+	if (use_default == m_use_default_shader)
+		return;
+
+	if (use_default)
+	{
+		/* Delete anything we exported previously. */
+		DeleteShaderNodes(nsi);
+		/*
+			Connect the default material network. This case (an empty material
+			resource) is what happens when materials are disabled globally by
+			Hydra. ie. usdview's View/Enable Scene Materials.
+		*/
+		nsi.Connect(
+			renderParam->GetRenderDelegate()->DefaultSurfaceNode(), "",
+			mat_handle, "surfaceshader");
+		m_use_default_shader = true;
+	}
+	else
+	{
+		/* Disconnect previously connected default shader. */
+		nsi.Disconnect(
+			renderParam->GetRenderDelegate()->DefaultSurfaceNode(), "",
+			mat_handle, "surfaceshader");
+	}
+	m_use_default_shader = use_default;
 }
 
 void HdNSIMaterial::Finalize(HdRenderParam *renderParam)
@@ -118,31 +152,35 @@ void HdNSIMaterial::ExportNetworks(
 	HdNSIRenderParam *renderParam,
 	const HdMaterialNetworkMap &networks)
 {
-	/*
-		First, delete the old networks. This should eventually be improved to
-		only clear/update the network which actually changes. But there's no
-		point in doing that until we also support displacement.
-	*/
-	DeleteShaderNodes(nsi);
-
 	std::string mat_handle = GetId().GetString() + "|mat";
 
 	for (auto &e : networks.map)
 	{
-		if (e.second.nodes.empty())
-			continue;
-
+		/*
+			We check against the previously exported network and do nothing if
+			it has not actually changed. This could happen if eg. a surface is
+			updated but the displacement is not.
+		*/
 		const char *nsi_terminal = "";
 		if (e.first == HdMaterialTerminalTokens->surface)
 		{
+			if (m_surface_network == e.second)
+				continue;
+			DeleteOneNetwork(nsi, m_surface_network, e.second);
 			nsi_terminal = "surfaceshader";
 		}
 		else if (e.first == HdMaterialTerminalTokens->displacement)
 		{
+			if (m_displacement_network == e.second)
+				continue;
+			DeleteOneNetwork(nsi, m_displacement_network, e.second);
 			nsi_terminal = "displacementshader";
 		}
 		else if (e.first == HdMaterialTerminalTokens->volume)
 		{
+			if (m_volume_network == e.second)
+				continue;
+			DeleteOneNetwork(nsi, m_volume_network, e.second);
 			nsi_terminal = "volumeshader";
 			m_vdbVolume.reset();
 		}
@@ -150,6 +188,9 @@ void HdNSIMaterial::ExportNetworks(
 		{
 			continue; /* unsupported */
 		}
+
+		if (e.second.nodes.empty())
+			continue;
 
 		for (const HdMaterialNode &node : e.second.nodes)
 		{
@@ -308,8 +349,6 @@ void HdNSIMaterial::ExportNode(
 	}
 
 	nsi.Create(node_handle, "shader");
-	/* Record this new node. For deletion later. */
-	m_network_nodes.push_back(node_handle);
 
 	NSI::ArgumentList args;
 	args.Add(new NSI::StringArg("shaderfilename", shader));
@@ -386,11 +425,25 @@ void HdNSIMaterial::ExportNode(
 */
 void HdNSIMaterial::DeleteShaderNodes(NSI::Context &nsi)
 {
-	for (std::string &handle : m_network_nodes)
+	DeleteOneNetwork(nsi, m_surface_network, {});
+	DeleteOneNetwork(nsi, m_displacement_network, {});
+	DeleteOneNetwork(nsi, m_volume_network, {});
+}
+
+/*
+	Delete the shader nodes for one shading network and copy a new network over
+	it.
+*/
+void HdNSIMaterial::DeleteOneNetwork(
+	NSI::Context &nsi,
+	HdMaterialNetwork &network,
+	const HdMaterialNetwork &new_network)
+{
+	for (const HdMaterialNode &node : network.nodes)
 	{
-		nsi.Delete(handle);
+		nsi.Delete(node.path.GetString());
 	}
-	m_network_nodes.clear();
+	network = new_network;
 }
 
 /*

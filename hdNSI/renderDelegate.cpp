@@ -693,7 +693,7 @@ void HdNSIRenderDelegate::SetMaxDistance() const
 void HdNSIRenderDelegate::ExportDefaultMaterial() const
 {
     std::string baseHandle = DefaultMaterialHandle();
-    std::string shaderHandle = baseHandle + "|PreviewSurface";
+    std::string shaderHandle = DefaultSurfaceNode();
     std::string colorHandle = baseHandle + "|ColorReader";
     std::string opacityHandle = baseHandle + "|OpacityReader";
     _nsi->Create(baseHandle, "attributes");
