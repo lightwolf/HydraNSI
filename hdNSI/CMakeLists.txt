@@ -51,9 +51,12 @@ target_compile_definitions(hdNSI
 set_target_properties(hdNSI PROPERTIES
 	# The convention seems to be for Hydra plugins to not have the 'lib'
 	# prefix. It really just needs to match the name in plugInfo.json
-	PREFIX ""
-	# Don't need to export anything.
-	CXX_VISIBILITY_PRESET hidden)
+	PREFIX "")
+
+if(NOT APPLE)
+	# Don't need to export anything when not on macOS.
+	set_target_properties(hdNSI PROPERTIES CXX_VISIBILITY_PRESET hidden)
+endif()
 
 target_link_libraries(hdNSI 3Delight::3DelightAPI)
 
