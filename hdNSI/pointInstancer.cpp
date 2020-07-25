@@ -4,6 +4,7 @@
 #include "rprimBase.h"
 
 #include <pxr/base/gf/quatd.h>
+#include <pxr/base/gf/quath.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -235,7 +236,7 @@ void HdNSIPointInstancer::SyncPrototype(
 		/* Unbox the values from VtValue to actual type. */
 		HdTimeSampleArray<VtMatrix4dArray, 4> pv_transform;
 		HdTimeSampleArray<VtVec3fArray, 4> pv_scale;
-		HdTimeSampleArray<VtVec4fArray, 4> pv_rotate;
+		HdTimeSampleArray<VtQuathArray, 4> pv_rotate;
 		HdTimeSampleArray<VtVec3fArray, 4> pv_translate;
 		pv_transform.UnboxFrom(xform_primvars[0]);
 		pv_scale.UnboxFrom(xform_primvars[1]);
@@ -270,12 +271,11 @@ void HdNSIPointInstancer::SyncPrototype(
 			/* Apply rotate. */
 			if (pv_rotate.count != 0)
 			{
-				VtVec4fArray values = pv_rotate.Resample(t);
+				VtQuathArray values = pv_rotate.Resample(t);
 				for (unsigned i = 0; i < num_transforms; ++i)
 				{
 					auto v = values[i];
-					transforms[i] *= m.SetRotate(
-						GfQuatd(v[0], v[1], v[2], v[3]));
+					transforms[i] *= m.SetRotate(v);
 				}
 			}
 			/* Apply translate. */
