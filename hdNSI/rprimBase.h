@@ -45,11 +45,6 @@ private:
 		NSI::Context &nsi,
 		const HdRprim &rprim);
 
-	void CheckPrimvars(
-		HdSceneDelegate *sceneDelegate,
-		HdDirtyBits *dirtyBits,
-		const HdRprim &rprim);
-
 	/* NSI node type for the geo. */
 	std::string _nodeType;
 
@@ -57,8 +52,6 @@ private:
 	std::string _masterShapeHandle;
 	std::string _xformHandle;
 	std::string _attrsHandle;
-
-	bool _firstSync{true};
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE
