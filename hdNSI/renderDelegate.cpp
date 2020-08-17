@@ -617,6 +617,43 @@ DlShaderInfo* HdNSIRenderDelegate::GetShaderInfo(
 }
 
 /*
+    Given a shader type (id), returns the info and NSI handle for the default
+    shader node of that type. There is one such node shared for the whole
+    scene, for a given type.
+*/
+DlShaderInfo* HdNSIRenderDelegate::GetDefaultShader(
+    const std::string &type,
+    std::string *handle)
+{
+    *handle = type + " default shader node";
+    /* Search in already created shaders. */
+    for( DlShaderInfo *si : m_default_shaders )
+    {
+        if( si->shadername() == type )
+        {
+            return si;
+        }
+    }
+
+    /* We don't have a node for that one yet. */
+    std::string path = FindShader(type);
+    DlShaderInfo *si = GetShaderInfo(path);
+    if( !si || si->shadername() != type )
+    {
+        /* Something is wrong with that shader. */
+        std::cerr << "Shader " << type << " was not found.\n";
+        return nullptr;
+    }
+    /* Keep track of which shaders we've already created. */
+    m_default_shaders.push_back(si);
+    /* Actually create it. */
+    _nsi->Create(*handle, "shader");
+    _nsi->SetAttribute(*handle, NSI::StringArg("shaderfilename", path));
+
+    return si;
+}
+
+/*
     Returns true if this is a batch UsdRender job.
 
     It's not clear if there's an official way to check this. For now, use a

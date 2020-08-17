@@ -64,6 +64,70 @@ void HdNSIMaterial::Sync(
 	*dirtyBits = Clean;
 }
 
+struct HdNSIMaterial::DefaultConnectionList
+{
+	struct DefaultConnection
+	{
+		std::string m_from_handle;
+		std::string m_from_attribute;
+		std::string m_to_handle;
+		std::string m_to_attribute;
+	};
+
+	std::vector<DefaultConnection> m_connections;
+
+	void AddConnection(
+		HdNSIRenderDelegate *renderDelegate,
+		const std::string &from_type,
+		const std::string &to_handle,
+		const DlShaderInfo::Parameter &to_param)
+	{
+		DefaultConnection c;
+		DlShaderInfo *shader = renderDelegate->GetDefaultShader(
+			from_type, &c.m_from_handle);
+		if( !shader )
+			return;
+		/* Find first output parameter with matching type. */
+		for( const auto &param : shader->params() )
+		{
+			if( param.isoutput && param.type == to_param.type )
+			{
+				c.m_from_attribute = param.name.string();
+				c.m_to_handle = to_handle;
+				c.m_to_attribute = to_param.name.string();
+				m_connections.emplace_back(c);
+				return;
+			}
+		}
+	}
+
+	void RemoveConnection(
+		const std::string to_handle,
+		const std::string to_attribute)
+	{
+		for( unsigned i = 0; i < m_connections.size(); ++i )
+		{
+			if( m_connections[i].m_to_handle == to_handle &&
+			    m_connections[i].m_to_attribute == to_attribute )
+			{
+				std::swap(m_connections[i], m_connections.back());
+				m_connections.pop_back();
+				break;
+			}
+		}
+	}
+
+	void Export(NSI::Context &nsi)
+	{
+		for( const auto &c : m_connections )
+		{
+			nsi.Connect(
+				c.m_from_handle, c.m_from_attribute,
+				c.m_to_handle, c.m_to_attribute);
+		}
+	}
+};
+
 void HdNSIMaterial::UseDefaultShader(
 	NSI::Context &nsi,
 	HdNSIRenderParam *renderParam,
@@ -153,6 +217,7 @@ void HdNSIMaterial::ExportNetworks(
 	const HdMaterialNetworkMap &networks)
 {
 	std::string mat_handle = GetId().GetString() + "|mat";
+	DefaultConnectionList default_connections;
 
 	for (auto &e : networks.map)
 	{
@@ -194,16 +259,22 @@ void HdNSIMaterial::ExportNetworks(
 
 		for (const HdMaterialNode &node : e.second.nodes)
 		{
-			ExportNode(nsi, renderParam, node);
+			ExportNode(nsi, renderParam, node, default_connections);
 		}
 
 		for (const HdMaterialRelationship &r : e.second.relationships )
 		{
+			const std::string &to_handle = r.outputId.GetString();
+			const std::string &to_attribute =
+				EscapeOSLKeyword(r.outputName.GetString());
+			/* Remove any default connection we might be replacing. */
+			default_connections.RemoveConnection(to_handle, to_attribute);
+			/* Connect. */
 			nsi.Connect(
 				r.inputId.GetString(),
 				EscapeOSLKeyword(r.inputName.GetString()),
-				r.outputId.GetString(),
-				EscapeOSLKeyword(r.outputName.GetString()));
+				to_handle,
+				to_attribute);
 		}
 
 		/*
@@ -225,6 +296,9 @@ void HdNSIMaterial::ExportNetworks(
 			}
 		}
 	}
+
+	default_connections.Export(nsi);
+
 }
 
 namespace
@@ -322,7 +396,8 @@ void FixRamps(
 void HdNSIMaterial::ExportNode(
 	NSI::Context &nsi,
 	HdNSIRenderParam *renderParam,
-	const HdMaterialNode &node)
+	const HdMaterialNode &node,
+	DefaultConnectionList &default_connections)
 {
 	std::string node_handle = node.path.GetString();
 	std::string shader = renderParam->GetRenderDelegate()
@@ -346,6 +421,22 @@ void HdNSIMaterial::ExportNode(
 	if (si)
 	{
 		FixRamps(*si, exported_node);
+	}
+
+	/* Record any default connections that might need to be made. */
+	for( const auto &param : si->params() )
+	{
+		for( const auto &meta : param.metadata )
+		{
+			if( meta.name == "default_connection" && meta.type.IsOneString() )
+			{
+				default_connections.AddConnection(
+					renderParam->GetRenderDelegate(),
+					meta.sdefault[0].string(), /* source type */
+					node_handle,
+					param);
+			}
+		}
 	}
 
 	nsi.Create(node_handle, "shader");

@@ -61,6 +61,8 @@ public:
 	static const std::array<TfToken, 6>& VolumeNodeParameters();
 
 private:
+	struct DefaultConnectionList;
+
 	void UseDefaultShader(
 		NSI::Context &nsi,
 		HdNSIRenderParam *renderParam,
@@ -75,7 +77,8 @@ private:
 	void ExportNode(
 		NSI::Context &nsi,
 		HdNSIRenderParam *renderParam,
-		const HdMaterialNode &node);
+		const HdMaterialNode &node,
+		DefaultConnectionList &default_connections);
 
 	void DeleteShaderNodes(NSI::Context &nsi);
 	void DeleteOneNetwork(

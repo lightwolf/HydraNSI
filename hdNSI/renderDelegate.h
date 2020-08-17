@@ -217,6 +217,10 @@ public:
 
     DlShaderInfo* GetShaderInfo(const std::string &i_shader) const;
 
+    DlShaderInfo* GetDefaultShader(
+        const std::string &type,
+        std::string *handle);
+
     const char* DefaultMaterialHandle() const { return "defaultShader"; }
     const char* DefaultSurfaceNode() const
         { return "defaultShader|PreviewSurface"; }
@@ -277,6 +281,9 @@ private:
 
     /* Pointer to dynamically loaded shader query API. */
     decltype(&DlGetShaderInfo) m_DlGetShaderInfo;
+
+    /* List of shaders loaded for default connections. */
+    std::vector<DlShaderInfo*> m_default_shaders;
 
 public:
     // A callback that interprets NSI error codes and injects them into
