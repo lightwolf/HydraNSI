@@ -57,6 +57,7 @@ list(APPEND HUSD_REQ_VARS "Houdini_Python_LIB")
 find_file(
 	Houdini_Boostpython_LIB
 	"libhboost_python-mt${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix
+	"libhboost_python27${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.0
 	"hboost_python-mt.lib" # Windows (import lib)
 	PATHS ENV HFS
 	PATH_SUFFIXES
