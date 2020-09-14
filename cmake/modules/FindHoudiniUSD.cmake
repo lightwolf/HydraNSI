@@ -59,6 +59,7 @@ find_file(
 	"libhboost_python-mt${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix
 	"libhboost_python27${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.0
 	"hboost_python-mt.lib" # Windows (import lib)
+	"hboost_python27-mt-x64.lib" # Windows (import lib), Houdini > 18.0
 	PATHS ENV HFS
 	PATH_SUFFIXES
 		"dsolib" # Linux
@@ -125,5 +126,7 @@ if(HoudiniUSD_FOUND AND NOT TARGET hd)
 	# Add Boost.Python to tf, vt. Should actually be in many more but that's
 	# more than enough to get it linked in for us.
 	target_link_libraries(tf INTERFACE ${Houdini_Boostpython_LIB})
+	target_compile_definitions(tf INTERFACE HBOOST_ALL_NO_LIB)
 	target_link_libraries(vt INTERFACE ${Houdini_Boostpython_LIB})
+	target_compile_definitions(vt INTERFACE HBOOST_ALL_NO_LIB)
 endif()
