@@ -1,0 +1,14 @@
+/*
+	This is a fast preview shader with no lighting calculations.
+*/
+surface NoLightingSurface()
+{
+	color Cs = 1;
+	getattribute("displayColor", Cs);
+	float Os = 1;
+	getattribute("displayOpacity", Os);
+	/* old school shading */
+	Cs *= abs(dot(normalize(N), normalize(I)));
+
+	Ci = Os * Cs * debug("Ci") + (1.0 - Os) * transparent();
+}

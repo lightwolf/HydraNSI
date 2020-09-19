@@ -176,6 +176,10 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
 
     // Fill in settings.
     _settingDescriptors.push_back({
+        "Disable Lighting",
+        HdNSIRenderSettingsTokens->disableLighting, VtValue(false)});
+
+    _settingDescriptors.push_back({
         "Shading Samples",
         HdNSIRenderSettingsTokens->shadingSamples,
         VtValue(TfGetenvInt("HDNSI_SHADING_SAMPLES", 64))});
@@ -220,6 +224,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
     _exportedSettings = _settingsMap;
 
     // Set global parameters.
+    SetDisableLighting();
     SetShadingSamples();
     SetVolumeSamples();
 
@@ -306,6 +311,10 @@ void HdNSIRenderDelegate::SetRenderSetting(
         return;
 
     /* Handle the change. Some are done here, most in the render pass. */
+    if (key == HdNSIRenderSettingsTokens->disableLighting)
+    {
+        SetDisableLighting();
+    }
     if (key == HdNSIRenderSettingsTokens->shadingSamples)
     {
         SetShadingSamples();
@@ -664,6 +673,35 @@ bool HdNSIRenderDelegate::IsBatch() const
     static const TfToken renderMode{"renderMode"};
     static const TfToken batch{"batch"};
     return GetRenderSetting(renderMode) == batch;
+}
+
+void HdNSIRenderDelegate::SetDisableLighting() const
+{
+    const char *baseHandle = "noLighting";
+    const char *shaderHandle = "noLighting|Surface";
+
+    VtValue s = GetRenderSetting(HdNSIRenderSettingsTokens->disableLighting);
+    /* Houdini sends an int. Cast it. */
+    s.Cast<bool>();
+
+    /* Get the context this way to force synchronization. */
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
+    if( !s.IsEmpty() && s.Get<bool>() )
+    {
+        _nsi->Create(baseHandle, "attributes");
+        _nsi->SetAttribute(baseHandle, NSI::IntegerArg("priority", 1));
+        _nsi->Connect(baseHandle, "", NSI_SCENE_ROOT, "geometryattributes");
+
+        _nsi->Create(shaderHandle, "shader");
+        _nsi->Connect(shaderHandle, "", baseHandle, "surfaceshader");
+        _nsi->SetAttribute(shaderHandle,
+            NSI::StringArg("shaderfilename", FindShader("NoLightingSurface")));
+    }
+    else
+    {
+        _nsi->Delete(shaderHandle);
+        _nsi->Delete(baseHandle);
+    }
 }
 
 void HdNSIRenderDelegate::SetShadingSamples() const

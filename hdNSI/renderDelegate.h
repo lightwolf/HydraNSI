@@ -228,6 +228,7 @@ public:
     bool IsBatch() const;
 
 private:
+    void SetDisableLighting() const;
     void SetShadingSamples() const;
     void SetVolumeSamples() const;
     void SetMaxDiffuseDepth() const;

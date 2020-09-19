@@ -1,6 +1,7 @@
 # This will put the compiled shaders in an osl subdirectory of resources.
 
 set(OSL_SOURCES
+	NoLightingSurface.osl
 	UsdLuxLight.osl
 	UsdPreviewSurface.osl
 	UsdPrimvarReader_float.osl
