@@ -186,6 +186,9 @@ void HdNSIMesh::_PopulateRtMesh(
 		attrs.push(new NSI::CStringPArg("subdivision.scheme",
 				subdiv ? "catmull-clark" : ""));
 
+		/* Make creases as ugly as everyone else. */
+		attrs.push(new NSI::IntegerArg("subdivision.smoothcreasecorners", 0));
+
 		nsi.SetAttribute(_base.Shape(), attrs);
 	}
 
