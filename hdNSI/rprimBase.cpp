@@ -5,6 +5,7 @@
 
 #include <pxr/imaging/hd/rprim.h>
 
+#include <cmath>
 #include <numeric>
 
 PXR_NAMESPACE_OPEN_SCOPE
@@ -105,6 +106,12 @@ void HdNSIRprimBase::ExportTransform(
 	else
 	{
 		sceneDelegate->SampleTransform(id, &samples);
+	}
+	/* Check for invalid time values. Houdini sends NaN on an empty scene. */
+	for (size_t i = 0; i < samples.count; ++i )
+	{
+		if( !std::isfinite(samples.times[i]) )
+			samples.count = 1;
 	}
 	if( samples.count == 1 )
 	{
