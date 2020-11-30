@@ -4,6 +4,7 @@
 #include "renderParam.h"
 #include "rprimBase.h"
 
+#include <pxr/imaging/hd/renderPassState.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
 
 PXR_NAMESPACE_OPEN_SCOPE
@@ -36,40 +37,7 @@ void HdNSICamera::Sync(
 
 	if (bits & DirtyProjMatrix)
 	{
-		const GfMatrix4d &proj = GetProjectionMatrix();
-		const GfMatrix4d invProj = proj.GetInverse();
-
-		/* Extract aperture. */
-		double z1 = proj.Transform(GfVec3d(0, 0, -1))[2];
-		m_aperture_min = GfVec2d(invProj.Transform(GfVec3d(-1, -1, z1)).data());
-		m_aperture_max = GfVec2d(invProj.Transform(GfVec3d(1, 1, z1)).data());
-
-		/* Extract clipping range. */
-		double clip_near = -
-			(proj[3][2] - -1.0 * proj[3][3]) /
-			(-1.0 * proj[2][3] - proj[2][2]);
-		double clip_far = -
-			(proj[3][2] -  1.0 * proj[3][3]) /
-			( 1.0 * proj[2][3] - proj[2][2]);
-
-		/* Add to camera attributes. */
-		double clipping_range[2] = {clip_near, clip_far};
-		args.push(NSI::Argument::New("clippingrange")
-			->SetType(NSITypeDouble)
-			->SetCount(2)
-			->CopyValue(clipping_range, sizeof(clipping_range)));
-
-		if( IsPerspective() )
-		{
-			/* Compute FoV from the matrix. */
-			double fov = 2.0 * std::atan(1.0 / proj[1][1]);
-			fov = GfRadiansToDegrees(fov);
-			args.push(new NSI::FloatArg("fov", fov));
-
-			/* Adjust aperture accordingly (NSI FoV is for vertical [-1, 1]). */
-			m_aperture_min *= proj[1][1];
-			m_aperture_max *= proj[1][1];
-		}
+		SyncProjectionMatrix(args);
 	}
 
 	if (bits & DirtyViewMatrix)
@@ -184,6 +152,41 @@ void HdNSICamera::Finalize(HdRenderParam *renderParam)
 	HdCamera::Finalize(renderParam);
 }
 
+void HdNSICamera::SyncFromState(
+	const HdRenderPassState &renderPassState,
+	HdNSIRenderParam *nsiRenderParam)
+{
+	GfMatrix4d view = renderPassState.GetWorldToViewMatrix();
+	GfMatrix4d proj = renderPassState.GetProjectionMatrix();
+	/* Fix garbage projection. */
+	if (proj[2][2] > 0.0)
+	{
+		proj[2][2] *= -1.0;
+	}
+	if (view == GetViewMatrix() && proj == GetProjectionMatrix())
+	{
+		/* Don't issue updates if nothing has changed. */
+		return;
+	}
+
+	_worldToViewMatrix = view;
+	_worldToViewInverseMatrix = _worldToViewMatrix.GetInverse();
+	_projectionMatrix = proj;
+
+	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
+
+	/* Create the nodes now that we know which kind of projection is used. */
+	Create(nsiRenderParam, nsi);
+
+	NSI::ArgumentList args;
+	SyncProjectionMatrix(args);
+
+	args.push(new NSI::DoubleMatrixArg("transformationmatrix",
+		view.GetArray()));
+
+	nsi.SetAttribute(m_camera_handle, args);
+}
+
 GfRange2d HdNSICamera::GetAperture() const
 {
 	return { m_aperture_min, m_aperture_max };
@@ -222,8 +225,9 @@ void HdNSICamera::Create(
 	}
 
 	const SdfPath &id = GetId();
-	m_camera_handle = id.GetString() + "|camera" + std::to_string(m_camera_gen);
-	m_xform_handle = id.GetString();
+	std::string base = id.IsEmpty() ? ":defaultcamera:" : id.GetString();
+	m_camera_handle = base + "|camera" + std::to_string(m_camera_gen);
+	m_xform_handle = base;
 
 	m_is_perspective = is_perspective;
 	nsi.Create(m_camera_handle, is_perspective
@@ -231,6 +235,45 @@ void HdNSICamera::Create(
 	nsi.Create(m_xform_handle, "transform");
 	nsi.Connect(m_camera_handle, "", m_xform_handle, "objects");
 	nsi.Connect(m_xform_handle, "", NSI_SCENE_ROOT, "objects");
+}
+
+void HdNSICamera::SyncProjectionMatrix(
+	NSI::ArgumentList &args)
+{
+	const GfMatrix4d &proj = GetProjectionMatrix();
+	const GfMatrix4d invProj = proj.GetInverse();
+
+	/* Extract aperture. */
+	double z1 = proj.Transform(GfVec3d(0, 0, -1))[2];
+	m_aperture_min = GfVec2d(invProj.Transform(GfVec3d(-1, -1, z1)).data());
+	m_aperture_max = GfVec2d(invProj.Transform(GfVec3d(1, 1, z1)).data());
+
+	/* Extract clipping range. */
+	double clip_near = -
+		(proj[3][2] - -1.0 * proj[3][3]) /
+		(-1.0 * proj[2][3] - proj[2][2]);
+	double clip_far = -
+		(proj[3][2] -  1.0 * proj[3][3]) /
+		( 1.0 * proj[2][3] - proj[2][2]);
+
+	/* Add to camera attributes. */
+	double clipping_range[2] = {clip_near, clip_far};
+	args.push(NSI::Argument::New("clippingrange")
+		->SetType(NSITypeDouble)
+		->SetCount(2)
+		->CopyValue(clipping_range, sizeof(clipping_range)));
+
+	if( IsPerspective() )
+	{
+		/* Compute FoV from the matrix. */
+		double fov = 2.0 * std::atan(1.0 / proj[1][1]);
+		fov = GfRadiansToDegrees(fov);
+		args.push(new NSI::FloatArg("fov", fov));
+
+		/* Adjust aperture accordingly (NSI FoV is for vertical [-1, 1]). */
+		m_aperture_min *= proj[1][1];
+		m_aperture_max *= proj[1][1];
+	}
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

@@ -65,6 +65,13 @@ HdNSIRenderPass::HdNSIRenderPass(
 
 HdNSIRenderPass::~HdNSIRenderPass()
 {
+	/* Delete the placeholder cam if one was used. */
+	if (m_placeholder_camera)
+	{
+		m_placeholder_camera->Finalize(_renderParam);
+		m_placeholder_camera.reset();
+	}
+
 	// Stop the render.
 	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
 
@@ -106,6 +113,16 @@ void HdNSIRenderPass::_Execute(
 	GfVec4f vp = renderPassState->GetViewport();
 	auto *camera = static_cast<const HdNSICamera*>(
 		renderPassState->GetCamera());
+	if (!camera)
+	{
+		/* Use the placeholder camera object. */
+		if (!m_placeholder_camera)
+		{
+			m_placeholder_camera.reset(new HdNSICamera({}));
+		}
+		m_placeholder_camera->SyncFromState(*renderPassState, _renderParam);
+		camera = m_placeholder_camera.get();
+	}
 	/* If either the viewport or the selected camera changes, update screen. */
 	if (_width != vp[2] || _height != vp[3] ||
 	   m_render_camera != camera->GetCameraNode())

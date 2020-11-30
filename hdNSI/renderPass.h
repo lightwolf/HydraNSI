@@ -40,6 +40,8 @@
 
 #include <nsi.hpp>
 
+#include <memory>
+
 PXR_NAMESPACE_OPEN_SCOPE
 
 class HdNSICamera;
@@ -148,6 +150,9 @@ private:
 	/* The camera node to which the screen is currently connected (ie. the
 	   camera we're rendering). */
 	std::string m_render_camera;
+
+	/* Dummy camera used when the render pass state has no camera. */
+	std::unique_ptr<HdNSICamera> m_placeholder_camera;
 
 	// Compositor to copy pixels to viewport.
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002

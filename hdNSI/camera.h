@@ -9,6 +9,7 @@
 PXR_NAMESPACE_OPEN_SCOPE
 
 class HdNSIRenderParam;
+class HdRenderPassState;
 
 class HdNSICamera final : public HdCamera
 {
@@ -30,6 +31,10 @@ public:
 
 	virtual void Finalize(HdRenderParam *renderParam) override;
 
+	void SyncFromState(
+		const HdRenderPassState &renderPassState,
+		HdNSIRenderParam *nsiRenderParam);
+
 	std::string GetCameraNode() const { return m_camera_handle; }
 	std::string GetTransformNode() const { return m_xform_handle; }
 
@@ -40,6 +45,8 @@ private:
 	void Create(
 		HdNSIRenderParam *renderParam,
 		NSI::Context &nsi);
+	void SyncProjectionMatrix(
+		NSI::ArgumentList &args);
 
 	/* NSI handles. */
 	std::string m_camera_handle;
