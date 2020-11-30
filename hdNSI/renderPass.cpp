@@ -125,7 +125,8 @@ void HdNSIRenderPass::_Execute(
 	}
 	/* If either the viewport or the selected camera changes, update screen. */
 	if (_width != vp[2] || _height != vp[3] ||
-	   m_render_camera != camera->GetCameraNode())
+	    camera->IsNew() ||
+	    m_render_camera != camera->GetCameraNode())
 	{
 		_width = vp[2];
 		_height = vp[3];
@@ -183,6 +184,8 @@ void HdNSIRenderPass::_Execute(
 
 	/* The renderer is now up to date on all changes. */
 	_renderParam->ResetSceneEdited();
+	/* The camera has been hooked up everywhere. */
+	camera->SetUsed();
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
 	// Blit, only when no AOVs are specified.
@@ -324,7 +327,7 @@ void HdNSIRenderPass::UpdateHeadlight(
 	}
 
 	/* Don't mark the scene as edited if we have nothing to do. */
-	if (m_headlight_xform == camera->GetTransformNode())
+	if (m_headlight_xform == camera->GetTransformNode() && !camera->IsNew())
 		return;
 
 	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();

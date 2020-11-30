@@ -210,9 +210,7 @@ void HdNSICamera::Create(
 	{
 		/*
 			Camera type change requires replacing the node. This amounts to a
-			camera change, which requires stopping the render. We'll create the
-			new node with a different name so the render delegate triggers a
-			screen update as well, to connect the screen to the new camera.
+			camera change, which requires stopping the render.
 
 			We don't check if this camera is the one actually being rendered
 			because the only case I've seen of this so far is usdview's camera
@@ -221,12 +219,14 @@ void HdNSICamera::Create(
 		*/
 		renderParam->StopRender();
 		nsi.Delete(m_camera_handle);
-		++m_camera_gen;
 	}
+
+	/* Needed for the type change case. */
+	m_new = true;
 
 	const SdfPath &id = GetId();
 	std::string base = id.IsEmpty() ? ":defaultcamera:" : id.GetString();
-	m_camera_handle = base + "|camera" + std::to_string(m_camera_gen);
+	m_camera_handle = base + "|camera";
 	m_xform_handle = base;
 
 	m_is_perspective = is_perspective;

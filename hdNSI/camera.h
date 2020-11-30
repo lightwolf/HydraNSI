@@ -35,6 +35,9 @@ public:
 		const HdRenderPassState &renderPassState,
 		HdNSIRenderParam *nsiRenderParam);
 
+	bool IsNew() const { return m_new; }
+	void SetUsed() const { m_new = false; }
+
 	std::string GetCameraNode() const { return m_camera_handle; }
 	std::string GetTransformNode() const { return m_xform_handle; }
 
@@ -52,8 +55,13 @@ private:
 	std::string m_camera_handle;
 	std::string m_xform_handle;
 
-	/* Camera node iteration, for type changes. */
-	int m_camera_gen{0};
+	/*
+		Flag to indicate the camera has never been rendered. This is used to
+		avoid an ABA type problem if a camera gets deleted and recreated with
+		the same Id. The render pass needs to know it is new to reconnect other
+		nodes to it.
+	*/
+	mutable bool m_new{true};
 	/* True if the created camera node is perspective type. */
 	bool m_is_perspective{0};
 
