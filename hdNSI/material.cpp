@@ -28,10 +28,12 @@ HdNSIMaterial::HdNSIMaterial(
 {
 }
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2008
 void HdNSIMaterial::Reload()
 {
 	/* Nothing to do for us. */
 }
+#endif
 
 void HdNSIMaterial::Sync(
 	HdSceneDelegate *sceneDelegate,

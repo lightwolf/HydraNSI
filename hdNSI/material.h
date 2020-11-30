@@ -20,7 +20,9 @@ public:
 	HdNSIMaterial(
 		const SdfPath &sprimId);
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2008
 	virtual void Reload() override;
+#endif
 
 	virtual void Sync(
 		HdSceneDelegate *sceneDelegate,
