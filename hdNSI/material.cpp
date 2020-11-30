@@ -416,25 +416,30 @@ void HdNSIMaterial::ExportNode(
 		}
 	}
 
+	/* We can't do anything useful without a shader. */
+	if( shader.empty() )
+		return;
+
 	/* Load metadata and apply ramp fixes. */
 	DlShaderInfo *si = renderParam->GetRenderDelegate()->GetShaderInfo(shader);
 	if (si)
 	{
 		FixRamps(*si, exported_node);
-	}
 
-	/* Record any default connections that might need to be made. */
-	for( const auto &param : si->params() )
-	{
-		for( const auto &meta : param.metadata )
+		/* Record any default connections that might need to be made. */
+		for( const auto &param : si->params() )
 		{
-			if( meta.name == "default_connection" && meta.type.IsOneString() )
+			for( const auto &meta : param.metadata )
 			{
-				default_connections.AddConnection(
-					renderParam->GetRenderDelegate(),
-					meta.sdefault[0].string(), /* source type */
-					node_handle,
-					param);
+				if( meta.name == "default_connection" &&
+				    meta.type.IsOneString() )
+				{
+					default_connections.AddConnection(
+						renderParam->GetRenderDelegate(),
+						meta.sdefault[0].string(), /* source type */
+						node_handle,
+						param);
+				}
 			}
 		}
 	}
