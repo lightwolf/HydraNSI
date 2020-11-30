@@ -489,8 +489,6 @@ void HdNSIMaterial::ExportNode(
 			std::string path = v.Get<SdfAssetPath>().GetResolvedPath();
 			path = FixUDIM(path);
 			args.Add(new NSI::StringArg(name, path));
-			/* Assume the asset is a texture for now. */
-			args.Add(new NSI::StringArg(name + ".meta.colorspace", "auto"));
 		}
 		else if (v.IsHolding<VtArray<float>>())
 		{

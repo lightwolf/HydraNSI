@@ -9,7 +9,7 @@ string map_wrap(string w)
 }
 
 shader UsdUVTexture(
-	string file = "",
+	string file = "" [[int texturefile = 1]],
 	float st[2] = {0, 0},
 	string wrapS = "useMetadata",
 	string wrapT = "useMetadata",

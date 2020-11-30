@@ -254,9 +254,8 @@ void HdNSILight::SetShaderParams(
 		if (tex_v.IsHolding<SdfAssetPath>())
 		{
 			std::string path = tex_v.Get<SdfAssetPath>().GetResolvedPath();
-			i_nsi.SetAttribute(shader_handle, (
-				NSI::StringArg("texturefile", path),
-				NSI::StringArg("texturefile.meta.colorspace", "auto")));
+			i_nsi.SetAttribute(shader_handle,
+				NSI::StringArg("texturefile", path));
 		}
 
 		VtValue format_v = sceneDelegate->GetLightParamValue(

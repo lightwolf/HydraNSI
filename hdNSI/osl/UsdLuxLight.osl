@@ -8,7 +8,7 @@ surface UsdLuxLight(
 	int normalize_ = 0,
 	float diffuse_ = 1,
 	float specular = 1,
-	string texturefile = "",
+	string texturefile = "" [[int texturefile = 1]],
 	string textureformat = "")
 {
 	Ci = 0;
