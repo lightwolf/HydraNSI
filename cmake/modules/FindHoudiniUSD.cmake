@@ -58,8 +58,10 @@ find_file(
 	Houdini_Boostpython_LIB
 	"libhboost_python-mt${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix
 	"libhboost_python27${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.0
+	"libhboost_python37${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.5
 	"hboost_python-mt.lib" # Windows (import lib)
 	"hboost_python27-mt-x64.lib" # Windows (import lib), Houdini > 18.0
+	"hboost_python37-mt-x64.lib" # Windows (import lib), Houdini > 18.5
 	PATHS ENV HFS
 	PATH_SUFFIXES
 		"dsolib" # Linux
