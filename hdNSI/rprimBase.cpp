@@ -24,8 +24,7 @@ void HdNSIRprimBase::Sync(
 
 	SdfPath const& id = rprim.GetId();
 
-	/* Update instancer. */
-	/* FIXME: Track invalidation properly instead of always updating. */
+	/* Update instancer's data. */
 	if (!rprim.GetInstancerId().IsEmpty())
 	{
 		HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();

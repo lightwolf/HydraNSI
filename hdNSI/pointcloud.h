@@ -26,6 +26,7 @@
 #ifndef HDNSI_POINTCLOUD_H
 #define HDNSI_POINTCLOUD_H
 
+#include "compatibility.h"
 #include "materialAssign.h"
 #include "primvars.h"
 #include "rprimBase.h"
@@ -72,8 +73,9 @@ public:
     ///   \param id The scene-graph path to this pointcloud.
     ///   \param instancerId If specified, the HdNSIInstancer at this id uses
     ///                      this pointcloud as a prototype.
-    HdNSIPointCloud(SdfPath const& id,
-                 SdfPath const& instancerId = SdfPath());
+    HdNSIPointCloud(
+        SdfPath const& id
+        DECLARE_IID);
 
     /// HdNSIPointCloud destructor.
     /// (Note: NSI resources are released in Finalize()).

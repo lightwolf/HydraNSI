@@ -36,10 +36,10 @@ const TfTokenVector& GetBuiltinPrimvarNames()
 
 HdNSIPointInstancer::HdNSIPointInstancer(
 	HdSceneDelegate *sceneDelegate,
-	const SdfPath &id,
-	const SdfPath &parentInstancerId)
+	const SdfPath &id
+	DECLARE_IID) /* Parent instancer id, if an instancer is instanced. */
 :
-	HdInstancer{sceneDelegate, id, parentInstancerId},
+	HdInstancer{sceneDelegate, id PASS_IID},
 	m_primVars{false}
 {
 	/* Don't output the transform primvars as actual primvars. */
@@ -55,12 +55,19 @@ HdNSIPointInstancer::~HdNSIPointInstancer()
 /**
 	\brief Remove the instancer from the NSI scene.
 */
+#if defined(PXR_VERSION) && PXR_VERSION <= 2011
 void HdNSIPointInstancer::Destroy(
-	HdNSIRenderParam *renderParam)
+	HdNSIRenderParam *nsiRenderParam)
 {
+#else
+void HdNSIPointInstancer::Finalize(
+	HdRenderParam *renderParam)
+{
+	auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
+#endif
 	if (!m_instancerHandle.empty())
 	{
-		NSI::Context &nsi = renderParam->AcquireSceneForEdit();
+		NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 		nsi.Delete(m_instancerHandle);
 		nsi.Delete(m_xformHandle);
 		m_instancerHandle.clear();

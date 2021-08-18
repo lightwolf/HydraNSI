@@ -26,6 +26,7 @@
 #ifndef HDNSI_MESH_H
 #define HDNSI_MESH_H
 
+#include "compatibility.h"
 #include "materialAssign.h"
 #include "primvars.h"
 #include "rprimBase.h"
@@ -74,8 +75,9 @@ public:
     ///   \param id The scene-graph path to this mesh.
     ///   \param instancerId If specified, the HdNSIInstancer at this id uses
     ///                      this mesh as a prototype.
-    HdNSIMesh(SdfPath const& id,
-                 SdfPath const& instancerId = SdfPath());
+    HdNSIMesh(
+        SdfPath const& id
+        DECLARE_IID);
 
     /// HdNSIMesh destructor.
     /// (Note: NSI resources are released in Finalize()).

@@ -37,9 +37,10 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
-HdNSICurves::HdNSICurves(SdfPath const& id,
-                     SdfPath const& instancerId)
-    : HdBasisCurves(id, instancerId)
+HdNSICurves::HdNSICurves(
+    SdfPath const& id
+    DECLARE_IID)
+    : HdBasisCurves(id PASS_IID)
     , _base{"curves"}
 {
 }
@@ -70,6 +71,7 @@ HdNSICurves::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyWidths
         | HdChangeTracker::DirtyPrimvar
         | HdChangeTracker::DirtyNormals
+        | HdChangeTracker::DirtyInstancer
         | HdChangeTracker::DirtyInstanceIndex
         | HdChangeTracker::DirtyMaterialId
         ;
@@ -123,6 +125,9 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
     {
         _UpdateVisibility(sceneDelegate, dirtyBits);
     }
+#if PXR_VERSION > 2011
+	_UpdateInstancer(sceneDelegate, dirtyBits);
+#endif
 
     /* This creates the NSI nodes so it comes before other attributes. */
     _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);

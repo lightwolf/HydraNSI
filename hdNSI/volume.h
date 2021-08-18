@@ -1,6 +1,7 @@
 #ifndef HDNSI_VOLUME_H
 #define HDNSI_VOLUME_H
 
+#include "compatibility.h"
 #include "material.h"
 #include "materialAssign.h"
 #include "rprimBase.h"
@@ -17,8 +18,8 @@ class HdNSIVolume final : public HdVolume, protected HdNSIMaterial::VolumeCB
 {
 public:
 	HdNSIVolume(
-		const SdfPath &id,
-		const SdfPath &instancerId = SdfPath());
+		const SdfPath &id
+		DECLARE_IID);
 
 	virtual ~HdNSIVolume() override = default;
 

@@ -26,6 +26,7 @@
 #ifndef HDNSI_CURVES_H
 #define HDNSI_CURVES_H
 
+#include "compatibility.h"
 #include "materialAssign.h"
 #include "primvars.h"
 #include "rprimBase.h"
@@ -72,8 +73,9 @@ public:
     ///   \param id The scene-graph path to this curves.
     ///   \param instancerId If specified, the HdNSIInstancer at this id uses
     ///                      this curves as a prototype.
-    HdNSICurves(SdfPath const& id,
-                 SdfPath const& instancerId = SdfPath());
+    HdNSICurves(
+        SdfPath const& id
+        DECLARE_IID);
 
     /// HdNSICurves destructor.
     /// (Note: NSI resources are released in Finalize()).

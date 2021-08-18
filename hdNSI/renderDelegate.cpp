@@ -434,33 +434,37 @@ HdNSIRenderDelegate::CreateRenderPass(HdRenderIndex *index,
 }
 
 HdInstancer *
-HdNSIRenderDelegate::CreateInstancer(HdSceneDelegate *delegate,
-                                        SdfPath const& id,
-                                        SdfPath const& instancerId)
+HdNSIRenderDelegate::CreateInstancer(
+    HdSceneDelegate *delegate,
+    SdfPath const& id
+    DECLARE_IID)
 {
-    return new HdNSIPointInstancer(delegate, id, instancerId);
+    return new HdNSIPointInstancer(delegate, id PASS_IID);
 }
 
 void
 HdNSIRenderDelegate::DestroyInstancer(HdInstancer *instancer)
 {
+#if defined(PXR_VERSION) && PXR_VERSION <= 2011
     static_cast<HdNSIPointInstancer*>(instancer)->Destroy(_renderParam.get());
+#endif
     delete instancer;
 }
 
 HdRprim *
-HdNSIRenderDelegate::CreateRprim(TfToken const& typeId,
-                                    SdfPath const& rprimId,
-                                    SdfPath const& instancerId)
+HdNSIRenderDelegate::CreateRprim(
+    TfToken const& typeId,
+    SdfPath const& rprimId
+    DECLARE_IID)
 {
     if (typeId == HdPrimTypeTokens->mesh) {
-        return new HdNSIMesh(rprimId, instancerId);
+        return new HdNSIMesh(rprimId PASS_IID);
     } else if (typeId == HdPrimTypeTokens->points) {
-        return new HdNSIPointCloud(rprimId, instancerId);
+        return new HdNSIPointCloud(rprimId PASS_IID);
     } else if (typeId == HdPrimTypeTokens->basisCurves) {
-        return new HdNSICurves(rprimId, instancerId);
+        return new HdNSICurves(rprimId PASS_IID);
     } else if (typeId == HdPrimTypeTokens->volume) {
-        return new HdNSIVolume(rprimId, instancerId);
+        return new HdNSIVolume(rprimId PASS_IID);
     } else {
         TF_CODING_ERROR("Unknown Rprim Type %s", typeId.GetText());
     }

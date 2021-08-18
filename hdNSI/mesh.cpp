@@ -42,10 +42,10 @@
 PXR_NAMESPACE_OPEN_SCOPE
 
 HdNSIMesh::HdNSIMesh(
-	SdfPath const& id,
-	SdfPath const& instancerId)
+	SdfPath const& id
+	DECLARE_IID)
 :
-	HdMesh(id, instancerId)
+	HdMesh(id PASS_IID)
 	, _smoothNormals(false)
 	, _base{"mesh"}
 {
@@ -76,6 +76,7 @@ HdNSIMesh::GetInitialDirtyBitsMask() const
 		| HdChangeTracker::DirtySubdivTags
 		| HdChangeTracker::DirtyPrimvar
 		| HdChangeTracker::DirtyNormals
+		| HdChangeTracker::DirtyInstancer
 		| HdChangeTracker::DirtyInstanceIndex
 		| HdChangeTracker::DirtyMaterialId
 		;
@@ -130,6 +131,9 @@ void HdNSIMesh::Sync(
 	{
 		_UpdateVisibility(sceneDelegate, dirtyBits);
 	}
+#if PXR_VERSION > 2011
+	_UpdateInstancer(sceneDelegate, dirtyBits);
+#endif
 
 	/* This creates the NSI nodes so it comes before other attributes. */
 	_base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);

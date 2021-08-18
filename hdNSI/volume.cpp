@@ -13,10 +13,10 @@ TF_DEFINE_PRIVATE_TOKENS(
 );
 
 HdNSIVolume::HdNSIVolume(
-	const SdfPath &id,
-	const SdfPath &instancerId)
+	const SdfPath &id
+	DECLARE_IID)
 :
-	HdVolume{id, instancerId},
+	HdVolume{id PASS_IID},
 	m_base{"volume"}
 {
 }
@@ -29,6 +29,7 @@ HdDirtyBits HdNSIVolume::GetInitialDirtyBitsMask() const
 		| HdChangeTracker::DirtyTransform
 		| HdChangeTracker::DirtyVisibility
 		//| HdChangeTracker::DirtyPrimvar // none for now
+		| HdChangeTracker::DirtyInstancer
 		| HdChangeTracker::DirtyInstanceIndex
 		| HdChangeTracker::DirtyMaterialId
 		;
@@ -51,6 +52,9 @@ void HdNSIVolume::Sync(
 	{
 		_UpdateVisibility(sceneDelegate, dirtyBits);
 	}
+#if PXR_VERSION > 2011
+	_UpdateInstancer(sceneDelegate, dirtyBits);
+#endif
 
 	/* This creates the NSI nodes so it comes before other attributes. */
 	m_base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);

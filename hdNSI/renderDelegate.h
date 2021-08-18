@@ -26,6 +26,8 @@
 #ifndef HDNSI_RENDER_DELEGATE_H
 #define HDNSI_RENDER_DELEGATE_H
 
+#include "compatibility.h"
+
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/pxr.h>
 
@@ -120,8 +122,8 @@ public:
     ///                      this instancer as a prototype.
     ///   \return An NSI instancer object.
     virtual HdInstancer *CreateInstancer(HdSceneDelegate *delegate,
-                                         SdfPath const& id,
-                                         SdfPath const& instancerId) override;
+                                         SdfPath const& id
+                                         DECLARE_IID) override;
 
     /// Destroy an instancer created with CreateInstancer.
     ///   \param instancer The instancer to be destroyed.
@@ -138,8 +140,8 @@ public:
     ///                      new rprim as a prototype.
     ///   \return An NSI rprim object.
     virtual HdRprim *CreateRprim(TfToken const& typeId,
-                                 SdfPath const& rprimId,
-                                 SdfPath const& instancerId) override;
+                                 SdfPath const& rprimId
+                                 DECLARE_IID) override;
 
     /// Destroy an Rprim created with CreateRprim.
     ///   \param rPrim The rprim to be destroyed.

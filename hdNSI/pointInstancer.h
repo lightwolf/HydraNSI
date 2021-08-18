@@ -1,6 +1,7 @@
 #ifndef HDNSI_POINTINSTANCER_H
 #define HDNSI_POINTINSTANCER_H
 
+#include "compatibility.h"
 #include "primvars.h"
 
 #include <pxr/imaging/hd/instancer.h>
@@ -21,6 +22,9 @@ class HdNSIRenderParam;
 	multiple prototype primitives which might use said instancer. This is
 	likely another kludge inherited from the needs of the GL renderer.
 
+	As of 21.02, instancers do have Sync() and Finalize() but Sync() is still
+	called from the prototypes. Finalize() is correctly hooked up though.
+
 	The way we handle this is what we progressively build the list of models as
 	we become aware of the prototype primitives which use a given instancer. It
 	may waste some space by going through some intermediate states but it makes
@@ -32,13 +36,29 @@ class HdNSIPointInstancer : public HdInstancer
 public:
 	HdNSIPointInstancer(
 		HdSceneDelegate *sceneDelegate,
-		const SdfPath &id,
-		const SdfPath &parentInstancerId);
+		const SdfPath &id
+		DECLARE_IID);
 
 	~HdNSIPointInstancer() override;
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2011
 	void Destroy(
 		HdNSIRenderParam *renderParam);
+#else
+	/*
+		No implementation of Sync() from USD commit
+		18e7193d7c47005fa79407bcad9b4b51cc3a31bf yet. The reason is that it
+		does essentially the same thing we already do in SyncPrototype(), only
+		with part of it in _SyncInstancerAndParents(). It should be simple
+		enough to migrate to that once the Sync() calls are no longer done from
+		the model rprims. And perhaps by then we can drop support for the older
+		USD versions.
+	*/
+
+	void Finalize(HdRenderParam *renderParam) override;
+
+	/* HdInstancer's GetInitialDirtyBitsMask() is ok. */
+#endif
 
 	void SyncPrototype(
 		HdNSIRenderParam *renderParam,
