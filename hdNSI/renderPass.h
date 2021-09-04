@@ -32,6 +32,9 @@
 
 #include <pxr/pxr.h>
 #include <pxr/base/gf/matrix4d.h>
+#if defined(PXR_VERSION) && PXR_VERSION >= 2102
+#include <pxr/imaging/cameraUtil/framing.h>
+#endif
 #include <pxr/imaging/hd/renderPass.h>
 #include <pxr/imaging/hd/sprim.h>
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
@@ -118,6 +121,10 @@ private:
 	unsigned int _width;
 	// The height of the viewport we're rendering into.
 	unsigned int _height;
+#if defined(PXR_VERSION) && PXR_VERSION >= 2102
+	/* The camera framing we're rendering. */
+	CameraUtilFraming _framing;
+#endif
 
 	// A handle to the render delegate.
 	HdNSIRenderDelegate *_renderDelegate;

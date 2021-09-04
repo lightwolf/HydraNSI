@@ -126,10 +126,16 @@ void HdNSIRenderPass::_Execute(
 	/* If either the viewport or the selected camera changes, update screen. */
 	if (_width != vp[2] || _height != vp[3] ||
 	    camera->IsNew() ||
+#if defined(PXR_VERSION) && PXR_VERSION >= 2102
+	    _framing != renderPassState->GetFraming() ||
+#endif
 	    m_render_camera != camera->GetCameraNode())
 	{
 		_width = vp[2];
 		_height = vp[3];
+#if defined(PXR_VERSION) && PXR_VERSION >= 2102
+		_framing = renderPassState->GetFraming();
+#endif
 		/* Resolution/camera changes required stopping the render. */
 		_renderParam->StopRender();
 		UpdateScreen(*renderPassState, camera);
@@ -378,34 +384,58 @@ void HdNSIRenderPass::UpdateScreen(
 
 	NSI::ArgumentList args;
 
-	/* Resolution. */
-	const GfVec4f &vp = renderPassState.GetViewport();
-	int res[2] = { int(vp[2]), int(vp[3]) };
+	/* Resolution and its aspect ratio. */
+	int res[2];
+	double resolution_aspect;
+	/* Pixel aspect ratio. */
+	double pixel_aspect;
+
+#if defined(PXR_VERSION) && PXR_VERSION >= 2102
+	const CameraUtilFraming &framing = renderPassState.GetFraming();
+	if( framing.IsValid() )
+	{
+		/* TODO: handle data window for crop and overscan */
+		GfVec2f resolution = framing.displayWindow.GetSize();
+		res[0] = int(resolution[0]);
+		res[1] = int(resolution[1]);
+		resolution_aspect = double(resolution[0] / resolution[1]);
+		pixel_aspect = framing.pixelAspectRatio;
+	}
+	else
+	/* fallback on old API if framing was not set. */
+#endif
+	{
+		/* Resolution. */
+		const GfVec4f &vp = renderPassState.GetViewport();
+		res[0] = int(vp[2]);
+		res[1] = int(vp[3]);
+
+		/*
+			Use resolution UsdRenderSettings, if available. Otherwise, use the
+			viewport. Houdini's USD Render needs this for correct framing, or
+			at least used to.
+		*/
+		VtValue rs_res = _renderDelegate->GetRenderSetting(
+			UsdRenderTokens->resolution);
+		if (rs_res.IsHolding<GfVec2i>())
+		{
+			GfVec2i r = rs_res.Get<GfVec2i>();
+			resolution_aspect = double(r[0]) / double(r[1]);
+		}
+		else
+		{
+			resolution_aspect = vp[2] / vp[3];
+		}
+
+		pixel_aspect = _renderDelegate->GetRenderSetting<float>(
+			UsdRenderTokens->pixelAspectRatio, 1.0f);
+	}
+
 	args.Add(NSI::Argument::New("resolution")
 		->SetArrayType(NSITypeInteger, 2)
 		->CopyValue(res, sizeof(res)));
 
-	/* TODO: crop window */
-
-	double pixel_aspect = _renderDelegate->GetRenderSetting<float>(
-		UsdRenderTokens->pixelAspectRatio, 1.0f);
-
-	/*
-		Compute the desired image aspect ratio. Do it from the resolution
-		UsdRenderSettings, if available. Otherwise, use the viewport.
-	*/
-	double resolution_aspect;
-	VtValue rs_res = _renderDelegate->GetRenderSetting(
-		UsdRenderTokens->resolution);
-	if (rs_res.IsHolding<GfVec2i>())
-	{
-		GfVec2i r = rs_res.Get<GfVec2i>();
-		resolution_aspect = double(r[0]) / double(r[1]);
-	}
-	else
-	{
-		resolution_aspect = vp[2] / vp[3];
-	}
+	/* Compute the desired image aspect ratio. */
 	double image_aspect = resolution_aspect * pixel_aspect;
 
 	/* Get camera aperture. */
