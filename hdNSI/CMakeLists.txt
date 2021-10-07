@@ -4,10 +4,16 @@ find_package(pxr CONFIG)
 if(NOT pxr_FOUND)
 	# Try to find USD as part of Houdini.
 	find_package(HoudiniUSD)
+
+	if(NOT HoudiniUSD_FOUND)
+		# Try to find USD as part of Katana.
+		find_package(KatanaUSD)
+	endif()
 endif()
 
-if(NOT pxr_FOUND AND NOT HoudiniUSD_FOUND)
-	message(FATAL_ERROR "Required: USD install or Houdini with included USD.")
+if(NOT pxr_FOUND AND NOT HoudiniUSD_FOUND AND NOT KatanaUSD_FOUND)
+	message(FATAL_ERROR
+		"Required: USD install or Houdini or Katana with included USD.")
 endif()
 
 find_package(3Delight REQUIRED)
