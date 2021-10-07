@@ -7,14 +7,14 @@ find_path(Katana_USD_INCLUDE_DIR
 	"pxr/pxr.h"
 	HINTS "${KATANA_HOME}"
 	PATH_SUFFIXES "external/FnUSD/include"
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_USD_INCLUDE_DIR")
 
 find_path(Katana_USD_LIB_DIR
 	"${CMAKE_SHARED_LIBRARY_PREFIX}fntf${CMAKE_SHARED_LIBRARY_SUFFIX}"
 	HINTS "${KATANA_HOME}"
 	PATH_SUFFIXES "bin"
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_USD_LIB_DIR")
 
 if(WIN32)
@@ -22,7 +22,7 @@ if(WIN32)
 		"fntf.lib"
 		HINTS "${KATANA_HOME}"
 		PATH_SUFFIXES "bin"
-		NO_DEFAULT_PATH)
+		NO_CACHE NO_DEFAULT_PATH)
 	list(APPEND KATUSD_REQ_VARS "Katana_USD_IMPLIB_DIR")
 
 	file(GLOB WINBOOSTPATH RELATIVE "${KATANA_HOME}"
@@ -35,7 +35,7 @@ find_path(Katana_Boost_INCLUDE_DIR
 	PATH_SUFFIXES
 		"external/foundryboost/include" # Linux
 		${WINBOOSTPATH} # Windows, which ends with eg. boost-1_70
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_Boost_INCLUDE_DIR")
 
 find_path(Katana_Python_INCLUDE_DIR
@@ -45,7 +45,7 @@ find_path(Katana_Python_INCLUDE_DIR
 		"bin/python2.7/include/python2.7" # Linux
 		"bin/python3.7/include/python3.7m" # Linux
 		"bin/include/include" # Windows being weird as usual
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_Python_INCLUDE_DIR")
 
 find_file(
@@ -60,14 +60,14 @@ find_file(
 		"bin/python2.7/lib" # Linux
 		"bin/python3.7/lib" # Linux
 		"bin" # Windows (import lib)
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_Python_LIB")
 
 find_path(Katana_tbb_INCLUDE_DIR
 	"tbb/atomic.h"
 	HINTS "${KATANA_HOME}"
 	PATH_SUFFIXES "external/tbb/include"
-	NO_DEFAULT_PATH)
+	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_tbb_INCLUDE_DIR")
 
 include(FindPackageHandleStandardArgs)
