@@ -25,7 +25,7 @@ foreach(shader ${OSL_SOURCES})
 		DEPENDS "${shader_source}"
 		VERBATIM)
 
-	add_custom_target(${shader_name}
+	add_custom_target(${HYDRANSI_TARGET_PREFIX}${shader_name}
 		ALL
 		DEPENDS "${shader_name}.oso")
 

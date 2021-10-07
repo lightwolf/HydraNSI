@@ -12,8 +12,9 @@ endif()
 
 find_package(3Delight REQUIRED)
 
+set(LIB_TARGET ${HYDRANSI_TARGET_PREFIX}hdNSI)
 add_library(
-	hdNSI SHARED
+	${LIB_TARGET} SHARED
 
 	camera.cpp
 	curves.cpp
@@ -37,38 +38,42 @@ add_library(
 	volume.cpp
 	)
 
+# Using alternate target name should not change library name.
+# Alghouth I think that would be ok as long as plugInfo.json matches.
+set_target_properties(${LIB_TARGET} PROPERTIES OUTPUT_NAME hdNSI)
+
 # c++14 is needed on my linux system to build with USD includes.
 # I'm not certain what the actual requirement is for USD.
-set_target_properties(hdNSI PROPERTIES
+set_target_properties(${LIB_TARGET} PROPERTIES
 	CXX_STANDARD 14
 	CXX_STANDARD_REQUIRED ON
 	CXX_EXTENSIONS OFF)
 
 # This is used by the PLUG_THIS_PLUGIN macro. Must match name in plugInfo.json.
-target_compile_definitions(hdNSI
+target_compile_definitions(${LIB_TARGET}
 	PRIVATE "MFB_PACKAGE_NAME=hdNSI")
 
-set_target_properties(hdNSI PROPERTIES
+set_target_properties(${LIB_TARGET} PROPERTIES
 	# The convention seems to be for Hydra plugins to not have the 'lib'
 	# prefix. It really just needs to match the name in plugInfo.json
 	PREFIX "")
 
 if(NOT APPLE)
 	# Don't need to export anything when not on macOS.
-	set_target_properties(hdNSI PROPERTIES CXX_VISIBILITY_PRESET hidden)
+	set_target_properties(${LIB_TARGET} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 endif()
 
-target_link_libraries(hdNSI 3Delight::3DelightAPI)
+target_link_libraries(${LIB_TARGET} 3Delight::3DelightAPI)
 
-target_link_libraries(hdNSI
+target_link_libraries(${LIB_TARGET}
 	arch cameraUtil plug tf vt gf work hf hd hdx usdLux usdRender ndr sdf trace pxOsd)
 
 # This should probably be in USD's interface.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	target_compile_options(hdNSI PRIVATE -Wno-deprecated)
+	target_compile_options(${LIB_TARGET} PRIVATE -Wno-deprecated)
 endif()
 
-install(TARGETS hdNSI
+install(TARGETS ${LIB_TARGET}
 	DESTINATION "${HYDRANSI_INSTALL_PREFIX}hdNSI")
 
 # plugInfo.json
