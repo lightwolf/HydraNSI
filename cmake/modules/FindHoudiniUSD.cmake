@@ -118,6 +118,9 @@ if(HoudiniUSD_FOUND AND NOT TARGET hd)
 			target_link_directories(${targetName}
 				INTERFACE "$ENV{HFS}/custom/houdini/dsolib")
 		endif()
+		# Suppress TBB "deprecated" warnings from USD
+		target_compile_definitions( ${targetName}
+			INTERFACE "TBB_SUPPRESS_DEPRECATED_MESSAGES=1" )
 	endforeach()
 	# Add python to tf, usdImagingGL targets.
 	target_include_directories(tf INTERFACE ${Houdini_Python_INCLUDE_DIR})
