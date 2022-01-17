@@ -36,6 +36,7 @@ TF_DEFINE_PRIVATE_TOKENS(
     (vector3f)
     (normal3f)
     ((_float, "float"))
+    (color4f)
     (float4)
 );
 
@@ -281,7 +282,7 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             nsi.SetAttribute(layerHandle,
                 NSI::StringArg("layertype", "scalar"));
         }
-        else if( dataType == _tokens->float4 )
+        else if( dataType == _tokens->color4f || dataType == _tokens->float4 )
         {
             if( name == "outlines" )
             {
