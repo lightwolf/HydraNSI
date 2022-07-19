@@ -27,6 +27,11 @@ public:
 
 	const SdfPath& GetMaterialId() const { return m_materialId; }
 
+	void assignFacesets(
+		const HdGeomSubsets &subset_broup,
+		NSI::Context& nsi,
+		const std::string& geoHandle);
+
 private:
 	/* Handle of connected material. */
 	std::string m_assignedMaterialHandle;
