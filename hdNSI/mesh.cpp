@@ -259,6 +259,11 @@ void HdNSIMesh::_PopulateRtMesh(
 		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
 		_base.Shape());
 
+	if (dirty_topology)
+	{
+		_material.assignFacesets(_topology.GetGeomSubsets(), nsi, _base.Shape());
+	}
+
 	_primvars.Sync(
 		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
 		_base.Shape(), _faceVertexIndices);
