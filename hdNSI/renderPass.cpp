@@ -65,12 +65,14 @@ HdNSIRenderPass::HdNSIRenderPass(
 
 HdNSIRenderPass::~HdNSIRenderPass()
 {
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	/* Delete the placeholder cam if one was used. */
 	if (m_placeholder_camera)
 	{
 		m_placeholder_camera->Finalize(_renderParam);
 		m_placeholder_camera.reset();
 	}
+#endif
 
 	// Stop the render.
 	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
@@ -113,6 +115,7 @@ void HdNSIRenderPass::_Execute(
 	GfVec4f vp = renderPassState->GetViewport();
 	auto *camera = static_cast<const HdNSICamera*>(
 		renderPassState->GetCamera());
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (!camera)
 	{
 		/* Use the placeholder camera object. */
@@ -123,6 +126,7 @@ void HdNSIRenderPass::_Execute(
 		m_placeholder_camera->SyncFromState(*renderPassState, _renderParam);
 		camera = m_placeholder_camera.get();
 	}
+#endif
 	/* If either the viewport or the selected camera changes, update screen. */
 	if (_width != vp[2] || _height != vp[3] ||
 	    camera->IsNew() ||
@@ -170,7 +174,7 @@ void HdNSIRenderPass::_Execute(
 	}
 
 	/* The output driver needs part of the projection matrix to remap Z. */
-	const GfMatrix4d &projMatrix = camera->GetProjectionMatrix();
+	const GfMatrix4d &projMatrix = camera->GetProjectionMatrix2();
 	_depthProj.M22 = projMatrix[2][2];
 	_depthProj.M32 = projMatrix[3][2];
 

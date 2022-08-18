@@ -31,9 +31,11 @@ public:
 
 	virtual void Finalize(HdRenderParam *renderParam) override;
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	void SyncFromState(
 		const HdRenderPassState &renderPassState,
 		HdNSIRenderParam *nsiRenderParam);
+#endif
 
 	bool IsNew() const { return m_new; }
 	void SetUsed() const { m_new = false; }
@@ -42,6 +44,10 @@ public:
 	std::string GetTransformNode() const { return m_xform_handle; }
 
 	GfRange2d GetAperture() const;
+
+	/* '2' is because older versions have a HdCamera::GetProjectionMatrix() */
+	const GfMatrix4d& GetProjectionMatrix2() const
+		{ return m_projection_matrix; }
 
 private:
 	bool IsPerspective() const;
@@ -66,6 +72,9 @@ private:
 	bool m_is_perspective{0};
 
 	GfVec2d m_aperture_min{-1.0}, m_aperture_max{1.0};
+
+	/* Last computed projection matrix. */
+	GfMatrix4d m_projection_matrix;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE
