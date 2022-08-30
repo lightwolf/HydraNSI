@@ -32,6 +32,7 @@
 
 #include <pxr/pxr.h>
 #include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/gf/range2d.h>
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 #include <pxr/imaging/cameraUtil/framing.h>
 #endif
