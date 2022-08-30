@@ -129,6 +129,7 @@ void HdNSIRenderPass::_Execute(
 		m_placeholder_camera->SyncFromState(*renderPassState, _renderParam);
 		camera = m_placeholder_camera.get();
 	}
+#endif
 	/*
 		If either the viewport, the selected camera
 		or the aperture offset changes, update screen.
