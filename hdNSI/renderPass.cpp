@@ -56,9 +56,7 @@ HdNSIRenderPass::HdNSIRenderPass(
 #endif
 	, _width(0)
 	, _height(0)
-	, _horizontal_aperture_offset(0)
-	, _vertical_aperture_offset(0)
-	, _horizontal_aperture(0)
+	, m_render_camera_aperture()
 	, _renderDelegate(renderDelegate)
 	, _renderParam(renderParam)
 {
@@ -140,18 +138,14 @@ void HdNSIRenderPass::_Execute(
 	    _framing != renderPassState->GetFraming() ||
 #endif
 	    m_render_camera != camera->GetCameraNode() ||
-		_horizontal_aperture_offset != camera->GetHorizontalApertureOffset() ||
-		_vertical_aperture_offset != camera->GetVerticalApertureOffset() ||
-		_horizontal_aperture != camera->GetHorizontalAperture() )
+		m_render_camera_aperture != camera->GetAperture())
 	{
 		_width = vp[2];
 		_height = vp[3];
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 		_framing = renderPassState->GetFraming();
 #endif
-		_horizontal_aperture_offset = camera->GetHorizontalApertureOffset();
-		_vertical_aperture_offset = camera->GetVerticalApertureOffset();
-		_horizontal_aperture = camera->GetHorizontalAperture();
+		m_render_camera_aperture = camera->GetAperture();
 		/* Resolution/camera changes required stopping the render. */
 		_renderParam->StopRender();
 		UpdateScreen(*renderPassState, camera);

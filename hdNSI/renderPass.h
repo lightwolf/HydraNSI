@@ -121,14 +121,8 @@ private:
 	unsigned int _width;
 	// The height of the viewport we're rendering into.
 	unsigned int _height;
-
-	// The horizontal aperture offset of the camera we are rendering.
-	float _horizontal_aperture_offset;
-	// The vertical aperture offset of the camera we are rendering.
-	float _vertical_aperture_offset;
-	// The horizontal aperture of the camera we are rendering.
-	float _horizontal_aperture;
-
+	// Get camera aperture
+	GfRange2d m_render_camera_aperture;
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 	/* The camera framing we're rendering. */
 	CameraUtilFraming _framing;
