@@ -30,17 +30,26 @@ void HdNSICamera::Sync(
 	HdCamera::Sync(sceneDelegate, renderParam, dirtyBits);
 	assert(*dirtyBits == Clean);
 
-	/* Create the nodes now that we know which kind of projection is used. */
-	Create(nsiRenderParam, nsi);
-
 	NSI::ArgumentList args;
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (bits & DirtyProjMatrix)
+#else
+	/* The matrix is computed from params exclusively, in HdCamera. */
+	if (bits & DirtyParams)
+#endif
 	{
 		SyncProjectionMatrix(args);
 	}
 
+	/* Create the nodes now that we know which kind of projection is used. */
+	Create(nsiRenderParam, nsi);
+
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (bits & DirtyViewMatrix)
+#else
+	if (bits & DirtyTransform)
+#endif
 	{
 		HdNSIRprimBase::ExportTransform(
 			sceneDelegate, GetId(), false, nsi, m_xform_handle);
@@ -152,6 +161,7 @@ void HdNSICamera::Finalize(HdRenderParam *renderParam)
 	HdCamera::Finalize(renderParam);
 }
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 void HdNSICamera::SyncFromState(
 	const HdRenderPassState &renderPassState,
 	HdNSIRenderParam *nsiRenderParam)
@@ -175,17 +185,18 @@ void HdNSICamera::SyncFromState(
 
 	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
-	/* Create the nodes now that we know which kind of projection is used. */
-	Create(nsiRenderParam, nsi);
-
 	NSI::ArgumentList args;
 	SyncProjectionMatrix(args);
+
+	/* Create the nodes now that we know which kind of projection is used. */
+	Create(nsiRenderParam, nsi);
 
 	args.push(new NSI::DoubleMatrixArg("transformationmatrix",
 		view.GetArray()));
 
 	nsi.SetAttribute(m_camera_handle, args);
 }
+#endif
 
 GfRange2d HdNSICamera::GetAperture() const
 {
@@ -194,7 +205,7 @@ GfRange2d HdNSICamera::GetAperture() const
 
 bool HdNSICamera::IsPerspective() const
 {
-	return GetProjectionMatrix()[3][3] == 0.0;
+	return GetProjectionMatrix2()[3][3] == 0.0;
 }
 
 void HdNSICamera::Create(
@@ -240,7 +251,12 @@ void HdNSICamera::Create(
 void HdNSICamera::SyncProjectionMatrix(
 	NSI::ArgumentList &args)
 {
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	const GfMatrix4d &proj = GetProjectionMatrix();
+#else
+	const GfMatrix4d &proj = ComputeProjectionMatrix();
+#endif
+	m_projection_matrix = proj;
 	const GfMatrix4d invProj = proj.GetInverse();
 
 	/* Extract aperture. */

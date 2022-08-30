@@ -166,8 +166,10 @@ private:
 	   camera we're rendering). */
 	std::string m_render_camera;
 
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	/* Dummy camera used when the render pass state has no camera. */
 	std::unique_ptr<HdNSICamera> m_placeholder_camera;
+#endif
 
 	// Compositor to copy pixels to viewport.
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
