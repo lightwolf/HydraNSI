@@ -676,7 +676,15 @@ bool HdNSIRenderDelegate::IsBatch() const
 {
     static const TfToken renderMode{"renderMode"};
     static const TfToken batch{"batch"};
-    return GetRenderSetting(renderMode) == batch;
+    VtValue render_mode = GetRenderSetting(renderMode);
+
+    // Depending on Houdini's version, GetRenderSetting(renderMode) holds
+    // either a variable of type std::string or an object of type TfToken
+    if (render_mode.IsHolding<std::string>())
+    {
+        return render_mode == "batch";
+    }
+    return render_mode == batch;
 }
 
 void HdNSIRenderDelegate::SetDisableLighting() const

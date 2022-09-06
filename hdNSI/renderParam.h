@@ -92,6 +92,13 @@ public:
 			NSI::IntegerArg("progressive", batch ? 0 : 1)));
 	}
 
+	void Wait()
+	{
+		GetNSIContext().RenderControl(NSI::CStringPArg("action", "wait"));
+		//Rendering already finished here so we set _rendering to false.
+		_rendering = false;
+	}
+
 	void StopRender()
 	{
 		if (_rendering)

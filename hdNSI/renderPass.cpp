@@ -191,6 +191,12 @@ void HdNSIRenderPass::_Execute(
 	{
 		/* Start (or restart) rendering. */
 		_renderParam->StartRender(_renderDelegate->IsBatch());
+
+		//If rendering started in batch mode, wait for it to finish.
+		if (_renderDelegate->IsBatch())
+		{
+			_renderParam->Wait();
+		}
 	}
 	else if (_renderParam->SceneEdited())
 	{
