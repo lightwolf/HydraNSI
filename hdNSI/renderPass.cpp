@@ -133,19 +133,19 @@ void HdNSIRenderPass::_Execute(
 		or the aperture offset changes, update screen.
 	*/
 	if (_width != vp[2] || _height != vp[3] ||
-	    camera->IsNew() ||
+	    camera->Data().IsNew() ||
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 	    _framing != renderPassState->GetFraming() ||
 #endif
-	    m_render_camera != camera->GetCameraNode() ||
-		m_render_camera_aperture != camera->GetAperture())
+		m_render_camera != camera->Data().GetCameraNode() ||
+		m_render_camera_aperture != camera->Data().GetAperture())
 	{
 		_width = vp[2];
 		_height = vp[3];
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 		_framing = renderPassState->GetFraming();
 #endif
-		m_render_camera_aperture = camera->GetAperture();
+		m_render_camera_aperture = camera->Data().GetAperture();
 		/* Resolution/camera changes required stopping the render. */
 		_renderParam->StopRender();
 		UpdateScreen(*renderPassState, camera);
@@ -180,7 +180,7 @@ void HdNSIRenderPass::_Execute(
 	}
 
 	/* The output driver needs part of the projection matrix to remap Z. */
-	const GfMatrix4d &projMatrix = camera->GetProjectionMatrix2();
+	const GfMatrix4d &projMatrix = camera->Data().GetProjectionMatrix();
 	_depthProj.M22 = projMatrix[2][2];
 	_depthProj.M32 = projMatrix[3][2];
 
@@ -207,7 +207,7 @@ void HdNSIRenderPass::_Execute(
 	/* The renderer is now up to date on all changes. */
 	_renderParam->ResetSceneEdited();
 	/* The camera has been hooked up everywhere. */
-	camera->SetUsed();
+	camera->Data().SetUsed();
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
 	// Blit, only when no AOVs are specified.
@@ -349,7 +349,8 @@ void HdNSIRenderPass::UpdateHeadlight(
 	}
 
 	/* Don't mark the scene as edited if we have nothing to do. */
-	if (m_headlight_xform == camera->GetTransformNode() && !camera->IsNew())
+	if (m_headlight_xform == camera->Data().GetTransformNode() &&
+	    !camera->Data().IsNew())
 		return;
 
 	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
@@ -373,7 +374,7 @@ void HdNSIRenderPass::UpdateHeadlight(
 	}
 
 	/* Connect to the camera's transform. */
-	m_headlight_xform = camera->GetTransformNode();
+	m_headlight_xform = camera->Data().GetTransformNode();
 	nsi.Connect(geo_handle, "", m_headlight_xform, "objects");
 }
 
@@ -395,7 +396,7 @@ void HdNSIRenderPass::UpdateScreen(
 	{
 		nsi.Disconnect(ScreenHandle(), "", m_render_camera, "screens");
 	}
-	m_render_camera = camera->GetCameraNode();
+	m_render_camera = camera->Data().GetCameraNode();
 	nsi.Connect(ScreenHandle(), "", m_render_camera, "screens");
 
 	NSI::ArgumentList args;
@@ -455,7 +456,7 @@ void HdNSIRenderPass::UpdateScreen(
 	double image_aspect = resolution_aspect * pixel_aspect;
 
 	/* Get camera aperture. */
-	GfRange2d ap_range = camera->GetAperture();
+	GfRange2d ap_range = camera->Data().GetAperture();
 
 	/*
 		If we have an aspect ratio policy from UsdRenderSettings, use that. If

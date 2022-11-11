@@ -106,13 +106,32 @@ void HdNSIRprimBase::ExportTransform(
 	{
 		sceneDelegate->SampleTransform(id, &samples);
 	}
+	ExportTransform(samples, nsi, handle);
+}
+
+/**
+	\brief Export the transform for a prim.
+
+	\param samples
+		The transform data.
+	\param nsi
+		The NSI context.
+	\param handle
+		The transform node handle to export to.
+*/
+void HdNSIRprimBase::ExportTransform(
+	const HdTimeSampleArray<GfMatrix4d, 4> &samples,
+	NSI::Context &nsi,
+	const std::string &handle)
+{
 	/* Check for invalid time values. Houdini sends NaN on an empty scene. */
-	for (size_t i = 0; i < samples.count; ++i )
+	size_t count = samples.count;
+	for (size_t i = 0; i < count; ++i )
 	{
 		if( !std::isfinite(samples.times[i]) )
-			samples.count = 1;
+			count = 1;
 	}
-	if( samples.count == 1 )
+	if( count == 1 )
 	{
 		nsi.SetAttribute(handle,
 			NSI::DoubleMatrixArg("transformationmatrix",
@@ -123,13 +142,36 @@ void HdNSIRprimBase::ExportTransform(
 		/* Delete previous motion samples so we don't add to them. */
 		nsi.DeleteAttribute(handle, "transformationmatrix");
 		/* Output the new samples. */
-		for (size_t i = 0; i < samples.count; ++i )
+		for (size_t i = 0; i < count; ++i )
 		{
 			nsi.SetAttributeAtTime(handle, samples.times[i],
 				NSI::DoubleMatrixArg("transformationmatrix",
 					samples.values[i].GetArray()));
 		}
 	}
+}
+
+/**
+	\brief Equality comparison according to how we export transforms.
+
+	Much like an operator== except that it considers non finite time values to
+	be equivalent. Which they are in our export as we don't export them.
+*/
+bool HdNSIRprimBase::SameTransform(
+	const HdTimeSampleArray<GfMatrix4d, 4> &a,
+	const HdTimeSampleArray<GfMatrix4d, 4> &b)
+{
+	if( a.count != b.count )
+		return false;
+	for( size_t i = 0; i < a.count; ++i )
+	{
+		if( (std::isfinite(a.times[i]) || std::isfinite(b.times[i])) &&
+		    a.times[i] != b.times[i] )
+			return false;
+		if( a.values[i] != b.values[i] )
+			return false;
+	}
+	return true;
 }
 
 void HdNSIRprimBase::Create(

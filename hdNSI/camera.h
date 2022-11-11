@@ -1,7 +1,8 @@
 #ifndef HDNSI_CAMERA_H
 #define HDNSI_CAMERA_H
 
-#include <pxr/base/gf/range2d.h>
+#include "cameraData.h"
+
 #include <pxr/imaging/hd/camera.h>
 
 #include <nsi.hpp>
@@ -37,44 +38,13 @@ public:
 		HdNSIRenderParam *nsiRenderParam);
 #endif
 
-	bool IsNew() const { return m_new; }
-	void SetUsed() const { m_new = false; }
-
-	std::string GetCameraNode() const { return m_camera_handle; }
-	std::string GetTransformNode() const { return m_xform_handle; }
-
-	GfRange2d GetAperture() const;
-
-	/* '2' is because older versions have a HdCamera::GetProjectionMatrix() */
-	const GfMatrix4d& GetProjectionMatrix2() const
-		{ return m_projection_matrix; }
+	const HdNSICameraData& Data() const { return m_exported_data; }
 
 private:
-	bool IsPerspective() const;
-	void Create(
-		HdNSIRenderParam *renderParam,
-		NSI::Context &nsi);
 	void SyncProjectionMatrix(
-		NSI::ArgumentList &args);
+		HdNSICameraData &sync_data);
 
-	/* NSI handles. */
-	std::string m_camera_handle;
-	std::string m_xform_handle;
-
-	/*
-		Flag to indicate the camera has never been rendered. This is used to
-		avoid an ABA type problem if a camera gets deleted and recreated with
-		the same Id. The render pass needs to know it is new to reconnect other
-		nodes to it.
-	*/
-	mutable bool m_new{true};
-	/* True if the created camera node is perspective type. */
-	bool m_is_perspective{0};
-
-	GfVec2d m_aperture_min{-1.0}, m_aperture_max{1.0};
-
-	/* Last computed projection matrix. */
-	GfMatrix4d m_projection_matrix;
+	HdNSICameraData m_exported_data;
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE

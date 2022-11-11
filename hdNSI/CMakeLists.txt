@@ -23,6 +23,7 @@ add_library(
 	${LIB_TARGET} SHARED
 
 	camera.cpp
+	cameraData.cpp
 	curves.cpp
 	discoveryPlugin.cpp
 	field.cpp

@@ -12,7 +12,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 HdNSICamera::HdNSICamera(
 	const SdfPath &id)
 :
-	HdCamera{id}
+	HdCamera{id},
+	m_exported_data{id}
 {
 }
 
@@ -30,7 +31,8 @@ void HdNSICamera::Sync(
 	HdCamera::Sync(sceneDelegate, renderParam, dirtyBits);
 	assert(*dirtyBits == Clean);
 
-	NSI::ArgumentList args;
+	/* Make a copy of camera data, that we'll do the updates into. */
+	HdNSICameraData data = m_exported_data;
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (bits & DirtyProjMatrix)
@@ -39,11 +41,8 @@ void HdNSICamera::Sync(
 	if (bits & DirtyParams)
 #endif
 	{
-		SyncProjectionMatrix(args);
+		SyncProjectionMatrix(data);
 	}
-
-	/* Create the nodes now that we know which kind of projection is used. */
-	Create(nsiRenderParam, nsi);
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (bits & DirtyViewMatrix)
@@ -51,8 +50,7 @@ void HdNSICamera::Sync(
 	if (bits & DirtyTransform)
 #endif
 	{
-		HdNSIRprimBase::ExportTransform(
-			sceneDelegate, GetId(), false, nsi, m_xform_handle);
+		sceneDelegate->SampleTransform(GetId(), data.TransformSamples());
 	}
 
 	if (bits & DirtyWindowPolicy)
@@ -74,17 +72,14 @@ void HdNSICamera::Sync(
 		    v_fstop.IsHolding<float>() && v_fstop.Get<float>() > 0.0f &&
 		    v_focusdistance.IsHolding<float>())
 		{
-			args.push(new NSI::DoubleArg("depthoffield.focallength",
-				v_focallength.Get<float>()));
-			args.push(new NSI::DoubleArg("depthoffield.fstop",
-				v_fstop.Get<float>()));
-			args.push(new NSI::DoubleArg("depthoffield.focaldistance",
-				v_focusdistance.Get<float>()));
-			args.push(new NSI::IntegerArg("depthoffield.enable", 1));
+			data.SetDoF(
+				v_focallength.Get<float>(),
+				v_fstop.Get<float>(),
+				v_focusdistance.Get<float>());
 		}
 		else
 		{
-			args.push(new NSI::IntegerArg("depthoffield.enable", 0));
+			data.DisableDoF();
 		}
 
 		/* Shutter for motion blur. */
@@ -95,12 +90,8 @@ void HdNSICamera::Sync(
 		if (v_shutteropen.IsHolding<double>() &&
 		    v_shutterclose.IsHolding<double>())
 		{
-			double sr[2] =
-				{ v_shutteropen.Get<double>(), v_shutterclose.Get<double>() };
-			args.push(NSI::Argument::New("shutterrange")
-				->SetType(NSITypeDouble)
-				->SetCount(2)
-				->CopyValue(sr, sizeof(sr)));
+			data.SetShutterRange(
+				{v_shutteropen.Get<double>(), v_shutterclose.Get<double>()});
 		}
 		else
 		{
@@ -115,21 +106,20 @@ void HdNSICamera::Sync(
 				->GetRenderSetting(shutter_token);
 			if (default_shutter.IsHolding<GfVec2d>())
 			{
-				args.push(NSI::Argument::New("shutterrange")
-					->SetType(NSITypeDouble)
-					->SetCount(2)
-					->CopyValue(default_shutter.Get<GfVec2d>().data(),
-						2 * sizeof(double)));
+				auto r = default_shutter.Get<GfVec2d>();
+				data.SetShutterRange(GfRange1d{r[0], r[1]});
 			}
 			else
 			{
 				/* You will have no motion blur today. */
-				nsi.DeleteAttribute(m_camera_handle, "shutterrange");
+				data.SetShutterRange(GfRange1d{});
 			}
 		}
 	}
 
-	nsi.SetAttribute(m_camera_handle, args);
+	/* Do the necessary NSI calls for what was updated. */
+	m_exported_data.UpdateExportedCamera(
+		data, nsiRenderParam, nsi);
 }
 
 HdDirtyBits HdNSICamera::GetInitialDirtyBitsMask() const
@@ -152,11 +142,7 @@ void HdNSICamera::Finalize(HdRenderParam *renderParam)
 	*/
 	nsiRenderParam->StopRender();
 
-	nsi.Delete(m_camera_handle);
-	m_camera_handle.clear();
-
-	nsi.Delete(m_xform_handle);
-	m_xform_handle.clear();
+	m_exported_data.Delete(nsi);
 
 	HdCamera::Finalize(renderParam);
 }
@@ -183,113 +169,28 @@ void HdNSICamera::SyncFromState(
 	_worldToViewInverseMatrix = _worldToViewMatrix.GetInverse();
 	_projectionMatrix = proj;
 
+	/* Make a copy of camera data, that we'll do the updates into. */
+	HdNSICameraData data = m_exported_data;
+
+	SyncProjectionMatrix(data);
+	data.SetViewMatrix(view);
+
+	/* Do the necessary NSI calls for what was updated. */
 	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
-
-	NSI::ArgumentList args;
-	SyncProjectionMatrix(args);
-
-	/* Create the nodes now that we know which kind of projection is used. */
-	Create(nsiRenderParam, nsi);
-
-	args.push(new NSI::DoubleMatrixArg("transformationmatrix",
-		view.GetArray()));
-
-	nsi.SetAttribute(m_camera_handle, args);
+	m_exported_data.UpdateExportedCamera(
+		data, nsiRenderParam, nsi);
 }
 #endif
 
-GfRange2d HdNSICamera::GetAperture() const
-{
-	return { m_aperture_min, m_aperture_max };
-}
-
-bool HdNSICamera::IsPerspective() const
-{
-	return GetProjectionMatrix2()[3][3] == 0.0;
-}
-
-void HdNSICamera::Create(
-	HdNSIRenderParam *renderParam,
-	NSI::Context &nsi)
-{
-	bool is_perspective = IsPerspective();
-
-	if (!m_camera_handle.empty() && is_perspective == m_is_perspective)
-		return;
-
-	if (!m_camera_handle.empty())
-	{
-		/*
-			Camera type change requires replacing the node. This amounts to a
-			camera change, which requires stopping the render.
-
-			We don't check if this camera is the one actually being rendered
-			because the only case I've seen of this so far is usdview's camera
-			which sometimes gets initialized with an identity matrix before
-			being given its correct projection. It is somewhat random.
-		*/
-		renderParam->StopRender();
-		nsi.Delete(m_camera_handle);
-	}
-
-	/* Needed for the type change case. */
-	m_new = true;
-
-	const SdfPath &id = GetId();
-	std::string base = id.IsEmpty() ? ":defaultcamera:" : id.GetString();
-	m_camera_handle = base + "|camera";
-	m_xform_handle = base;
-
-	m_is_perspective = is_perspective;
-	nsi.Create(m_camera_handle, is_perspective
-		? "perspectivecamera" : "orthographiccamera");
-	nsi.Create(m_xform_handle, "transform");
-	nsi.Connect(m_camera_handle, "", m_xform_handle, "objects");
-	nsi.Connect(m_xform_handle, "", NSI_SCENE_ROOT, "objects");
-}
-
 void HdNSICamera::SyncProjectionMatrix(
-	NSI::ArgumentList &args)
+	HdNSICameraData &sync_data)
 {
 #if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	const GfMatrix4d &proj = GetProjectionMatrix();
 #else
 	const GfMatrix4d &proj = ComputeProjectionMatrix();
 #endif
-	m_projection_matrix = proj;
-	const GfMatrix4d invProj = proj.GetInverse();
-
-	/* Extract aperture. */
-	double z1 = proj.Transform(GfVec3d(0, 0, -1))[2];
-	m_aperture_min = GfVec2d(invProj.Transform(GfVec3d(-1, -1, z1)).data());
-	m_aperture_max = GfVec2d(invProj.Transform(GfVec3d(1, 1, z1)).data());
-
-	/* Extract clipping range. */
-	double clip_near = -
-		(proj[3][2] - -1.0 * proj[3][3]) /
-		(-1.0 * proj[2][3] - proj[2][2]);
-	double clip_far = -
-		(proj[3][2] -  1.0 * proj[3][3]) /
-		( 1.0 * proj[2][3] - proj[2][2]);
-
-	/* Add to camera attributes. */
-	double clipping_range[2] = {clip_near, clip_far};
-	args.push(NSI::Argument::New("clippingrange")
-		->SetType(NSITypeDouble)
-		->SetCount(2)
-		->CopyValue(clipping_range, sizeof(clipping_range)));
-
-	if( IsPerspective() )
-	{
-		/* Compute FoV from the matrix. */
-		double fov = 2.0 * std::atan(1.0 / proj[1][1]);
-		fov = GfRadiansToDegrees(fov);
-		args.push(new NSI::FloatArg("fov", fov));
-
-		/* Adjust aperture accordingly (NSI FoV is for vertical [-1, 1]). */
-		m_aperture_min *= proj[1][1];
-		m_aperture_max *= proj[1][1];
-	}
+	sync_data.SetProjectionMatrix(proj);
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

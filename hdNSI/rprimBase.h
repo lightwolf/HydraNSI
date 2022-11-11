@@ -40,6 +40,15 @@ public:
 		NSI::Context &nsi,
 		const std::string &handle);
 
+	static void ExportTransform(
+		const HdTimeSampleArray<GfMatrix4d, 4> &samples,
+		NSI::Context &nsi,
+		const std::string &handle);
+
+	static bool SameTransform(
+		const HdTimeSampleArray<GfMatrix4d, 4> &a,
+		const HdTimeSampleArray<GfMatrix4d, 4> &b);
+
 private:
 	void Create(
 		NSI::Context &nsi,
