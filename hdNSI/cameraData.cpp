@@ -10,22 +10,29 @@ PXR_NAMESPACE_OPEN_SCOPE
 HdNSICameraData::HdNSICameraData(
 	const SdfPath &id)
 :
-	m_id{id}
+	m_base{id.IsEmpty() ? ":defaultcamera:" : id.GetString()}
 {
 }
 
 /**
 	\brief Update this data and issue NSI commands for the change.
 
+	\returns
+		true if any of the data used by the screen export has changed.
+
 	The camera data from new_data, except id and handles, is assigned to this
 	object. Then NSI calls are issues to update the scene according to the
 	changes.
 */
-void HdNSICameraData::UpdateExportedCamera(
+bool HdNSICameraData::UpdateExportedCamera(
 	const HdNSICameraData &new_data,
-	HdNSIRenderParam *renderParam,
-	NSI::Context &nsi)
+	HdNSIRenderParam *renderParam)
 {
+	/* Check for changes which require a screen update. */
+	bool has_change =
+		m_aperture_min != new_data.m_aperture_min;
+		m_aperture_max != new_data.m_aperture_max;
+
 	/* Copy the data which does not get exported directly here. The projection
 	   matrix affects the camera type in Create() however. */
 	m_projection_matrix = new_data.m_projection_matrix;
@@ -33,13 +40,14 @@ void HdNSICameraData::UpdateExportedCamera(
 	m_aperture_max = new_data.m_aperture_max;
 
 	/* Create the nodes now that we know which kind of projection is used. */
-	Create(renderParam, nsi);
+	Create(renderParam);
 
 	NSI::ArgumentList args;
 
 	if( !HdNSIRprimBase::SameTransform(m_transform, new_data.m_transform) )
 	{
 		m_transform = new_data.m_transform;
+		NSI::Context &nsi = renderParam->AcquireSceneForEdit();
 		HdNSIRprimBase::ExportTransform(
 			m_transform, nsi, m_xform_handle);
 	}
@@ -87,6 +95,7 @@ void HdNSICameraData::UpdateExportedCamera(
 		m_shutter_range = new_data.m_shutter_range;
 		if( m_shutter_range.IsEmpty() )
 		{
+			NSI::Context &nsi = renderParam->AcquireSceneForEdit();
 			nsi.DeleteAttribute(m_camera_handle, "shutterrange");
 		}
 		else
@@ -102,9 +111,11 @@ void HdNSICameraData::UpdateExportedCamera(
 
 	if( !args.empty() )
 	{
+		NSI::Context &nsi = renderParam->AcquireSceneForEdit();
 		nsi.SetAttribute(m_camera_handle, args);
 	}
 
+	return has_change;
 }
 
 /**
@@ -180,15 +191,14 @@ bool HdNSICameraData::IsPerspective() const
 	return GetProjectionMatrix()[3][3] == 0.0;
 }
 
-void HdNSICameraData::Create(
-	HdNSIRenderParam *renderParam,
-	NSI::Context &nsi)
+void HdNSICameraData::Create(HdNSIRenderParam *renderParam)
 {
 	bool is_perspective = IsPerspective();
 
 	if (!m_camera_handle.empty() && is_perspective == m_is_perspective)
 		return;
 
+	NSI::Context &nsi = renderParam->AcquireSceneForEdit();
 	if (!m_camera_handle.empty())
 	{
 		/*
@@ -207,9 +217,8 @@ void HdNSICameraData::Create(
 	/* Needed for the type change case. */
 	m_new = true;
 
-	std::string base = m_id.IsEmpty() ? ":defaultcamera:" : m_id.GetString();
-	m_camera_handle = base + "|camera";
-	m_xform_handle = base;
+	m_camera_handle = m_base + "|camera";
+	m_xform_handle = m_base;
 
 	m_is_perspective = is_perspective;
 	nsi.Create(m_camera_handle, is_perspective

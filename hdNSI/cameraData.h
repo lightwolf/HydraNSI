@@ -21,10 +21,11 @@ public:
 	HdNSICameraData(
 		const SdfPath &id);
 
-	void UpdateExportedCamera(
+	void SetId(const std::string &id) { m_base = id; }
+
+	bool UpdateExportedCamera(
 		const HdNSICameraData &new_data,
-		HdNSIRenderParam *renderParam,
-		NSI::Context &nsi);
+		HdNSIRenderParam *renderParam);
 
 	void Delete(
 		NSI::Context &nsi);
@@ -57,12 +58,10 @@ public:
 
 private:
 	bool IsPerspective() const;
-	void Create(
-		HdNSIRenderParam *renderParam,
-		NSI::Context &nsi);
+	void Create(HdNSIRenderParam *renderParam);
 
 private:
-	SdfPath m_id;
+	std::string m_base;
 
 	/* NSI handles of created nodes. */
 	std::string m_camera_handle;

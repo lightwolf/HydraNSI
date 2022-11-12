@@ -23,7 +23,6 @@ void HdNSICamera::Sync(
 	HdDirtyBits *dirtyBits)
 {
 	auto nsiRenderParam = static_cast<HdNSIRenderParam*>(renderParam);
-	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 
 	/* Cache this because HdCamera clears all of them. */
 	auto bits = *dirtyBits;
@@ -118,8 +117,7 @@ void HdNSICamera::Sync(
 	}
 
 	/* Do the necessary NSI calls for what was updated. */
-	m_exported_data.UpdateExportedCamera(
-		data, nsiRenderParam, nsi);
+	m_exported_data.UpdateExportedCamera(data, nsiRenderParam);
 }
 
 HdDirtyBits HdNSICamera::GetInitialDirtyBitsMask() const
@@ -176,9 +174,7 @@ void HdNSICamera::SyncFromState(
 	data.SetViewMatrix(view);
 
 	/* Do the necessary NSI calls for what was updated. */
-	NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
-	m_exported_data.UpdateExportedCamera(
-		data, nsiRenderParam, nsi);
+	m_exported_data.UpdateExportedCamera(data, nsiRenderParam);
 }
 #endif
 

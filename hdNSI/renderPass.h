@@ -26,6 +26,7 @@
 #ifndef HDNSI_RENDER_PASS_H
 #define HDNSI_RENDER_PASS_H
 
+#include "cameraData.h"
 #include "outputDriver.h"
 #include "renderBuffer.h"
 #include "renderParam.h"
@@ -122,8 +123,6 @@ private:
 	unsigned int _width;
 	// The height of the viewport we're rendering into.
 	unsigned int _height;
-	// Get camera aperture
-	GfRange2d m_render_camera_aperture;
 #if defined(PXR_VERSION) && PXR_VERSION >= 2102
 	/* The camera framing we're rendering. */
 	CameraUtilFraming _framing;
@@ -156,10 +155,11 @@ private:
 		const HdRenderPassState &renderPassState,
 		const HdNSICamera *camera);
 	bool m_screen_created{false};
+	int m_screen_resolution[2] = {-1, -1};
 
-	/* The camera node to which the screen is currently connected (ie. the
-	   camera we're rendering). */
-	std::string m_render_camera;
+	/* The camera data we're rendering with. Exported to a separate object than
+	   all the cameras in the scene. */
+	HdNSICameraData m_render_camera;
 
 #if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	/* Dummy camera used when the render pass state has no camera. */
