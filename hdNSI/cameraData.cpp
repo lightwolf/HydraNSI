@@ -30,7 +30,7 @@ bool HdNSICameraData::UpdateExportedCamera(
 {
 	/* Check for changes which require a screen update. */
 	bool has_change =
-		m_aperture_min != new_data.m_aperture_min;
+		m_aperture_min != new_data.m_aperture_min ||
 		m_aperture_max != new_data.m_aperture_max;
 
 	/* Copy the data which does not get exported directly here. The projection
