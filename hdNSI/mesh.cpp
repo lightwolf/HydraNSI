@@ -243,13 +243,10 @@ void HdNSIMesh::_PopulateRtMesh(
 	// interpolated smoothly across faces.
 	_smoothNormals = !desc.flatShadingEnabled;
 
-	// If the subdivision scheme is "none" or "bilinear", force us not to use
-	// smooth normals.
-#if 0
+	/* No smooth normals with "none" or "bilinear", like hdStorm. */
 	_smoothNormals = _smoothNormals &&
 		(_topology.GetScheme() != PxOsdOpenSubdivTokens->none) &&
 		(_topology.GetScheme() != PxOsdOpenSubdivTokens->bilinear);
-#endif
 	/* Don't compute smooth normals on a subdiv. They are implicitly smooth. */
 	_smoothNormals = _smoothNormals &&
 		_topology.GetScheme() != PxOsdOpenSubdivTokens->catmullClark;
