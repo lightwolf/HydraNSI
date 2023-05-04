@@ -62,7 +62,11 @@ public:
 
     /// Checks to see if the NSI plugin is supported on the running system
     ///
+#if PXR_VERSION < 2302
     virtual bool IsSupported() const override;
+#else
+    virtual bool IsSupported(bool gpuEnabled = true) const override;
+#endif
 
 private:
     // This class does not support copying.

@@ -55,8 +55,12 @@ HdNSIRendererPlugin::DeleteRenderDelegate(HdRenderDelegate *renderDelegate)
     delete renderDelegate;
 }
 
-bool 
+bool
+#if PXR_VERSION < 2302
 HdNSIRendererPlugin::IsSupported() const
+#else
+HdNSIRendererPlugin::IsSupported(bool gpuEnabled) const
+#endif
 {
     static bool		 theSupportedFlag = false;
     static bool		 theSupportTestedFlag = false;
