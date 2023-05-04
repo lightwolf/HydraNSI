@@ -80,6 +80,11 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	target_compile_options(${LIB_TARGET} PRIVATE -Wno-deprecated)
 endif()
 
+# Workaround for https://github.com/PixarAnimationStudios/USD/issues/1279
+if (MSVC_VERSION GREATER_EQUAL 1930)
+	target_compile_options(${LIB_TARGET} PRIVATE "/Zc:inline-")
+endif()
+
 install(TARGETS ${LIB_TARGET}
 	DESTINATION "${HYDRANSI_INSTALL_PREFIX}hdNSI")
 
