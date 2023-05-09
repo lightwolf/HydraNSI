@@ -76,7 +76,7 @@ public:
 
     virtual void Resolve() override;
 
-    void SetNSILayerAttributes(
+    void SetBindingNSILayerAttributes(
         NSI::Context &nsi,
         const std::string &layerHandle,
         const HdRenderPassAovBinding &aov) const;

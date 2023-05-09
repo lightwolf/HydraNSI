@@ -27,18 +27,10 @@
 #include "renderParam.h"
 
 #include <pxr/base/gf/half.h>
-#include <pxr/usd/usdRender/tokens.h>
+
+#include <iostream>
 
 PXR_NAMESPACE_OPEN_SCOPE
-
-TF_DEFINE_PRIVATE_TOKENS(
-	_tokens,
-    (vector3f)
-    (normal3f)
-    ((_float, "float"))
-    (color4f)
-    (float4)
-);
 
 HdNSIRenderBuffer::HdNSIRenderBuffer(SdfPath const& id)
     : HdRenderBuffer(id)
@@ -141,53 +133,23 @@ void HdNSIRenderBuffer::Resolve()
 {
 }
 
-namespace
-{
-VtValue GetAovSetting(const HdRenderPassAovBinding &aov, const TfToken &name)
-{
-    auto it = aov.aovSettings.find(name);
-    if (it == aov.aovSettings.end())
-        return {};
-    return it->second;
-}
-}
-
-void HdNSIRenderBuffer::SetNSILayerAttributes(
+/*
+    This sets outputlayer attributes specific to the builtin Hydra AOVs.
+*/
+void HdNSIRenderBuffer::SetBindingNSILayerAttributes(
 	NSI::Context &nsi,
 	const std::string &layerHandle,
 	const HdRenderPassAovBinding &aov) const
 {
-	nsi.SetAttribute(layerHandle,
-		NSI::PointerArg("buffer", this));
-
-    HdFormat componentFormat = HdGetComponentFormat(_format);
-    bool draw_outlines = false;
     TfToken aovName = aov.aovName;
-
-	if( componentFormat == HdFormatFloat32 ||
-	    componentFormat == HdFormatInt32 )
-	{
-        /* Integers are output as float and converted in the output driver. */
-		nsi.SetAttribute(layerHandle, NSI::StringArg("scalarformat", "float"));
-	}
-	else if( componentFormat == HdFormatFloat16 )
-	{
-		nsi.SetAttribute(layerHandle, NSI::StringArg("scalarformat", "half"));
-	}
-	else if( componentFormat == HdFormatUNorm8 )
-	{
-		nsi.SetAttribute(layerHandle, (
-			NSI::StringArg("scalarformat", "uint8"),
-            NSI::IntegerArg("dithering", 1)));
-	}
 
 	if( aovName == HdAovTokens->color )
 	{
-        draw_outlines = true;
 		nsi.SetAttribute(layerHandle, (
             NSI::StringArg("variablename", "Ci"),
             NSI::StringArg("layertype", "color"),
             NSI::IntegerArg("withalpha", 1),
+            NSI::IntegerArg("drawoutlines", 1),
             NSI::StringArg("variablesource", "shader")));
 	}
 	else if( aovName == HdAovTokens->depth ||
@@ -229,75 +191,6 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
             NSI::StringArg("filter", "zmin"),
             NSI::DoubleArg("filterwidth", 1.0)));
     }
-    else if( GetAovSetting(aov, UsdRenderTokens->sourceType) ==
-        UsdRenderTokens->raw )
-    {
-        /* This case handles UsdRenderVar. */
-        VtValue sourceName = GetAovSetting(aov, UsdRenderTokens->sourceName);
-        std::string name;
-        if( sourceName.IsHolding<std::string>() )
-        {
-            name = sourceName.Get<std::string>();
-            /* Parse any source prefix which might be in the name. */
-            const std::string sources[] =
-                {"shader:", "builtin:", "attribute:"};
-            std::string source = "shader";
-
-            for( const std::string &s : sources )
-            {
-                if( 0 == name.compare(0, s.size(), s) )
-                {
-                    source = s.substr(0, s.size() - 1);
-                    name = name.substr(s.size());
-                    break;
-                }
-            }
-
-            nsi.SetAttribute(layerHandle, (
-                NSI::StringArg("variablename", name),
-                NSI::StringArg("variablesource", source)));
-
-            if( name == "Ci" || name == "outlines" )
-                draw_outlines = true;
-        }
-
-        VtValue dataType = GetAovSetting(aov, UsdRenderTokens->dataType);
-        if( dataType == UsdRenderTokens->color3f )
-        {
-            nsi.SetAttribute(layerHandle,
-                NSI::StringArg("layertype", "color"));
-        }
-        else if( dataType == _tokens->vector3f )
-        {
-            nsi.SetAttribute(layerHandle,
-                NSI::StringArg("layertype", "vector"));
-        }
-        else if( dataType == _tokens->normal3f )
-        {
-            nsi.SetAttribute(layerHandle,
-                NSI::StringArg("layertype", "normal"));
-        }
-        else if( dataType == _tokens->_float )
-        {
-            nsi.SetAttribute(layerHandle,
-                NSI::StringArg("layertype", "scalar"));
-        }
-        else if( dataType == _tokens->color4f || dataType == _tokens->float4 )
-        {
-            if( name == "outlines" )
-            {
-                nsi.SetAttribute(layerHandle,
-                    NSI::StringArg("layertype", "quad"));
-            }
-            else
-            {
-                /* Should probably fix 3Delight so 'quad' always works. */
-                nsi.SetAttribute(layerHandle, (
-                    NSI::StringArg("layertype", "color"),
-                    NSI::IntegerArg("withalpha", 1)));
-            }
-        }
-    }
     else
     {
         HdParsedAovToken aovId(aovName);
@@ -308,11 +201,6 @@ void HdNSIRenderBuffer::SetNSILayerAttributes(
                 NSI::StringArg("variablesource", "attribute"),
                 NSI::StringArg("layertype", "color")));
         }
-    }
-
-    if( draw_outlines )
-    {
-        nsi.SetAttribute(layerHandle, NSI::IntegerArg("drawoutlines", 1));
     }
 }
 

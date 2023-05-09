@@ -100,6 +100,18 @@ protected:
 private:
 
 	void UpdateOutputs(const HdRenderPassAovBindingVector &bindings);
+	void ExportRenderProducts();
+
+	bool SetRawSourceNSILayerAttributes(
+		NSI::Context &nsi,
+		const std::string &layerHandle,
+		const HdAovSettingsMap &aovSettings);
+
+	void SetFormatNSILayerAttributes(
+		NSI::Context &nsi,
+		const std::string &layerHandle,
+		HdFormat format,
+		const HdAovSettingsMap *aovSettings);
 
 	// -----------------------------------------------------------------------
 	// Internal API

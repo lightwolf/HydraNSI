@@ -44,6 +44,54 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+TF_DEFINE_PRIVATE_TOKENS(
+	_tokens,
+	/* This is how Houdini sends non raster render products. */
+	(delegateRenderProducts)
+	/* Values in the render product map. */
+	(productName)
+	(productType)
+	(orderedVars)
+	/* Values in one of the vars. */
+	((aovDescriptor_format, "aovDescriptor.format"))
+	((aovDescriptor_multiSampled, "aovDescriptor.multiSampled"))
+	((aovDescriptor_clearValue, "aovDescriptor.clearValue"))
+	((aovDescriptor_aovSettings, "aovDescriptor.aovSettings"))
+	/* Types not defined in UsdRenderTokens */
+	(vector3f)
+	(normal3f)
+	((_float, "float"))
+	(color4f)
+	(float4)
+	/* Out custom product types. */
+	((nsi_display, "nsi:display"))
+	((nsi_exr, "nsi:exr"))
+	((nsi_deepexr, "nsi:deepexr"))
+	/* Entries in HdAovSettingsMap. */
+	((driver_format, "driver:parameters:aov:format"))
+	/* Driver aov formats. */
+	(color3h)
+	(color4h)
+	(half)
+	(half2)
+	(half3)
+	(half4)
+	(color3u8)
+	(color4u8)
+);
+
+namespace
+{
+typedef TfHashMap<TfToken, VtValue, TfToken::HashFunctor> TokenValueMap;
+VtValue GetHashMapEntry(const TokenValueMap &map, const TfToken &name)
+{
+	auto it = map.find(name);
+	if( it == map.end() )
+		return {};
+	return it->second;
+}
+}
+
 HdNSIRenderPass::HdNSIRenderPass(
 	HdRenderIndex *index,
 	HdRprimCollection const &collection,
@@ -188,6 +236,7 @@ void HdNSIRenderPass::_Execute(
 		/* Output changes required stopping the render. */
 		_renderParam->StopRender();
 		UpdateOutputs(aovBindings);
+		ExportRenderProducts();
 	}
 
 	/* The output driver needs part of the projection matrix to remap Z. */
@@ -258,9 +307,17 @@ void HdNSIRenderPass::UpdateOutputs(
 		nsi.Create(layerHandle, "outputlayer");
 		nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
 
-		/* Have the buffer set some of the attributes. */
-		static_cast<HdNSIRenderBuffer*>(aov.renderBuffer)
-			->SetNSILayerAttributes(nsi, layerHandle, aov);
+		auto renderBuffer = static_cast<HdNSIRenderBuffer*>(aov.renderBuffer);
+		/* The output driver will retrieve this pointer to access the buffer. */
+		nsi.SetAttribute(layerHandle, NSI::PointerArg("buffer", renderBuffer));
+		/* Set format to match the buffer. */
+		SetFormatNSILayerAttributes(
+			nsi, layerHandle, renderBuffer->GetFormat(), nullptr);
+		/* Set what to produce from raw source or builtin Hydra AOV. */
+		if( !SetRawSourceNSILayerAttributes(nsi, layerHandle, aov.aovSettings) )
+		{
+			renderBuffer->SetBindingNSILayerAttributes(nsi, layerHandle, aov);
+		}
 
 		if( aov.aovName == HdAovTokens->depth )
 		{
@@ -285,6 +342,261 @@ void HdNSIRenderPass::UpdateOutputs(
 		_outputNodes.push_back(driverHandle);
 
 		++i;
+	}
+}
+
+/*
+	This is an extension of UpdateOutputs() for offline renders.
+
+	It handles render outputs which are not of the "raster" type. Meaning
+	images not going through the usual HdRenderBuffer. This can be output to
+	3Delight Display, to a deepexr file, etc.
+*/
+void HdNSIRenderPass::ExportRenderProducts()
+{
+	VtValue products_val = _renderDelegate->GetRenderSetting(
+		_tokens->delegateRenderProducts);
+	if( !products_val.IsHolding<VtArray<TokenValueMap>>() )
+		return;
+
+	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
+	const auto &products = products_val.Get<VtArray<TokenValueMap>>();
+	int i = 0;
+	for( const HdRenderSettingsMap &prod : products )
+	{
+		VtValue productName_val = GetHashMapEntry(prod, _tokens->productName);
+		VtValue productType_val = GetHashMapEntry(prod, _tokens->productType);
+		VtValue orderedVars_val = GetHashMapEntry(prod, _tokens->orderedVars);
+
+		if( !productName_val.IsHolding<TfToken>() ||
+		    !productType_val.IsHolding<TfToken>() ||
+		    !orderedVars_val.IsHolding<VtArray<TokenValueMap>>() )
+		{
+			TF_WARN("Bad render product definition");
+			continue;
+		}
+
+		TfToken productName = productName_val.Get<TfToken>();
+		TfToken productType = productType_val.Get<TfToken>();
+		const VtArray<TokenValueMap> orderedVars =
+			orderedVars_val.Get<VtArray<TokenValueMap>>();
+
+		std::vector<HdAovDescriptor> descriptors;
+		for( const auto &var : orderedVars )
+		{
+			/*
+				Build HdAovDescriptor from aovDescriptor.* values. Has
+				duplicates of other values so it's all we really need.
+			*/
+			HdAovDescriptor desc;
+			VtValue format =
+				GetHashMapEntry(var, _tokens->aovDescriptor_format);
+			VtValue multiSampled =
+				GetHashMapEntry(var, _tokens->aovDescriptor_multiSampled);
+			desc.clearValue =
+				GetHashMapEntry(var, _tokens->aovDescriptor_clearValue);
+			VtValue aovSettings =
+				GetHashMapEntry(var, _tokens->aovDescriptor_aovSettings);
+
+			if( !format.IsHolding<HdFormat>() ||
+			    !multiSampled.IsHolding<bool>() ||
+			    !aovSettings.IsHolding<HdAovSettingsMap>() )
+			{
+				TF_WARN("Bad aovDescriptor in render product ordered vars");
+				continue;
+			}
+
+			desc.format = format.Get<HdFormat>();
+			desc.multiSampled = multiSampled.Get<bool>();
+			desc.aovSettings = aovSettings.Get<HdAovSettingsMap>();
+
+			descriptors.emplace_back(std::move(desc));
+		}
+
+		if( descriptors.empty() )
+			continue;
+
+		std::string drivername;
+		if( productType == _tokens->nsi_display )
+			drivername = "idisplay";
+		else if( productType == _tokens->nsi_exr )
+			drivername = "exr";
+		else if( productType == _tokens->nsi_deepexr )
+			drivername = "deepexr";
+		else
+			continue; /* ignore unknown for now */
+
+		/* Create a single output driver for all the layers of a product. */
+		std::string driverHandle =
+			Handle("|productOutputDriver") + std::to_string(i);
+		nsi.Create(driverHandle, "outputdriver");
+		nsi.SetAttribute(driverHandle, (
+			NSI::StringArg("drivername", drivername),
+			NSI::StringArg("imagefilename", productName.GetString())));
+		/* Record those even if there shouldn't be updates for now. */
+		_outputNodes.push_back(driverHandle);
+
+		for( const HdAovDescriptor &desc : descriptors )
+		{
+			/* Create an output layer. */
+			std::string layerHandle =
+				Handle("|productOutputLayer") + std::to_string(i);
+			nsi.Create(layerHandle, "outputlayer");
+			nsi.SetAttribute(layerHandle, NSI::IntegerArg("sortkey", i));
+
+			/* Set the attributes specific to this outut. */
+			SetFormatNSILayerAttributes(
+				nsi, layerHandle, desc.format, &desc.aovSettings);
+			SetRawSourceNSILayerAttributes(nsi, layerHandle, desc.aovSettings);
+
+			/* Connect with output driver and screen. */
+			nsi.Connect(driverHandle, "", layerHandle, "outputdrivers");
+			nsi.Connect(layerHandle, "", ScreenHandle(), "outputlayers");
+
+			/* Record those even if there shouldn't be updates for now. */
+			_outputNodes.push_back(layerHandle);
+
+			++i;
+		}
+	}
+}
+
+/*
+	This handles UsdRenderVar defined from Houdini for offline rendering.
+	Normally not used for a regular Hydra viewer.
+*/
+bool HdNSIRenderPass::SetRawSourceNSILayerAttributes(
+	NSI::Context &nsi,
+	const std::string &layerHandle,
+	const HdAovSettingsMap &aov)
+{
+	auto sourceType = GetHashMapEntry(aov, UsdRenderTokens->sourceType);
+	if( sourceType != UsdRenderTokens->raw )
+		return false;
+
+	VtValue sourceName = GetHashMapEntry(aov, UsdRenderTokens->sourceName);
+	std::string name;
+	if( sourceName.IsHolding<std::string>() )
+	{
+		name = sourceName.Get<std::string>();
+		/* Parse any source prefix which might be in the name. */
+		const std::string sources[] =
+			{"shader:", "builtin:", "attribute:"};
+		std::string source = "shader";
+
+		for( const std::string &s : sources )
+		{
+			if( 0 == name.compare(0, s.size(), s) )
+			{
+				source = s.substr(0, s.size() - 1);
+				name = name.substr(s.size());
+				break;
+			}
+		}
+
+		nsi.SetAttribute(layerHandle, (
+			NSI::StringArg("variablename", name),
+			NSI::StringArg("variablesource", source)));
+
+		if( name == "Ci" || name == "outlines" )
+		{
+			nsi.SetAttribute(layerHandle, NSI::IntegerArg("drawoutlines", 1));
+		}
+	}
+
+	VtValue dataType = GetHashMapEntry(aov, UsdRenderTokens->dataType);
+	if( dataType == UsdRenderTokens->color3f )
+	{
+		nsi.SetAttribute(layerHandle,
+			NSI::StringArg("layertype", "color"));
+	}
+	else if( dataType == _tokens->vector3f || dataType == _tokens->normal3f )
+	{
+		nsi.SetAttribute(layerHandle,
+			NSI::StringArg("layertype", "vector"));
+	}
+	else if( dataType == _tokens->_float )
+	{
+		nsi.SetAttribute(layerHandle,
+			NSI::StringArg("layertype", "scalar"));
+	}
+	else if( dataType == _tokens->color4f || dataType == _tokens->float4 )
+	{
+		if( name == "outlines" )
+		{
+			nsi.SetAttribute(layerHandle,
+				NSI::StringArg("layertype", "quad"));
+		}
+		else
+		{
+			/* Should probably fix 3Delight so 'quad' always works. */
+			nsi.SetAttribute(layerHandle, (
+				NSI::StringArg("layertype", "color"),
+				NSI::IntegerArg("withalpha", 1)));
+		}
+	}
+
+	return true;
+}
+
+/**
+	\param aovSettings
+		Optional aov settings where we first look for Houdini's
+		driver:parameters:aov:format. This is needed because unlike for raster
+		AOVs where the HdFormat is based on that parameter, it is based on the
+		dataType field for extra delegate products.
+*/
+void HdNSIRenderPass::SetFormatNSILayerAttributes(
+	NSI::Context &nsi,
+	const std::string &layerHandle,
+	HdFormat format,
+	const HdAovSettingsMap *aovSettings)
+{
+	if( aovSettings )
+	{
+		VtValue format = GetHashMapEntry(*aovSettings, _tokens->driver_format);
+		if( format.IsHolding<TfToken>() )
+		{
+			TfToken f = format.Get<TfToken>();
+			if( f == _tokens->color3h || f == _tokens->color4h ||
+			    f == _tokens->half || f == _tokens->half2 ||
+			    f == _tokens->half3 || f == _tokens->half4 )
+			{
+				nsi.SetAttribute(layerHandle,
+					NSI::StringArg("scalarformat", "half"));
+			}
+			else if( f == _tokens->color3u8 || f == _tokens->color4u8 )
+			{
+				nsi.SetAttribute(layerHandle, (
+					NSI::StringArg("scalarformat", "uint8"),
+					NSI::IntegerArg("dithering", 1)));
+			}
+			else
+			{
+				nsi.SetAttribute(layerHandle,
+					NSI::StringArg("scalarformat", "float"));
+			}
+			return;
+		}
+	}
+
+	HdFormat componentFormat = HdGetComponentFormat(format);
+
+	if( componentFormat == HdFormatFloat32 ||
+	    componentFormat == HdFormatInt32 )
+	{
+		/* Integers are output as float and converted in the output driver. */
+		nsi.SetAttribute(layerHandle, NSI::StringArg("scalarformat", "float"));
+	}
+	else if( componentFormat == HdFormatFloat16 )
+	{
+		nsi.SetAttribute(layerHandle, NSI::StringArg("scalarformat", "half"));
+	}
+	else if( componentFormat == HdFormatUNorm8 )
+	{
+		nsi.SetAttribute(layerHandle, (
+			NSI::StringArg("scalarformat", "uint8"),
+			NSI::IntegerArg("dithering", 1)));
 	}
 }
 
