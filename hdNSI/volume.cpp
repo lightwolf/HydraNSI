@@ -25,13 +25,11 @@ HdDirtyBits HdNSIVolume::GetInitialDirtyBitsMask() const
 {
 	int mask = HdChangeTracker::Clean
 		| HdChangeTracker::InitRepr
-		| HdChangeTracker::DirtyPrimID
-		| HdChangeTracker::DirtyTransform
-		| HdChangeTracker::DirtyVisibility
 		//| HdChangeTracker::DirtyPrimvar // none for now
 		| HdChangeTracker::DirtyInstancer
 		| HdChangeTracker::DirtyInstanceIndex
 		| HdChangeTracker::DirtyMaterialId
+		| HdNSIRprimBase::ProcessedDirtyBits()
 		;
 
 	return (HdDirtyBits)mask;

@@ -53,12 +53,25 @@ void HdNSIRprimBase::Sync(
 			NSI::IntegerArg("visibility", rprim.IsVisible() ? 1 : 0));
 	}
 
+	/*
+		Update categories. We only do light linking with those for now so we
+		make some assumptions in here. If we ever need to tell what's what,
+		lights always get synchronized first so we could store a global list.
+	*/
+	if (0 != (*dirtyBits & HdChangeTracker::DirtyCategories))
+	{
+		VtArray<TfToken> categories = sceneDelegate->GetCategories(id);
+		/* Reconnecting everything from scratch is the easiest way to update. */
+		nsi.Disconnect(_attrsHandle, "", NSI_ALL_NODES, "visibility");
+		for( const TfToken &cat : categories )
+		{
+			nsi.Connect(_attrsHandle, "", cat.GetString(), "visibility",
+				NSI::IntegerArg("value", 1));
+		}
+	}
+
 	/* Clear the bits for what we processed. */
-	*dirtyBits &= ~HdDirtyBits(HdChangeTracker::Clean
-		| HdChangeTracker::DirtyPrimID
-		| HdChangeTracker::DirtyTransform
-        | HdChangeTracker::DirtyVisibility
-		);
+	*dirtyBits &= ~ProcessedDirtyBits();
 }
 
 void HdNSIRprimBase::Finalize(HdNSIRenderParam *renderParam)

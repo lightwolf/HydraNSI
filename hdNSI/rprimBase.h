@@ -22,6 +22,16 @@ public:
 	{
 	}
 
+	static HdDirtyBits ProcessedDirtyBits()
+	{
+		return HdDirtyBits(HdChangeTracker::Clean
+			| HdChangeTracker::DirtyCategories
+			| HdChangeTracker::DirtyPrimID
+			| HdChangeTracker::DirtyTransform
+			| HdChangeTracker::DirtyVisibility
+			);
+	}
+
 	void Sync(
 		HdSceneDelegate *sceneDelegate,
 		HdNSIRenderParam *renderParam,

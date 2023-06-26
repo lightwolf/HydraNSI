@@ -59,11 +59,8 @@ HdNSIPointCloud::GetInitialDirtyBitsMask() const
     // that _PopulateRtPointCloud requests.
     int mask = HdChangeTracker::Clean
         | HdChangeTracker::InitRepr
-        | HdChangeTracker::DirtyPrimID
         | HdChangeTracker::DirtyPoints
         | HdChangeTracker::DirtyTopology
-        | HdChangeTracker::DirtyTransform
-        | HdChangeTracker::DirtyVisibility
         | HdChangeTracker::DirtyCullStyle
         | HdChangeTracker::DirtyDoubleSided
         | HdChangeTracker::DirtyDisplayStyle
@@ -74,6 +71,7 @@ HdNSIPointCloud::GetInitialDirtyBitsMask() const
         | HdChangeTracker::DirtyInstancer
         | HdChangeTracker::DirtyInstanceIndex
         | HdChangeTracker::DirtyMaterialId
+        | HdNSIRprimBase::ProcessedDirtyBits()
         ;
 
     return (HdDirtyBits)mask;

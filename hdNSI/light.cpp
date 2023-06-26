@@ -109,9 +109,11 @@ void HdNSILight::Sync(
 		}
 	}
 
-	/* Visibility does not have a dirty bit, as of writing this. */
-	nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility",
-		sceneDelegate->GetVisible(GetId()) ? 1 : 0));
+	/* Visibility does not have a dirty bit for lights. It is part of params. */
+	if (0 != (*dirtyBits & (DirtyParams | DirtyCollection)))
+	{
+		SyncVisibilityAndLinking(nsi, sceneDelegate);
+	}
 
 	*dirtyBits = Clean;
 }
@@ -214,6 +216,11 @@ void HdNSILight::DeleteNodes(
 	i_nsi.Delete(geo_handle);
 	i_nsi.Delete(attr_handle);
 	i_nsi.Delete(shader_handle);
+	if( !m_linking_attr_handle.empty() )
+	{
+		i_nsi.Delete(m_linking_attr_handle);
+		m_linking_attr_handle.clear();
+	}
 
 	m_nodes_created = false;
 	renderParam->RemoveLight();
@@ -285,6 +292,62 @@ void HdNSILight::SetShaderParams(
 			i_nsi.SetAttribute(shader_handle,
 				NSI::StringArg("textureformat", format.GetString()));
 		}
+	}
+}
+
+/*
+	Handle the visibility attribute as well as light linking.
+*/
+void HdNSILight::SyncVisibilityAndLinking(
+	NSI::Context &i_nsi,
+	HdSceneDelegate *sceneDelegate)
+{
+	std::string xform_handle = GetId().GetString();
+	std::string geo_handle = xform_handle + "|geo";
+	std::string attr_handle = xform_handle + "|attr";
+
+	bool visible = sceneDelegate->GetVisible(GetId());
+
+	/*
+		Check if we have light linking and create or delete the attributes node
+		used by primitives as a binding point for it. Its handle is the link
+		category to make this easy on the rprim side. Lights get synchronized
+		before rprims which makes it ok to only create the node here.
+	*/
+	VtValue link = sceneDelegate->GetLightParamValue(
+		GetId(), HdTokens->lightLink);
+	if( link.IsHolding<TfToken>() && !link.UncheckedGet<TfToken>().IsEmpty() )
+	{
+		m_linking_attr_handle = link.UncheckedGet<TfToken>().GetString();
+		i_nsi.Create(m_linking_attr_handle, "attributes");
+	}
+	else if( !m_linking_attr_handle.empty() )
+	{
+		i_nsi.Delete(m_linking_attr_handle);
+		m_linking_attr_handle.clear();
+	}
+
+	if( !visible )
+	{
+		i_nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility", 0));
+		/* Invisibility overrides light linking so disconnect it. Keep the
+		   node and its links intact in case visibility changes later. */
+		if( !m_linking_attr_handle.empty() )
+		{
+			i_nsi.Disconnect(
+				m_linking_attr_handle, "", geo_handle, "geometryattributes");
+		}
+	}
+	else if( !m_linking_attr_handle.empty() )
+	{
+		/* Make invisible and let light linking override that. */
+		i_nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility", 0));
+		i_nsi.Connect(
+			m_linking_attr_handle, "", geo_handle, "geometryattributes");
+	}
+	else
+	{
+		i_nsi.SetAttribute(attr_handle, NSI::IntegerArg("visibility", 1));
 	}
 }
 
