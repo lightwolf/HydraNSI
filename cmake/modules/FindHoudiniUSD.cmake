@@ -138,4 +138,9 @@ if(HoudiniUSD_FOUND AND NOT TARGET hd)
 	target_compile_definitions(tf INTERFACE HBOOST_ALL_NO_LIB)
 	target_link_libraries(vt INTERFACE ${Houdini_Boostpython_LIB})
 	target_compile_definitions(vt INTERFACE HBOOST_ALL_NO_LIB)
+	# This is only needed on arm, I think because the tbb version is old and
+	# uses a generic branch for atomics. Should be removed later.
+	if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+		target_link_libraries(tf INTERFACE tbb)
+	endif()
 endif()
