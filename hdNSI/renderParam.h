@@ -121,6 +121,9 @@ private:
 		auto param = (HdNSIRenderParam*)data;
 		if (status == NSIRenderCompleted)
 			param->_isConverged = true;
+		/* Not really true but this is how we make hydra stop. */
+		if (status == NSIRenderAborted)
+			param->_isConverged = true;
 		if (status == NSIRenderSynchronized)
 			param->_isConverged = true;
 		if (status == NSIRenderRestarted)
