@@ -67,6 +67,9 @@ TF_DEFINE_PRIVATE_TOKENS(
 	((nsi_display, "nsi:display"))
 	((nsi_exr, "nsi:exr"))
 	((nsi_deepexr, "nsi:deepexr"))
+	((nsi_deepalphaexr, "nsi:deepalphaexr"))
+	((nsi_dwaaexr, "nsi:dwaaexr"))
+	((nsi_deepalphadwaaexr, "nsi:deepalphadwaaexr"))
 	/* Entries in HdAovSettingsMap. */
 	((driver_format, "driver:parameters:aov:format"))
 	/* Driver aov formats. */
@@ -419,10 +422,15 @@ void HdNSIRenderPass::ExportRenderProducts()
 		std::string drivername;
 		if( productType == _tokens->nsi_display )
 			drivername = "idisplay";
-		else if( productType == _tokens->nsi_exr )
-			drivername = "exr";
-		else if( productType == _tokens->nsi_deepexr )
-			drivername = "deepexr";
+		else if(
+			productType == _tokens->nsi_exr ||
+			productType == _tokens->nsi_deepexr ||
+			productType == _tokens->nsi_deepalphaexr ||
+			productType == _tokens->nsi_dwaaexr ||
+			productType == _tokens->nsi_deepalphadwaaexr )
+		{
+			drivername = productType.GetString().substr(4);
+		}
 		else
 			continue; /* ignore unknown for now */
 
