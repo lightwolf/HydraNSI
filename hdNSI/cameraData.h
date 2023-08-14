@@ -22,6 +22,7 @@ public:
 		const SdfPath &id);
 
 	void SetId(const std::string &id) { m_base = id; }
+	void SetUseGlobalSettings() { m_use_global_settings = true; }
 
 	bool UpdateExportedCamera(
 		const HdNSICameraData &new_data,
@@ -74,6 +75,9 @@ private:
 		nodes to it.
 	*/
 	mutable bool m_new{true};
+
+	/* Indicates if updates should apply global settings. */
+	bool m_use_global_settings{false};
 
 	/* True if the created camera node is perspective type. */
 	bool m_is_perspective{false};

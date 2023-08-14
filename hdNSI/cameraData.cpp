@@ -1,7 +1,9 @@
 #include "cameraData.h"
 
+#include "renderDelegate.h"
 #include "renderParam.h"
 #include "rprimBase.h"
+#include "tokens.h"
 
 #include <cmath>
 
@@ -68,12 +70,24 @@ bool HdNSICameraData::UpdateExportedCamera(
 		args.push(new NSI::FloatArg("fov", m_fov));
 	}
 
-	if( m_dof_enable != new_data.m_dof_enable ||
+	/*
+		If necessary, && the global DoF enable setting with new_data's. It is
+		important this does not get done from HdNSICamera::Sync() or the
+		camera's DoF enable state will be lost.
+	*/
+	bool new_dof_enable = new_data.m_dof_enable;
+	if( m_use_global_settings && new_dof_enable )
+	{
+		new_dof_enable = renderParam->GetRenderDelegate()->
+			GetRenderSetting<bool>(HdNSIRenderSettingsTokens->enableDoF, true);
+	}
+
+	if( m_dof_enable != new_dof_enable ||
 	    m_dof_focallength != new_data.m_dof_focallength ||
 	    m_dof_fstop != new_data.m_dof_fstop ||
 	    m_dof_focaldistance != new_data.m_dof_focaldistance )
 	{
-		m_dof_enable = new_data.m_dof_enable;
+		m_dof_enable = new_dof_enable;
 		m_dof_focallength = new_data.m_dof_focallength;
 		m_dof_fstop = new_data.m_dof_fstop;
 		m_dof_focaldistance = new_data.m_dof_focaldistance;

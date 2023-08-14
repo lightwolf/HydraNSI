@@ -219,6 +219,10 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
         HdNSIRenderSettingsTokens->cameraLightIntensity,
         VtValue(float(TfGetenvDouble("HDNSI_CAMERA_LIGHT_INTENSITY", 1.0)))});
 
+    _settingDescriptors.push_back({
+        "Enable Depth of Field",
+        HdNSIRenderSettingsTokens->enableDoF, VtValue(true)});
+
     _PopulateDefaultSettings(_settingDescriptors);
 
     _exportedSettings = _settingsMap;

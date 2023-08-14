@@ -115,6 +115,7 @@ HdNSIRenderPass::HdNSIRenderPass(
 	_handlesPrefix = "pass" + std::to_string(++pass_counter);
 
 	m_render_camera.SetId(Handle("renderCam"));
+	m_render_camera.SetUseGlobalSettings();
 }
 
 HdNSIRenderPass::~HdNSIRenderPass()

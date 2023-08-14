@@ -17,6 +17,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 	((maximumRefractionDepth, "nsi:global:maximumrefractiondepth")) \
 	((maximumHairDepth, "nsi:global:maximumhairdepth")) \
 	((maximumDistance, "nsi:global:maximumdistance")) \
+	((enableDoF, "nsi:global:enabledepthoffield")) \
 	(cameraLightIntensity)
 
 TF_DECLARE_PUBLIC_TOKENS(
