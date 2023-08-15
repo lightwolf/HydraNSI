@@ -80,6 +80,15 @@ public:
 
 	bool IsRendering() const { return _rendering; }
 
+	void DoStreamExport()
+	{
+		assert(!_rendering);
+		GetNSIContext().RenderControl(NSI::CStringPArg("action", "start"));
+		_isConverged = true;
+		/* Reset the context so the Delete calls don't get exported. */
+		GetNSIContext().Begin();
+	}
+
 	void StartRender(bool batch)
 	{
 		assert(!_rendering);

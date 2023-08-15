@@ -81,6 +81,8 @@ public:
 
 	void RenderSettingChanged(const TfToken &key);
 
+	static std::string GetAPIStreamProduct(HdNSIRenderDelegate *renderDelegate);
+
 protected:
 
 	// -----------------------------------------------------------------------

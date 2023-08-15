@@ -63,7 +63,8 @@ TF_DEFINE_PRIVATE_TOKENS(
 	((_float, "float"))
 	(color4f)
 	(float4)
-	/* Out custom product types. */
+	/* Our custom product types. */
+	((nsi_apistream, "nsi:apistream"))
 	((nsi_display, "nsi:display"))
 	((nsi_exr, "nsi:exr"))
 	((nsi_deepexr, "nsi:deepexr"))
@@ -129,11 +130,12 @@ HdNSIRenderPass::~HdNSIRenderPass()
 	}
 #endif
 
-	// Stop the render.
-	NSI::Context &nsi = _renderParam->AcquireSceneForEdit();
-
-	_renderParam->StopRender();
-	nsi.RenderControl(NSI::CStringPArg("action", "wait"));
+	/* If still rendering, stop it. */
+	if( _renderParam->IsRendering() )
+	{
+		_renderParam->StopRender();
+		_renderParam->Wait();
+	}
 }
 
 bool HdNSIRenderPass::IsConverged() const
@@ -161,6 +163,41 @@ void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
 		if (!m_headlight_xform.empty())
 			ExportNSIHeadLightShader();
 	}
+}
+
+/*
+	If there's a nsi stream render product, return its filename.
+*/
+std::string HdNSIRenderPass::GetAPIStreamProduct(
+	HdNSIRenderDelegate *renderDelegate)
+{
+	VtValue products_val = renderDelegate->GetRenderSetting(
+		_tokens->delegateRenderProducts);
+	if( !products_val.IsHolding<VtArray<TokenValueMap>>() )
+		return {};
+
+	const auto &products = products_val.Get<VtArray<TokenValueMap>>();
+	for( const HdRenderSettingsMap &prod : products )
+	{
+		VtValue productName_val = GetHashMapEntry(prod, _tokens->productName);
+		VtValue productType_val = GetHashMapEntry(prod, _tokens->productType);
+
+		if( !productName_val.IsHolding<TfToken>() ||
+		    !productType_val.IsHolding<TfToken>() )
+		{
+			TF_WARN("Bad render product definition");
+			continue;
+		}
+
+		TfToken productName = productName_val.Get<TfToken>();
+		TfToken productType = productType_val.Get<TfToken>();
+
+		if( productType == _tokens->nsi_apistream )
+		{
+			return productName.GetString();
+		}
+	}
+	return {};
 }
 
 void HdNSIRenderPass::_Execute(
@@ -251,7 +288,11 @@ void HdNSIRenderPass::_Execute(
 	/* Enable headlight if there are no lights in the scene. */
 	UpdateHeadlight(!_renderParam->HasLights(), camera);
 
-	if (!_renderParam->IsRendering())
+	if (_renderDelegate->HasAPIStreamProduct())
+	{
+		_renderParam->DoStreamExport();
+	}
+	else if (!_renderParam->IsRendering())
 	{
 		/* Start (or restart) rendering. */
 		_renderParam->StartRender(_renderDelegate->IsBatch());
@@ -433,7 +474,7 @@ void HdNSIRenderPass::ExportRenderProducts()
 			drivername = productType.GetString().substr(4);
 		}
 		else
-			continue; /* ignore unknown for now */
+			continue; /* ignore unknown and nsi:apistream */
 
 		/* Create a single output driver for all the layers of a product. */
 		std::string driverHandle =

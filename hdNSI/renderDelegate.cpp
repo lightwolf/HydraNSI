@@ -154,19 +154,6 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
 
     _capi->LoadFunction(m_DlGetShaderInfo, "DlGetShaderInfo");
 
-    _nsi = std::make_shared<NSI::Context>(*_capi);
-    NSI::ArgumentList beginArgs;
-    std::string trace_file = TfGetenv("HDNSI_TRACE");
-    if (!trace_file.empty())
-    {
-        beginArgs.push(new NSI::StringArg("streamfilename", trace_file));
-    }
-    _nsi->Begin(beginArgs);
-
-    // Store top-level NSI objects inside a render param that can be
-    // passed to prims during Sync().
-    _renderParam = std::make_shared<HdNSIRenderParam>(this, _nsi);
-
     // Initialize one resource registry for all NSI plugins
     std::lock_guard<std::mutex> guard(_mutexResourceRegistry);
 
@@ -224,8 +211,32 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
         HdNSIRenderSettingsTokens->enableDoF, VtValue(true)});
 
     _PopulateDefaultSettings(_settingDescriptors);
+}
 
-    _exportedSettings = _settingsMap;
+/*
+    Create the NSI context and HdNSIRenderParam.
+*/
+void HdNSIRenderDelegate::CreateNSIContext()
+{
+    _nsi = std::make_shared<NSI::Context>(*_capi);
+    NSI::ArgumentList beginArgs;
+    std::string trace_file = TfGetenv("HDNSI_TRACE");
+    std::string stream_product = HdNSIRenderPass::GetAPIStreamProduct(this);
+    if (!trace_file.empty())
+    {
+        beginArgs.push(new NSI::StringArg("streamfilename", trace_file));
+    }
+    else if( !stream_product.empty() )
+    {
+        m_apistream_product = true;
+        beginArgs.push(new NSI::StringArg("streamfilename", stream_product));
+        beginArgs.push(new NSI::StringArg("streamformat", "autonsi"));
+    }
+    _nsi->Begin(beginArgs);
+
+    // Store top-level NSI objects inside a render param that can be
+    // passed to prims during Sync().
+    _renderParam = std::make_shared<HdNSIRenderParam>(this, _nsi);
 
     // Set global parameters.
     SetDisableLighting();
@@ -238,12 +249,16 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
     SetMaxHairDepth();
     SetMaxDistance();
 
-
-    _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
-        NSI::StringArg("bucketorder", "spiral"),
-        NSI::IntegerArg("renderatlowpriority", 1)));
+    if( !m_apistream_product )
+    {
+        _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
+            NSI::StringArg("bucketorder", "spiral"),
+            NSI::IntegerArg("renderatlowpriority", 1)));
+    }
 
     ExportDefaultMaterial();
+
+    _exportedSettings = _settingsMap;
 }
 
 HdNSIRenderDelegate::~HdNSIRenderDelegate()
@@ -262,6 +277,12 @@ HdNSIRenderDelegate::~HdNSIRenderDelegate()
 HdRenderParam*
 HdNSIRenderDelegate::GetRenderParam() const
 {
+    if( !_renderParam )
+    {
+        /* This is delayed until here so we have received any extra settings
+           through SetRenderSetting() before creating the context. */
+        const_cast<HdNSIRenderDelegate*>(this)->CreateNSIContext();
+    }
     return _renderParam.get();
 }
 
@@ -309,6 +330,11 @@ void HdNSIRenderDelegate::SetRenderSetting(
     }
 
     HdRenderDelegate::SetRenderSetting(key, newvalue);
+
+    /* Nothing to update if we haven't created the context yet. The new value
+       will be used when we create it. */
+    if( !_nsi )
+        return;
 
     /* See if something actually changed. */
     if( _exportedSettings[key] == newvalue )
@@ -431,6 +457,8 @@ HdRenderPassSharedPtr
 HdNSIRenderDelegate::CreateRenderPass(HdRenderIndex *index,
                                       HdRprimCollection const& collection)
 {
+    /* This call ensures the param has been initialized. */
+    GetRenderParam();
     auto pass = new HdNSIRenderPass(
         index, collection, this, _renderParam.get());
     _renderPasses.push_back(pass);

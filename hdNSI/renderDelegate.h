@@ -228,8 +228,11 @@ public:
         { return "defaultShader|PreviewSurface"; }
 
     bool IsBatch() const;
+    bool HasAPIStreamProduct() const { return m_apistream_product; }
 
 private:
+    void CreateNSIContext();
+
     void SetDisableLighting() const;
     void SetShadingSamples() const;
     void SetVolumeSamples() const;
@@ -258,6 +261,8 @@ private:
     std::unique_ptr<NSI::DynamicAPI> _capi;
 
     std::shared_ptr<NSI::Context> _nsi;
+
+    bool m_apistream_product{false};
 
     // A shared HdNSIRenderParam object that stores top-level NSI state;
     // passed to prims during Sync().
