@@ -111,6 +111,13 @@ public:
 
 	void SyncRender()
 	{
+		/*
+			Assume the image is no longer converged until we get an update on
+			its actual status from the callback. There might be a small delay
+			before that happens as the processing is asynchronous. We need this
+			assumption or the host app will stop reading the image.
+		*/
+		_isConverged = false;
 		GetNSIContext().RenderControl(
 			NSI::CStringPArg("action", "synchronize"));
 	}
