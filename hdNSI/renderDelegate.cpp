@@ -221,7 +221,9 @@ void HdNSIRenderDelegate::CreateNSIContext()
     _nsi = std::make_shared<NSI::Context>(*_capi);
     NSI::ArgumentList beginArgs;
     std::string trace_file = TfGetenv("HDNSI_TRACE");
-    std::string stream_product = HdNSIRenderPass::GetAPIStreamProduct(this);
+    std::string stream_product;
+    bool display_product;
+    HdNSIRenderPass::FindProducts(this, stream_product, display_product);
     if (!trace_file.empty())
     {
         beginArgs.push(new NSI::StringArg("streamfilename", trace_file));
@@ -249,7 +251,8 @@ void HdNSIRenderDelegate::CreateNSIContext()
     SetMaxHairDepth();
     SetMaxDistance();
 
-    if( !m_apistream_product )
+    /* We want bucket order set when it is visible. */
+    if( !IsBatch() || display_product )
     {
         _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
             NSI::StringArg("bucketorder", "spiral"),

@@ -81,7 +81,10 @@ public:
 
 	void RenderSettingChanged(const TfToken &key);
 
-	static std::string GetAPIStreamProduct(HdNSIRenderDelegate *renderDelegate);
+	static void FindProducts(
+		HdNSIRenderDelegate *renderDelegate,
+		std::string &apistream_product,
+		bool &display_product);
 
 protected:
 

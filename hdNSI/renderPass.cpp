@@ -167,14 +167,20 @@ void HdNSIRenderPass::RenderSettingChanged(const TfToken &key)
 
 /*
 	If there's a nsi stream render product, return its filename.
+	Also indicates if there is a nsi::display render product.
 */
-std::string HdNSIRenderPass::GetAPIStreamProduct(
-	HdNSIRenderDelegate *renderDelegate)
+void HdNSIRenderPass::FindProducts(
+	HdNSIRenderDelegate *renderDelegate,
+	std::string &apistream_product,
+	bool &display_product)
 {
+	apistream_product.clear();
+	display_product = false;
+
 	VtValue products_val = renderDelegate->GetRenderSetting(
 		_tokens->delegateRenderProducts);
 	if( !products_val.IsHolding<VtArray<TokenValueMap>>() )
-		return {};
+		return;
 
 	const auto &products = products_val.Get<VtArray<TokenValueMap>>();
 	for( const HdRenderSettingsMap &prod : products )
@@ -194,10 +200,13 @@ std::string HdNSIRenderPass::GetAPIStreamProduct(
 
 		if( productType == _tokens->nsi_apistream )
 		{
-			return productName.GetString();
+			apistream_product = productName.GetString();
+		}
+		if( productType == _tokens->nsi_display )
+		{
+			display_product = true;
 		}
 	}
-	return {};
 }
 
 void HdNSIRenderPass::_Execute(
