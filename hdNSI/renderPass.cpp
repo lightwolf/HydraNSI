@@ -216,9 +216,9 @@ void HdNSIRenderPass::_Execute(
 	GfVec4f vp = renderPassState->GetViewport();
 	auto *camera = static_cast<const HdNSICamera*>(
 		renderPassState->GetCamera());
-#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 	if (!camera)
 	{
+#if defined(PXR_VERSION) && PXR_VERSION <= 2111
 		/* Use the placeholder camera object. */
 		if (!m_placeholder_camera)
 		{
@@ -226,8 +226,14 @@ void HdNSIRenderPass::_Execute(
 		}
 		m_placeholder_camera->SyncFromState(*renderPassState, _renderParam);
 		camera = m_placeholder_camera.get();
-	}
+#else
+		/* There will be no useful data in the state if there's no camera to
+		   get it from. So we won't render at all. */
+		TF_WARN("No camera to render with");
+		_renderParam->SetConverged();
+		return;
 #endif
+	}
 	/*
 		If either the viewport, the selected camera
 		or the aperture offset changes, update screen.

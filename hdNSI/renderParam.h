@@ -73,6 +73,7 @@ public:
 	void ResetSceneEdited() { _sceneEdited = false; }
 
 	bool IsConverged() const { return _isConverged; }
+	void SetConverged() { _isConverged = true; }
 
 	void AddLight() { ++_numLights; }
 	void RemoveLight() { --_numLights; }
