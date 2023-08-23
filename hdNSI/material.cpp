@@ -269,13 +269,13 @@ void HdNSIMaterial::ExportNetworks(
 		{
 			const std::string &to_handle = r.outputId.GetString();
 			const std::string &to_attribute =
-				EscapeOSLKeyword(r.outputName.GetString());
+				EscapeOSLKeyword(DecodeArrayIndex(r.outputName.GetString()));
 			/* Remove any default connection we might be replacing. */
 			default_connections.RemoveConnection(to_handle, to_attribute);
 			/* Connect. */
 			nsi.Connect(
 				r.inputId.GetString(),
-				EscapeOSLKeyword(r.inputName.GetString()),
+				EscapeOSLKeyword(DecodeArrayIndex(r.inputName.GetString())),
 				to_handle,
 				to_attribute);
 		}
@@ -563,6 +563,23 @@ std::string HdNSIMaterial::EscapeOSLKeyword(const std::string &name)
 		return name + "_";
 	}
 	return name;
+}
+
+/*
+	Alter the name of shader parameters to support connecting to individual
+	array elements.
+
+	This is not directly supported by Usd as far as I can tell. Also [] are not
+	valid characters in an attribute name (see
+	SdfPath::IsValidNamespacedIdentifier) so we resort to encoding param[idx]
+	as param:_idx and decoding this here.
+*/
+std::string HdNSIMaterial::DecodeArrayIndex(const std::string &name)
+{
+	auto pos = name.rfind(":_");
+	if( pos == std::string::npos )
+		return name;
+	return name.substr(0, pos) + "[" + name.substr(pos + 2) + "]";
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

@@ -89,6 +89,7 @@ private:
 		const HdMaterialNetwork &new_network);
 
 	static std::string EscapeOSLKeyword(const std::string &name);
+	static std::string DecodeArrayIndex(const std::string &name);
 
 private:
 	/* true once the attributes node has been created. */
