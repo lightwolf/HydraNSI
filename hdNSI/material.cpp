@@ -491,6 +491,19 @@ void HdNSIMaterial::ExportNode(
 			path = FixUDIM(path);
 			args.Add(new NSI::StringArg(name, path));
 		}
+		else if (v.IsHolding<VtArray<std::string>>())
+		{
+			const auto &v_array = v.Get<VtArray<std::string>>();
+			NSI::Argument *a = new NSI::Argument(name);
+			a->SetArrayType(NSITypeString, v_array.size());
+			const char **values = reinterpret_cast<const char **>(
+				a->AllocValue(sizeof(char*) * v_array.size()));
+			for( size_t i = 0; i < v_array.size(); ++i )
+			{
+				values[i] = v_array[i].c_str();
+			}
+			args.Add(a);
+		}
 		else if (v.IsHolding<VtArray<float>>())
 		{
 			const auto &v_array = v.Get<VtArray<float>>();
