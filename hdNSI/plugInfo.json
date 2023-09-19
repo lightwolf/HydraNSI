@@ -15,6 +15,11 @@
                     "HdNSIOsoParserPlugin": {
                         "bases": ["NdrParserPlugin"],
                         "displayName": "NSI osl Parser"
+                    },
+                    "HdNSIAccelerationBlurPlugin": {
+                        "bases": ["HdSceneIndexPlugin"],
+                        "priority": 0,
+                        "displayName": "NSI Acceleration blur"
                     }
                 }
             },

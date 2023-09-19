@@ -22,6 +22,7 @@ set(LIB_TARGET ${HYDRANSI_TARGET_PREFIX}hdNSI)
 add_library(
 	${LIB_TARGET} SHARED
 
+	accelerationBlurPlugin.cpp
 	camera.cpp
 	cameraData.cpp
 	curves.cpp

@@ -26,6 +26,7 @@
 
 #include "renderDelegate.h"
 
+#include "accelerationBlurPlugin.h"
 #include "camera.h"
 #include "curves.h"
 #include "field.h"
@@ -57,6 +58,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 
 TF_DEFINE_PRIVATE_TOKENS(
     _tokens,
+    ((houdiniFps, "houdini:fps"))
 	/* This is in usdVolImaging but we shouldn't be using it directly. */
     (openvdbAsset)
 );
@@ -159,6 +161,14 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
 
     if (_counterResourceRegistry.fetch_add(1) == 0) {
         _resourceRegistry.reset( new HdResourceRegistry() );
+    }
+
+    const auto &fps_setting = settingsMap.find(_tokens->houdiniFps);
+    if( fps_setting != settingsMap.end() )
+    {
+        /* This is extremely dodgy but it's the only way I could find to get
+           correct FPS for now. */
+        HdNSIAccelerationBlurPlugin::SetFPS(fps_setting->second.Get<double>());
     }
 
     // Fill in settings.
