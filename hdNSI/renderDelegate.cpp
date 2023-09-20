@@ -26,7 +26,9 @@
 
 #include "renderDelegate.h"
 
-#include "accelerationBlurPlugin.h"
+#ifdef ENABLE_ABP
+#   include "accelerationBlurPlugin.h"
+#endif
 #include "camera.h"
 #include "curves.h"
 #include "field.h"
@@ -163,6 +165,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
         _resourceRegistry.reset( new HdResourceRegistry() );
     }
 
+#ifdef ENABLE_ABP
     const auto &fps_setting = settingsMap.find(_tokens->houdiniFps);
     if( fps_setting != settingsMap.end() )
     {
@@ -170,6 +173,7 @@ HdNSIRenderDelegate::HdNSIRenderDelegate(
            correct FPS for now. */
         HdNSIAccelerationBlurPlugin::SetFPS(fps_setting->second.Get<double>());
     }
+#endif
 
     // Fill in settings.
     _settingDescriptors.push_back({

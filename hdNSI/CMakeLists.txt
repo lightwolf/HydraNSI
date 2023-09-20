@@ -22,7 +22,6 @@ set(LIB_TARGET ${HYDRANSI_TARGET_PREFIX}hdNSI)
 add_library(
 	${LIB_TARGET} SHARED
 
-	accelerationBlurPlugin.cpp
 	camera.cpp
 	cameraData.cpp
 	curves.cpp
@@ -45,6 +44,13 @@ add_library(
 	tokens.cpp
 	volume.cpp
 	)
+
+if(PXR_VERSION GREATER_EQUAL "2205")
+	target_sources(${LIB_TARGET} PRIVATE
+		accelerationBlurPlugin.cpp
+		)
+	target_compile_definitions(${LIB_TARGET} PRIVATE ENABLE_ABP)
+endif()
 
 # Using alternate target name should not change library name.
 # Alghouth I think that would be ok as long as plugInfo.json matches.

@@ -70,11 +70,18 @@ find_path(Katana_tbb_INCLUDE_DIR
 	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_tbb_INCLUDE_DIR")
 
+if(EXISTS "${Katana_USD_INCLUDE_DIR}/pxr/pxr.h")
+	file(READ "${Katana_USD_INCLUDE_DIR}/pxr/pxr.h" PXR_INCLUDE_CONTENTS)
+	string(REGEX MATCH "#define PXR_VERSION [0-9]+" version_define "${PXR_INCLUDE_CONTENTS}")
+	string(REGEX MATCH "[0-9]+" PXR_VERSION "${version_define}")
+endif()
+
 include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(
 	"KatanaUSD"
-	REQUIRED_VARS ${KATUSD_REQ_VARS})
+	REQUIRED_VARS ${KATUSD_REQ_VARS}
+	VERSION_VAR PXR_VERSION)
 
 if(KatanaUSD_FOUND)
 	message(STATUS "  Katana USD includes: ${Katana_USD_INCLUDE_DIR}")

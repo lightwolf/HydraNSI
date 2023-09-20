@@ -75,11 +75,18 @@ find_file(
 	NO_DEFAULT_PATH)
 list(APPEND HUSD_REQ_VARS "Houdini_Boostpython_LIB")
 
+if(EXISTS "${Houdini_USD_INCLUDE_DIR}/pxr/pxr.h")
+	file(READ "${Houdini_USD_INCLUDE_DIR}/pxr/pxr.h" PXR_INCLUDE_CONTENTS)
+	string(REGEX MATCH "#define PXR_VERSION [0-9]+" version_define "${PXR_INCLUDE_CONTENTS}")
+	string(REGEX MATCH "[0-9]+" PXR_VERSION "${version_define}")
+endif()
+
 include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(
 	"HoudiniUSD"
-	REQUIRED_VARS ${HUSD_REQ_VARS})
+	REQUIRED_VARS ${HUSD_REQ_VARS}
+	VERSION_VAR PXR_VERSION)
 
 if(HoudiniUSD_FOUND)
 	message(STATUS "  Houdini USD includes: ${Houdini_USD_INCLUDE_DIR}")
