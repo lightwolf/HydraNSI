@@ -107,6 +107,16 @@ void HdNSILight::Sync(
 			float P[12] = {hw, -hh, 0, -hw, -hh, 0, -hw, hh, 0, hw, hh, 0};
 			nsi.SetAttribute(geo_handle, NSI::PointsArg("P", P, 4));
 		}
+
+		/* Get LPE tag, create set, and add transform handle to this set. */
+		std::string tag = sceneDelegate->GetLightParamValue(
+			GetId(), TfToken("karma:light:lpetag")).Get<std::string>();
+		if (tag.size())
+		{
+			const std::string &light_set_handle = tag;
+			nsi.Create(light_set_handle, "set");
+			nsi.Connect(xform_handle, "", light_set_handle, "objects");
+		}
 	}
 
 	/* Visibility does not have a dirty bit for lights. It is part of params. */
