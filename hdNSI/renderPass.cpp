@@ -536,7 +536,8 @@ bool HdNSIRenderPass::SetRawSourceNSILayerAttributes(
 	const HdAovSettingsMap &aov)
 {
 	auto sourceType = GetHashMapEntry(aov, UsdRenderTokens->sourceType);
-	if( sourceType != UsdRenderTokens->raw )
+	if( sourceType != UsdRenderTokens->raw
+		&& sourceType != UsdRenderTokens->lpe)
 		return false;
 
 	VtValue sourceName = GetHashMapEntry(aov, UsdRenderTokens->sourceName);
@@ -557,6 +558,20 @@ bool HdNSIRenderPass::SetRawSourceNSILayerAttributes(
 				name = name.substr(s.size());
 				break;
 			}
+		}
+
+		/* Extract the light set name and connect lightset if there is. */
+		std::string lightSet;
+		std::string::size_type lightSetOffset = name.find('|');
+		if ( lightSetOffset != std::string::npos )
+		{
+			lightSet = name.substr(lightSetOffset + 1);
+			name = name.substr(0, lightSetOffset);
+		}
+		if ( lightSet.size() )
+		{
+			nsi.Create(lightSet, "set");
+			nsi.Connect(lightSet, "", layerHandle, "lightset");
 		}
 
 		nsi.SetAttribute(layerHandle, (
