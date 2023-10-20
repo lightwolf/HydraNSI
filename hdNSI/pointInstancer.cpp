@@ -70,6 +70,10 @@ void HdNSIPointInstancer::Finalize(
 		NSI::Context &nsi = nsiRenderParam->AcquireSceneForEdit();
 		nsi.Delete(m_instancerHandle);
 		nsi.Delete(m_xformHandle);
+		for( int i = 0; i < m_model_count; ++i )
+		{
+			nsi.Delete(ModelHandle(i));
+		}
 		m_instancerHandle.clear();
 		m_xformHandle.clear();
 	};
@@ -82,15 +86,12 @@ void HdNSIPointInstancer::Finalize(
 		The render param.
 	\param prototypeId
 		The prototype's Id.
-	\param prototypeHandle
-		The NSI handle of the prototype's transform node.
 	\param isNewPrototype
 		true iff it is the first time this prototype does a Sync.
 */
 void HdNSIPointInstancer::SyncPrototype(
 	HdNSIRenderParam *renderParam,
 	const SdfPath &prototypeId,
-	const std::string &prototypeHandle,
 	bool isNewPrototype)
 {
 	std::lock_guard<std::mutex> instancer_l(m_mutex);
@@ -105,7 +106,7 @@ void HdNSIPointInstancer::SyncPrototype(
 	if (m_instancerHandle.empty())
 	{
 		/* Create the instancer and its transform node. */
-		m_xformHandle = GetId().GetString();
+		m_xformHandle = HdNSIRprimBase::HandleFromId(GetId());
 		m_instancerHandle = m_xformHandle + "|geo";
 		nsi.Create(m_xformHandle, "transform");
 		nsi.Create(m_instancerHandle, "instances");
@@ -121,10 +122,33 @@ void HdNSIPointInstancer::SyncPrototype(
 			/* Add ourselves as a prototype for the parent instancer. */
 			auto instancer = static_cast<HdNSIPointInstancer*>(
 				renderIndex.GetInstancer(parent));
-			instancer->SyncPrototype(renderParam, id, m_xformHandle, true);
+			instancer->SyncPrototype(renderParam, id, true);
 		}
 	}
 
+#if defined(PXR_VERSION) && PXR_VERSION >= 2105
+	/*
+		Grab all the prototypes at once. This is more efficient as it lets us
+		output the right modelindices arrays the first time around instead of
+		producing a different one as each prototype is added.
+	*/
+	SdfPathVector prototypes = GetDelegate()->GetInstancerPrototypes(id);
+	if( prototypes != m_prototype_ids )
+	{
+		m_prototype_ids = prototypes;
+		/* Force refresh of model indices. */
+		dirtyBits |= HdChangeTracker::DirtyInstanceIndex;
+		/*
+			Create the transform nodes for prototypes, in case they haven't
+			been synchronized yet, which is quite likely for all but the one
+			which called us. If they have, it won't hurt.
+		*/
+		for (const SdfPath &pid : m_prototype_ids)
+		{
+			nsi.Create(HdNSIRprimBase::HandleFromId(pid), "transform");
+		}
+	}
+#else
 	if (isNewPrototype )
 	{
 		/*
@@ -143,45 +167,86 @@ void HdNSIPointInstancer::SyncPrototype(
 			m_prototype_ids.emplace_back(prototypeId);
 		}
 
-		/* Connect it to the instancer. */
-		nsi.Connect(
-			prototypeHandle, "",
-			m_instancerHandle, "sourcemodels",
-			NSI::IntegerArg("index", pIdx));
-
 		/* Force refresh of model indices. */
 		dirtyBits |= HdChangeTracker::DirtyInstanceIndex;
 	}
+#endif
 
 	/*
-		The code below will be run for each prototype. This is not ideal. We
-		should probably queue the dirty instancers somewhere and process them
-		after all the other Sync are done. There's a hook for that somewhere
-		but I forget exactly where.
-	*/
+		Here, we attempt to rebuild USD instancing indices from Hydra's
+		scrambled idea of what instancing should be like.
 
+		Hydra has no way of grouping several pieces of geometry together for
+		instancing. Instead, they will show up as separate prototypes but each
+		have the same instance indices array. I think this (being equal) is the
+		only case where instance indices arrays overlap. The code below depends
+		on this to make reconstruction easier so hopefully it's true. If it
+		isn't, a lot more complexity will be needed as models could then be
+		multiple permutations of the available prototypes.
+	*/
 	bool write_modelindices = false;
 	if (0 != (dirtyBits & HdChangeTracker::DirtyInstanceIndex))
 	{
-		/* Update model indices and instanceId */
-		m_prototype_indices.clear();
-		m_instance_id.clear();
+		/* Delete previous model nodes. */
+		for (int i = 0; i < m_model_count; ++i)
+		{
+			nsi.Delete(ModelHandle(i));
+		}
+		/* m_model_count should track model_instance_indices.size() */
+		m_model_count = 0;
+		std::vector<VtIntArray> model_instance_indices;
+
+		/* Assemble prototypes into models. */
 		for (size_t p = 0; p < m_prototype_ids.size(); ++p)
 		{
 			VtIntArray instanceIndices =
 				GetDelegate()->GetInstanceIndices(GetId(), m_prototype_ids[p]);
+			/* Look for a model with a matching array of instance indices. */
+			size_t m;
+			for (m = 0; m < model_instance_indices.size(); ++m)
+			{
+				if (model_instance_indices[m] == instanceIndices)
+					break;
+			}
+			std::string model_handle = ModelHandle(m);
+			if (m == model_instance_indices.size())
+			{
+				/* This is a new model. Create its node. */
+				nsi.Create(model_handle, "transform");
+				/* Connect it to the instancer. */
+				nsi.Connect(
+					model_handle, "",
+					m_instancerHandle, "sourcemodels",
+					NSI::IntegerArg("index", m));
+				/* Keep its instance indices. */
+				model_instance_indices.emplace_back(std::move(instanceIndices));
+				++m_model_count;
+			}
+			/* Connect the prototype to the model node. */
+			nsi.Connect(
+				HdNSIRprimBase::HandleFromId(m_prototype_ids[p]), "",
+				model_handle, "objects");
+		}
+
+		/* Update model indices and instanceId */
+		m_model_indices.clear();
+		m_instance_id.clear();
+
+		for (size_t m = 0; m < model_instance_indices.size(); ++m)
+		{
+			const VtIntArray &instanceIndices = model_instance_indices[m];
 			for (unsigned i = 0; i < instanceIndices.size(); ++i)
 			{
 				int idx = instanceIndices[i];
-				if (idx >= m_prototype_indices.size() )
+				if (idx >= m_model_indices.size() )
 				{
 					/* Fill with -1 as there may be gaps in the final array if
 					   there are disabled instances. -1 will render nothing. */
-					m_prototype_indices.resize(idx + 1, -1);
+					m_model_indices.resize(idx + 1, -1);
 					/* The -1 here should not actually be used. */
 					m_instance_id.resize(idx + 1, -1);
 				}
-				m_prototype_indices[idx] = p;
+				m_model_indices[idx] = m;
 				m_instance_id[idx] = i;
 			}
 		}
@@ -311,9 +376,9 @@ void HdNSIPointInstancer::SyncPrototype(
 
 		/* If the last instance if disabled, the indices array will be too
 		   short. Enlarge it here. */
-		if (m_prototype_indices.size() < num_transforms)
+		if (m_model_indices.size() < num_transforms)
 		{
-			m_prototype_indices.resize(num_transforms, -1);
+			m_model_indices.resize(num_transforms, -1);
 			m_instance_id.resize(num_transforms, -1);
 			write_modelindices = true;
 		}
@@ -324,8 +389,8 @@ void HdNSIPointInstancer::SyncPrototype(
 		nsi.SetAttribute(m_instancerHandle,
 			*NSI::Argument("modelindices")
 			.SetType(NSITypeInteger)
-			->SetCount(m_prototype_indices.size())
-			->SetValuePointer(m_prototype_indices.data()));
+			->SetCount(m_model_indices.size())
+			->SetValuePointer(m_model_indices.data()));
 
 		/* This is for the instanceId AOV. */
 		nsi.SetAttribute(m_instancerHandle,
@@ -348,6 +413,15 @@ void HdNSIPointInstancer::SyncPrototype(
 
 	/* Mark instancer as clean. */
 	changeTracker.MarkInstancerClean(id);
+}
+
+/**
+	\returns
+		The handle of the transform node under which we assemble the i-th model.
+*/
+std::string HdNSIPointInstancer::ModelHandle(int i) const
+{
+	return m_instancerHandle + "|model_" + std::to_string(i);
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE

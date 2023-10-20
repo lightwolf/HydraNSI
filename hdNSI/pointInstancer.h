@@ -63,8 +63,10 @@ public:
 	void SyncPrototype(
 		HdNSIRenderParam *renderParam,
 		const SdfPath &prototypeId,
-		const std::string &prototypeHandle,
 		bool isNewPrototype);
+
+private:
+	std::string ModelHandle(int i) const;
 
 private:
 	/* Handle of transform node. */
@@ -73,8 +75,10 @@ private:
 	std::string m_instancerHandle;
 	/* List of prototypes using this instancer. */
 	std::vector<SdfPath> m_prototype_ids;
-	/* Index of the prototype used by each instance. */
-	std::vector<int> m_prototype_indices;
+	/* Number of distinct models assembled from the prototypes. */
+	int m_model_count{0};
+	/* Index of the model used by each instance. */
+	std::vector<int> m_model_indices;
 	/* The instanceId attribute (for AOV). */
 	std::vector<int> m_instance_id;
 

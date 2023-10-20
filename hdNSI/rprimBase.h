@@ -59,6 +59,11 @@ public:
 		const HdTimeSampleArray<GfMatrix4d, 4> &a,
 		const HdTimeSampleArray<GfMatrix4d, 4> &b);
 
+	/* This is the handle by which instancers will grab an rprim. So rprims
+	   should be defined under that. */
+	static std::string HandleFromId(const SdfPath &id)
+		{ return id.GetString(); }
+
 private:
 	void Create(
 		NSI::Context &nsi,

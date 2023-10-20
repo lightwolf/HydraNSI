@@ -30,7 +30,7 @@ void HdNSIRprimBase::Sync(
 		HdRenderIndex &renderIndex = sceneDelegate->GetRenderIndex();
 		auto instancer = static_cast<HdNSIPointInstancer*>(
 			renderIndex.GetInstancer(rprim.GetInstancerId()));
-		instancer->SyncPrototype(renderParam, id, _xformHandle, first);
+		instancer->SyncPrototype(renderParam, id, first);
 	}
 
 	/* The transform of the rprim itself. */
@@ -199,7 +199,7 @@ void HdNSIRprimBase::Create(
 
 	nsi.Create(_masterShapeHandle, _nodeType);
 
-	_xformHandle = id.GetString();
+	_xformHandle = HandleFromId(id);
 	nsi.Create(_xformHandle, "transform");
 	nsi.Connect(_masterShapeHandle, "", _xformHandle, "objects");
 	if (rprim.GetInstancerId().IsEmpty())
