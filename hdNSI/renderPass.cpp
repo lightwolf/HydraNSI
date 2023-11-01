@@ -536,8 +536,7 @@ bool HdNSIRenderPass::SetRawSourceNSILayerAttributes(
 	const HdAovSettingsMap &aov)
 {
 	auto sourceType = GetHashMapEntry(aov, UsdRenderTokens->sourceType);
-	if( sourceType != UsdRenderTokens->raw
-		&& sourceType != UsdRenderTokens->lpe)
+	if( sourceType != UsdRenderTokens->raw )
 		return false;
 
 	VtValue sourceName = GetHashMapEntry(aov, UsdRenderTokens->sourceName);
