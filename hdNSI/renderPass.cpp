@@ -295,6 +295,9 @@ void HdNSIRenderPass::_Execute(
 		ExportRenderProducts();
 	}
 
+	/* Apply render tags if needed. */
+	UpdateRenderTags(renderTags);
+
 	/* The output driver needs part of the projection matrix to remap Z. */
 	const GfMatrix4d &projMatrix = m_render_camera.GetProjectionMatrix();
 	_depthProj.M22 = projMatrix[2][2];
@@ -677,6 +680,50 @@ void HdNSIRenderPass::SetFormatNSILayerAttributes(
 			NSI::StringArg("scalarformat", "uint8"),
 			NSI::IntegerArg("dithering", 1)));
 	}
+}
+
+/**
+	\brief Update visibility of rprims according to the provided render tags.
+*/
+void HdNSIRenderPass::UpdateRenderTags(
+	const TfTokenVector &renderTags)
+{
+#if defined(PXR_VERSION) && PXR_VERSION >= 2203
+	HdRenderIndex *renderIndex = GetRenderIndex();
+	const HdChangeTracker &changeTracker = renderIndex->GetChangeTracker();
+	/*
+		We can skip the initial update as only the required primitives get
+		synchronized by Hydra and we don't create anything before Sync().
+	*/
+	if (m_appliedRprimRenderTags == 0 || m_appliedTaskRenderTags == 0)
+	{
+		m_appliedRprimRenderTags = changeTracker.GetRenderTagVersion();
+		m_appliedTaskRenderTags = changeTracker.GetTaskRenderTagsVersion();
+		return;
+	}
+	/* Nothing to do most of the time. */
+	if (m_appliedRprimRenderTags == changeTracker.GetRenderTagVersion() &&
+	    m_appliedTaskRenderTags == changeTracker.GetTaskRenderTagsVersion())
+	{
+		return;
+	}
+	/*
+		I wish we could just iterate over the rprim map in the render index...
+		but there's no access. This is the closest we can do without keeping
+		our own list of rprims, which seems overkill for such a rare event.
+	*/
+	for( const SdfPath &id : renderIndex->GetRprimIds() )
+	{
+		const HdRprim *rprim = renderIndex->GetRprim(id);
+		auto rb = dynamic_cast<const HdNSIRprimBase*>(rprim);
+		if (rb)
+		{
+			rb->ApplyRenderTags(*rprim, _renderParam, renderTags);
+		}
+	}
+	m_appliedRprimRenderTags = changeTracker.GetRenderTagVersion();
+	m_appliedTaskRenderTags = changeTracker.GetTaskRenderTagsVersion();
+#endif
 }
 
 std::string HdNSIRenderPass::Handle(const char *suffix) const

@@ -14,7 +14,7 @@ void HdNSIRprimBase::Sync(
 	HdSceneDelegate *sceneDelegate,
 	HdNSIRenderParam *renderParam,
 	HdDirtyBits *dirtyBits,
-	const HdRprim &rprim)
+	HdRprim &rprim)
 {
 	NSI::Context &nsi = renderParam->AcquireSceneForEdit();
 	bool first = _masterShapeHandle.empty();
@@ -53,6 +53,15 @@ void HdNSIRprimBase::Sync(
 			NSI::IntegerArg("visibility", rprim.IsVisible() ? 1 : 0));
 	}
 
+#if defined(PXR_VERSION) && PXR_VERSION >= 2203
+	if (0 != (*dirtyBits & HdChangeTracker::DirtyRenderTag))
+	{
+		/* This is applied to the scene from the render pass by calling
+		   ApplyRenderTags(). Here, we just store it in HdRprim. */
+		rprim.UpdateRenderTag(sceneDelegate, renderParam);
+	}
+#endif
+
 	/*
 		Update categories. We only do light linking with those for now so we
 		make some assumptions in here. If we ever need to tell what's what,
@@ -86,6 +95,33 @@ void HdNSIRprimBase::Finalize(HdNSIRenderParam *renderParam)
 
 	nsi.Delete(_attrsHandle);
 	_attrsHandle.clear();
+}
+
+/**
+	\brief Adjust visibility of this prim for a new list of render tags.
+*/
+void HdNSIRprimBase::ApplyRenderTags(
+	const HdRprim &rprim,
+	HdNSIRenderParam *renderParam,
+	const TfTokenVector &renderTags) const
+{
+#if defined(PXR_VERSION) && PXR_VERSION >= 2203
+	/* If the primitive was not yet created, there is nothing to do. */
+	if (_masterShapeHandle.empty())
+		return;
+
+	/* Change visibility using the xform<->geo connection done in Create(). */
+	NSI::Context &nsi = renderParam->AcquireSceneForEdit();
+	auto e = renderTags.end();
+	if (e == std::find(renderTags.begin(), e, rprim.GetRenderTag()))
+	{
+		nsi.Disconnect(_masterShapeHandle, "", _xformHandle, "objects");
+	}
+	else
+	{
+		nsi.Connect(_masterShapeHandle, "", _xformHandle, "objects");
+	}
+#endif
 }
 
 /**

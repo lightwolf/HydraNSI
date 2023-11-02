@@ -29,6 +29,7 @@ public:
 			| HdChangeTracker::DirtyPrimID
 			| HdChangeTracker::DirtyTransform
 			| HdChangeTracker::DirtyVisibility
+			| HdChangeTracker::DirtyRenderTag
 			);
 	}
 
@@ -36,12 +37,17 @@ public:
 		HdSceneDelegate *sceneDelegate,
 		HdNSIRenderParam *renderParam,
 		HdDirtyBits *dirtyBits,
-		const HdRprim &rprim);
+		HdRprim &rprim);
 
 	void Finalize(HdNSIRenderParam *renderParam);
 
 	const std::string& Shape() const { return _masterShapeHandle; }
 	const std::string& Attrs() const { return _attrsHandle; }
+
+	void ApplyRenderTags(
+		const HdRprim &rprim,
+		HdNSIRenderParam *renderParam,
+		const TfTokenVector &renderTags) const;
 
 	static void ExportTransform(
 		HdSceneDelegate *sceneDelegate,

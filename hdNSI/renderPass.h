@@ -118,6 +118,9 @@ private:
 		HdFormat format,
 		const HdAovSettingsMap *aovSettings);
 
+	void UpdateRenderTags(
+		const TfTokenVector &renderTags);
+
 	// -----------------------------------------------------------------------
 	// Internal API
 
@@ -187,6 +190,10 @@ private:
 #if defined(PXR_VERSION) && PXR_VERSION <= 2002
 	HdxCompositor _compositor;
 #endif
+
+	/* Version of currently applied render tags. */
+	unsigned m_appliedRprimRenderTags{0};
+	unsigned m_appliedTaskRenderTags{0};
 };
 
 PXR_NAMESPACE_CLOSE_SCOPE
