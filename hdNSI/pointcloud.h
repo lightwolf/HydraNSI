@@ -65,7 +65,8 @@ class HdNSIRenderParam;
 /// NSI scene), so that object population and existence aren't tied to
 /// each other.
 ///
-class HdNSIPointCloud final : public HdPoints {
+class HdNSIPointCloud final : public HdPoints, public HdNSIRprimBase
+{
 public:
     HF_MALLOC_TAG_NEW("new HdNSIPointCloud");
 
@@ -161,7 +162,6 @@ private:
                                HdPointsReprDesc const &desc);
 
 private:
-    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars{false};
 

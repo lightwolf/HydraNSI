@@ -41,14 +41,14 @@ HdNSIPointCloud::HdNSIPointCloud(
     SdfPath const& id
     DECLARE_IID)
     : HdPoints(id PASS_IID)
-    , _base{"particles"}
+    , HdNSIRprimBase{"particles"}
 {
 }
 
 void
 HdNSIPointCloud::Finalize(HdRenderParam *renderParam)
 {
-    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
+    HdNSIRprimBase::Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -128,7 +128,7 @@ HdNSIPointCloud::Sync(HdSceneDelegate* sceneDelegate,
 #endif
 
     /* This creates the NSI nodes so it comes before other attributes. */
-    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+    HdNSIRprimBase::Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
     /* Update particle specific attributes. */
     _PopulateRtPointCloud(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
@@ -147,12 +147,11 @@ HdNSIPointCloud::_PopulateRtPointCloud(HdSceneDelegate* sceneDelegate,
     SdfPath const& id = GetId();
 
     _material.Sync(
-        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape());
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(), Shape());
 
     _primvars.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape(), VtIntArray());
+        Shape(), VtIntArray());
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

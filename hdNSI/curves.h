@@ -65,7 +65,8 @@ class HdNSIRenderParam;
 /// NSI scene), so that object population and existence aren't tied to
 /// each other.
 ///
-class HdNSICurves final : public HdBasisCurves {
+class HdNSICurves final : public HdBasisCurves, public HdNSIRprimBase
+{
 public:
     HF_MALLOC_TAG_NEW("new HdNSICurves");
 
@@ -161,7 +162,6 @@ private:
                            HdBasisCurvesReprDesc const &desc);
 
 private:
-    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars{false};
 

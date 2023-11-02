@@ -46,15 +46,15 @@ HdNSIMesh::HdNSIMesh(
 	DECLARE_IID)
 :
 	HdMesh(id PASS_IID)
+	, HdNSIRprimBase{"mesh"}
 	, _smoothNormals(false)
-	, _base{"mesh"}
 {
 }
 
 void
 HdNSIMesh::Finalize(HdRenderParam *renderParam)
 {
-	_base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
+	HdNSIRprimBase::Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -134,7 +134,7 @@ void HdNSIMesh::Sync(
 #endif
 
 	/* This creates the NSI nodes so it comes before other attributes. */
-	_base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+	HdNSIRprimBase::Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
 	// Create NSI geometry objects.
 	_PopulateRtMesh(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
@@ -191,7 +191,7 @@ void HdNSIMesh::_PopulateRtMesh(
 		/* Make creases as ugly as everyone else. */
 		attrs.push(new NSI::IntegerArg("subdivision.smoothcreasecorners", 0));
 
-		nsi.SetAttribute(_base.Shape(), attrs);
+		nsi.SetAttribute(Shape(), attrs);
 	}
 
 	if (HdChangeTracker::IsSubdivTagsDirty(*dirtyBits, id))
@@ -229,7 +229,7 @@ void HdNSIMesh::_PopulateRtMesh(
 
 		if (!attrs.empty())
 		{
-			nsi.SetAttribute(_base.Shape(), attrs);
+			nsi.SetAttribute(Shape(), attrs);
 		}
 	}
 
@@ -251,17 +251,16 @@ void HdNSIMesh::_PopulateRtMesh(
 
 
 	_material.Sync(
-		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-		_base.Shape());
+		sceneDelegate, renderParam, dirtyBits, nsi, GetId(), Shape());
 
 	if (dirty_topology)
 	{
-		_material.assignFacesets(_topology.GetGeomSubsets(), nsi, _base.Shape());
+		_material.assignFacesets(_topology.GetGeomSubsets(), nsi, Shape());
 	}
 
 	_primvars.Sync(
 		sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-		_base.Shape(), _faceVertexIndices);
+		Shape(), _faceVertexIndices);
 
 	/*
 		Update the generated smooth normals, if required. If there are no
@@ -288,7 +287,7 @@ void HdNSIMesh::_PopulateRtMesh(
 			VtVec3fArray normals = Hd_SmoothNormals::ComputeSmoothNormals(
 				&_adjacency, points.size(), points.cdata());
 
-			nsi.SetAttribute(_base.Shape(), (
+			nsi.SetAttribute(Shape(), (
 				*NSI::Argument("N")
 					.SetType(NSITypeNormal)
 					->SetCount(normals.size())

@@ -67,7 +67,8 @@ class HdNSIRenderParam;
 /// NSI scene), so that object population and existence aren't tied to
 /// each other.
 ///
-class HdNSIMesh final : public HdMesh {
+class HdNSIMesh final : public HdMesh, public HdNSIRprimBase
+{
 public:
     HF_MALLOC_TAG_NEW("new HdNSIMesh");
 
@@ -172,7 +173,6 @@ private:
     Hd_VertexAdjacency _adjacency;
     bool _smoothNormals;
 
-    HdNSIRprimBase _base;
     HdNSIMaterialAssign _material;
     HdNSIPrimvars _primvars{true};
 

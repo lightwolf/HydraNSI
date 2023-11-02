@@ -41,14 +41,14 @@ HdNSICurves::HdNSICurves(
     SdfPath const& id
     DECLARE_IID)
     : HdBasisCurves(id PASS_IID)
-    , _base{"curves"}
+    , HdNSIRprimBase{"curves"}
 {
 }
 
 void
 HdNSICurves::Finalize(HdRenderParam *renderParam)
 {
-    _base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
+    HdNSIRprimBase::Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits
@@ -128,7 +128,7 @@ HdNSICurves::Sync(HdSceneDelegate* sceneDelegate,
 #endif
 
     /* This creates the NSI nodes so it comes before other attributes. */
-    _base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+    HdNSIRprimBase::Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
     /* Update curve specific attributes. */
     _PopulateRtCurves(sceneDelegate, nsiRenderParam, nsi, dirtyBits, desc);
@@ -152,7 +152,7 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
             GetBasisCurvesTopology(sceneDelegate);
 
         const VtIntArray &vertexCounts = topology.GetCurveVertexCounts();
-        nsi.SetAttribute(_base.Shape(),
+        nsi.SetAttribute(Shape(),
             *NSI::Argument("nvertices")
             .SetType(NSITypeInteger)
             ->SetCount(vertexCounts.size())
@@ -169,18 +169,17 @@ HdNSICurves::_PopulateRtCurves(HdSceneDelegate* sceneDelegate,
         else if (basis == HdTokens->bSpline)
             basisName = "b-spline";
 
-        nsi.SetAttribute(_base.Shape(), (
+        nsi.SetAttribute(Shape(), (
             NSI::StringArg("basis", basisName),
             NSI::IntegerArg("extrapolate", 1)));
     }
 
     _material.Sync(
-        sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape());
+        sceneDelegate, renderParam, dirtyBits, nsi, GetId(), Shape());
 
     _primvars.Sync(
         sceneDelegate, renderParam, dirtyBits, nsi, GetId(),
-        _base.Shape(), VtIntArray()); // _curveVertexIndices ?
+        Shape(), VtIntArray()); // _curveVertexIndices ?
 
     // Clean all dirty bits.
     *dirtyBits &= ~HdChangeTracker::AllSceneDirtyBits;

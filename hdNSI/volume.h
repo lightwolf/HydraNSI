@@ -14,7 +14,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 /**
 	\brief Volume primitive.
 */
-class HdNSIVolume final : public HdVolume, protected HdNSIMaterial::VolumeCB
+class HdNSIVolume final :
+	public HdVolume, protected HdNSIMaterial::VolumeCB, public HdNSIRprimBase
 {
 public:
 	HdNSIVolume(
@@ -50,7 +51,6 @@ protected:
 		HdNSIMaterial *material) override;
 
 private:
-	HdNSIRprimBase m_base;
 	HdNSIMaterialAssign m_material;
 	/* Assigned material. */
 	SdfPath m_materialId;

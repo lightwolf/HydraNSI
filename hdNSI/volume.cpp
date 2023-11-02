@@ -17,7 +17,7 @@ HdNSIVolume::HdNSIVolume(
 	DECLARE_IID)
 :
 	HdVolume{id PASS_IID},
-	m_base{"volume"}
+	HdNSIRprimBase{"volume"}
 {
 }
 
@@ -55,11 +55,10 @@ void HdNSIVolume::Sync(
 #endif
 
 	/* This creates the NSI nodes so it comes before other attributes. */
-	m_base.Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
+	HdNSIRprimBase::Sync(sceneDelegate, nsiRenderParam, dirtyBits, *this);
 
 	m_material.Sync(
-		sceneDelegate, nsiRenderParam, dirtyBits, nsi, GetId(),
-		m_base.Shape());
+		sceneDelegate, nsiRenderParam, dirtyBits, nsi, GetId(), Shape());
 
 	/*
 		It's not clear that this depends on any specific dirty bits. We might
@@ -79,7 +78,7 @@ void HdNSIVolume::Sync(
 			if (path_v.IsHolding<SdfAssetPath>())
 			{
 				std::string path = path_v.Get<SdfAssetPath>().GetResolvedPath();
-				nsi.SetAttribute(m_base.Shape(),
+				nsi.SetAttribute(Shape(),
 					NSI::StringArg("vdbfilename", path));
 			}
 			/* No point in setting this more than once. */
@@ -133,7 +132,7 @@ void HdNSIVolume::Finalize(HdRenderParam *renderParam)
 		vol_cb->locked_erase(this);
 	}
 
-	m_base.Finalize(static_cast<HdNSIRenderParam*>(renderParam));
+	HdNSIRprimBase::Finalize(static_cast<HdNSIRenderParam*>(renderParam));
 }
 
 HdDirtyBits HdNSIVolume::_PropagateDirtyBits(HdDirtyBits bits) const
@@ -191,7 +190,7 @@ void HdNSIVolume::NewVDBNode(
 				/* Only set grids which actually exist in the VDB. */
 				if (HasField(TfToken{gridname}))
 				{
-					nsi.SetAttribute(m_base.Shape(),
+					nsi.SetAttribute(Shape(),
 						NSI::StringArg(p.GetString(), gridname));
 					set = true;
 				}
@@ -199,7 +198,7 @@ void HdNSIVolume::NewVDBNode(
 			else if (v.IsHolding<float>())
 			{
 				/* For velocityscale which is double. */
-				nsi.SetAttribute(m_base.Shape(),
+				nsi.SetAttribute(Shape(),
 					NSI::DoubleArg(p.GetString(), v.Get<float>()));
 				set = true;
 			}
@@ -208,7 +207,7 @@ void HdNSIVolume::NewVDBNode(
 		/* When updating, delete any value which is no longer set. */
 		if (!set)
 		{
-			nsi.DeleteAttribute(m_base.Shape(), p.GetString());
+			nsi.DeleteAttribute(Shape(), p.GetString());
 		}
 	}
 }
