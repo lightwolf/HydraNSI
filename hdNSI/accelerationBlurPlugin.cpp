@@ -221,10 +221,12 @@ public:
 	{
 	}
 
+#if PXR_VERSION < 2302
 	bool Has(const TfToken &name) override
 	{
 		return m_source->Has(name);
 	}
+#endif
 
 	TfTokenVector GetNames() override
 	{
@@ -272,6 +274,7 @@ public:
 	{
 	}
 
+#if PXR_VERSION < 2302
 	bool Has(const TfToken &name) override
 	{
 		if( name == _tokens->quadraticmotion )
@@ -282,6 +285,7 @@ public:
 		}
 		return m_source->Has(name);
 	}
+#endif
 
 	TfTokenVector GetNames() override
 	{
@@ -355,10 +359,12 @@ public:
 	{
 	}
 
+#if PXR_VERSION < 2302
 	bool Has(const TfToken &name) override
 	{
 		return m_source->Has(name);
 	}
+#endif
 
 	TfTokenVector GetNames() override
 	{
