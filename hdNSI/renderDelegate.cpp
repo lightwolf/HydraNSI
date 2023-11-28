@@ -238,6 +238,19 @@ void HdNSIRenderDelegate::CreateNSIContext()
     std::string stream_product;
     bool display_product;
     HdNSIRenderPass::FindProducts(this, stream_product, display_product);
+
+    /* Fetch options passed through Houdini's husk as json. */
+    JsObject delegateOptions;
+    static const TfToken huskDelegateOptions{"huskDelegateOptions"};
+    VtValue delegateOptionsStr = GetRenderSetting(huskDelegateOptions);
+    if (delegateOptionsStr.IsHolding<std::string>())
+    {
+        JsValue v = JsParseString(
+            delegateOptionsStr.UncheckedGet<std::string>());
+        if( v.IsObject() )
+            delegateOptions = v.GetJsObject();
+    }
+
     if (!trace_file.empty())
     {
         beginArgs.push(new NSI::StringArg("streamfilename", trace_file));
@@ -247,6 +260,15 @@ void HdNSIRenderDelegate::CreateNSIContext()
         m_apistream_product = true;
         beginArgs.push(new NSI::StringArg("streamfilename", stream_product));
         beginArgs.push(new NSI::StringArg("streamformat", "autonsi"));
+    }
+    else if( delegateOptions["outputstream"].IsObject() )
+    {
+        m_apistream_product = true;
+        JsObject os = delegateOptions["outputstream"].GetJsObject();
+        std::string fn = "stdout";
+        if( os["filename"].IsString() )
+            fn = os["filename"].GetString();
+        beginArgs.push(new NSI::StringArg("streamfilename", fn));
     }
     _nsi->Begin(beginArgs);
 
@@ -271,6 +293,12 @@ void HdNSIRenderDelegate::CreateNSIContext()
         _nsi->SetAttribute(NSI_SCENE_GLOBAL,(
             NSI::StringArg("bucketorder", "spiral"),
             NSI::IntegerArg("renderatlowpriority", 1)));
+    }
+
+    if( delegateOptions["progress"] == JsValue(true) )
+    {
+        _nsi->SetAttribute(NSI_SCENE_GLOBAL,
+            NSI::IntegerArg("statistics.progress", 1));
     }
 
     ExportDefaultMaterial();
