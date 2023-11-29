@@ -45,6 +45,7 @@
 
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/thisPlugin.h>
+#include <pxr/base/js/json.h>
 #include <pxr/base/tf/getenv.h>
 #include <pxr/base/tf/fileUtils.h>
 #include <pxr/imaging/hd/camera.h>
