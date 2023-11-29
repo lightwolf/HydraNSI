@@ -36,6 +36,7 @@ find_path(Houdini_Python_INCLUDE_DIR
 		"toolkit/include/python3.7"
 		"toolkit/include/python3.7m"
 		"toolkit/include/python3.9" # Houdini 19.5
+		"toolkit/include/python3.10" # Houdini 20.0
 	NO_DEFAULT_PATH)
 list(APPEND HUSD_REQ_VARS "Houdini_Python_INCLUDE_DIR")
 
@@ -45,14 +46,15 @@ find_file(
 		"libpython2.7${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix
 		"libpython3.7m${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix
 		"libpython3.9${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 19.5
+		"libpython3.10${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 20.0
 		#"python27.dll" "python37.dll" "python39.dll" # Windows
-		"python27.lib" "python37.lib" "python39.lib" # Windows (import lib)
+		"python27.lib" "python37.lib" "python39.lib python310.lib" # Windows (import lib)
 	PATHS ENV HFS
 	PATH_SUFFIXES
 		"python/lib" # Linux
 		"../../../../Python.framework/Versions/Current/lib" # macOS
 		#"bin" # Windows
-		"python27/libs" "python37/libs" "python39/libs" # Windows (import lib)
+		"python27/libs" "python37/libs" "python39/libs python310/libs" # Windows (import lib)
 	NO_DEFAULT_PATH)
 list(APPEND HUSD_REQ_VARS "Houdini_Python_LIB")
 
@@ -62,10 +64,12 @@ find_file(
 	"libhboost_python27${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.0
 	"libhboost_python37${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini > 18.5
 	"libhboost_python39${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 19.5
+	"libhboost_python310${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 20.0
 	"hboost_python-mt.lib" # Windows (import lib)
 	"hboost_python27-mt-x64.lib" # Windows (import lib), Houdini > 18.0
 	"hboost_python37-mt-x64.lib" # Windows (import lib), Houdini > 18.5
 	"hboost_python39-mt-x64.lib" # Windows (import lib), Houdini 19.5
+	"hboost_python310-mt-x64.lib" # Windows (import lib), Houdini 20.0
 	PATHS ENV HFS
 	PATH_SUFFIXES
 		"dsolib" # Linux
