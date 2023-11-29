@@ -80,7 +80,7 @@ endif()
 target_link_libraries(${LIB_TARGET} 3Delight::3DelightAPI)
 
 target_link_libraries(${LIB_TARGET}
-	arch cameraUtil plug tf vt gf work hf hd hdx usdLux usdRender ndr sdf trace pxOsd)
+	arch cameraUtil plug tf vt gf js work hf hd hdx usdLux usdRender ndr sdf trace pxOsd)
 
 # This should probably be in USD's interface.
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
