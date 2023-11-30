@@ -121,9 +121,15 @@ if(HoudiniUSD_FOUND AND NOT TARGET hd)
 				IMPORTED_IMPLIB "${Houdini_USD_IMPLIB_DIR}/libpxr_${targetName}.lib")
 		endif()
 		if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-			# Houdini builds with the old ABI. We need to match.
-			target_compile_definitions(${targetName}
-				INTERFACE "_GLIBCXX_USE_CXX11_ABI=0")
+			# We need to match the C++ ABI used by Houdini. This changed from
+			# old to new in Houdini 20. We test the USD version as a proxy.
+			if(PXR_VERSION GREATER_EQUAL "2308")
+				target_compile_definitions(${targetName}
+					INTERFACE "_GLIBCXX_USE_CXX11_ABI=1")
+			else()
+				target_compile_definitions(${targetName}
+					INTERFACE "_GLIBCXX_USE_CXX11_ABI=0")
+			endif()
 		endif()
 		if(WIN32)
 			# Shut up compiler about warnings from USD.
