@@ -48,13 +48,21 @@ find_file(
 		"libpython3.9${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 19.5
 		"libpython3.10${CMAKE_SHARED_LIBRARY_SUFFIX}" # Unix, Houdini 20.0
 		#"python27.dll" "python37.dll" "python39.dll" # Windows
-		"python27.lib" "python37.lib" "python39.lib python310.lib" # Windows (import lib)
+		# Windows (import lib)
+		"python27.lib"
+		"python37.lib"
+		"python39.lib"
+		"python310.lib"
 	PATHS ENV HFS
 	PATH_SUFFIXES
 		"python/lib" # Linux
 		"../../../../Python.framework/Versions/Current/lib" # macOS
 		#"bin" # Windows
-		"python27/libs" "python37/libs" "python39/libs python310/libs" # Windows (import lib)
+		# Windows (import lib)
+		"python27/libs"
+		"python37/libs"
+		"python39/libs"
+		"python310/libs"
 	NO_DEFAULT_PATH)
 list(APPEND HUSD_REQ_VARS "Houdini_Python_LIB")
 
