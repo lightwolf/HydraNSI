@@ -56,10 +56,20 @@ endif()
 # Alghouth I think that would be ok as long as plugInfo.json matches.
 set_target_properties(${LIB_TARGET} PROPERTIES OUTPUT_NAME hdNSI)
 
-# c++14 is needed on my linux system to build with USD includes.
-# I'm not certain what the actual requirement is for USD.
+# By default, we set the standard to C++14 which is required by OpenUSD
+# versions prior to 23.11.
+set(LIB_CXX_STANDARD 14)
+
+# OpenUSD 23.11 updated C++ standard version to C++17 per
+# VFX Reference Platform CY2022.
+# https://github.com/PixarAnimationStudios/OpenUSD/commit/0e4d360be28e766ed363ac48c7bf28ab7ffa3cf5
+if(PXR_VERSION GREATER_EQUAL "2311")
+	set(LIB_CXX_STANDARD 17)
+	message(STATUS "USD 23.11+ detected - Setting C++17 language standard.")
+endif()
+
 set_target_properties(${LIB_TARGET} PROPERTIES
-	CXX_STANDARD 14
+	CXX_STANDARD ${LIB_CXX_STANDARD}
 	CXX_STANDARD_REQUIRED ON
 	CXX_EXTENSIONS OFF)
 
