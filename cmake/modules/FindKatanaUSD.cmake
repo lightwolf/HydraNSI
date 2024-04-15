@@ -45,6 +45,7 @@ find_path(Katana_Python_INCLUDE_DIR
 		"bin/python2.7/include/python2.7" # Linux
 		"bin/python3.7/include/python3.7m" # Linux
 		"bin/python3.9/include/python3.9" # Linux
+		"bin/python3.10/include/python3.10" # Linux
 		"bin/include/include" # Windows being weird as usual
 	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_Python_INCLUDE_DIR")
@@ -55,14 +56,17 @@ find_file(
 		"libpython2.7${CMAKE_SHARED_LIBRARY_SUFFIX}" # Linux
 		"libpython3.7m${CMAKE_SHARED_LIBRARY_SUFFIX}" # Linux
 		"libpython3.9${CMAKE_SHARED_LIBRARY_SUFFIX}" # Linux
+		"libpython3.10${CMAKE_SHARED_LIBRARY_SUFFIX}" # Linux
 		"python27.lib" # Windows (import lib)
 		"python37.lib" # Windows (import lib)
 		"python39.lib" # Windows (import lib)
+		"python310.lib" # Windows (import lib)
 	HINTS "${KATANA_HOME}"
 	PATH_SUFFIXES
 		"bin/python2.7/lib" # Linux
 		"bin/python3.7/lib" # Linux
 		"bin/python3.9/lib" # Linux
+		"bin/python3.10/lib" # Linux
 		"bin" # Windows (import lib)
 	NO_CACHE NO_DEFAULT_PATH)
 list(APPEND KATUSD_REQ_VARS "Katana_Python_LIB")
