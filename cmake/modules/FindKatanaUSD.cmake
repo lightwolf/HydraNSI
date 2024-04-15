@@ -133,6 +133,9 @@ if(KatanaUSD_FOUND AND NOT TARGET hd)
 			target_compile_options(${targetName} INTERFACE
 				"/wd4506" "/wd4244" "/wd4305" "/wd4267")
 		endif()
+		# Suppress TBB "deprecated" warnings from USD
+		target_compile_definitions( ${targetName}
+			INTERFACE "TBB_SUPPRESS_DEPRECATED_MESSAGES=1" )
 	endforeach()
 	# Add python to the usd libs which use it.
 	foreach(targetName tf vt ar sdf pcp ar)
