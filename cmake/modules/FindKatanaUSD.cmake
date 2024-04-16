@@ -3,6 +3,16 @@
 
 set(KATUSD_REQ_VARS "")
 
+# Parse Katana version from API include.
+if(EXISTS "${KATANA_HOME}/plugin_apis/include/FnAPI/FnAPI.h")
+	file(READ "${KATANA_HOME}/plugin_apis/include/FnAPI/FnAPI.h" FNAPI_CONTENTS)
+	string(REGEX MATCH "#define KATANA_VERSION_MAJOR +[0-9]+" version_define "${FNAPI_CONTENTS}")
+	string(REGEX MATCH "[0-9]+" KATANA_MAJOR "${version_define}")
+	string(REGEX MATCH "#define KATANA_VERSION_MINOR +[0-9]+" version_define "${FNAPI_CONTENTS}")
+	string(REGEX MATCH "[0-9]+" KATANA_MINOR "${version_define}")
+	set(KATANA_VERSION "${KATANA_MAJOR}.${KATANA_MINOR}")
+endif()
+
 find_path(Katana_USD_INCLUDE_DIR
 	"pxr/pxr.h"
 	HINTS "${KATANA_HOME}"
@@ -128,9 +138,16 @@ if(KatanaUSD_FOUND AND NOT TARGET hd)
 				INTERFACE "${KATANA_HOME}/bin")
 		endif()
 		if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-			# Katana builds with the old ABI. We need to match.
-			target_compile_definitions(${targetName}
-				INTERFACE "_GLIBCXX_USE_CXX11_ABI=0")
+			# We need to match the C++ ABI used by Katana. This changed from
+			# old to new with the switch to VFX Reference Platform CY2023 in
+			# Katana 7.0
+			if(KATANA_VERSION VERSION_GREATER_EQUAL "7.0")
+				target_compile_definitions(${targetName}
+					INTERFACE "_GLIBCXX_USE_CXX11_ABI=1")
+			else()
+				target_compile_definitions(${targetName}
+					INTERFACE "_GLIBCXX_USE_CXX11_ABI=0")
+			endif()
 		endif()
 		if(MSVC)
 			# Shut up compiler about warnings from USD.
