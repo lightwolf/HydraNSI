@@ -472,7 +472,7 @@ HdAovDescriptor HdNSIRenderDelegate::GetDefaultAovDescriptor(
         }
     }
 
-    return HdAovDescriptor();
+    return HdAovDescriptor(HdFormatFloat32Vec3, false, VtValue());
 }
 
 TfTokenVector const&
