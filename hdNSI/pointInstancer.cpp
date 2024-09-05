@@ -266,10 +266,17 @@ void HdNSIPointInstancer::SyncPrototype(
 		/* First, fetch all the transform related primvars. */
 		TfToken xform_tokens[] =
 		{
+#if defined(PXR_VERSION) && PXR_VERSION < 2311
 			HdInstancerTokens->instanceTransform,
 			HdInstancerTokens->scale,
 			HdInstancerTokens->rotate,
 			HdInstancerTokens->translate,
+#else
+			HdInstancerTokens->instanceTransforms,
+			HdInstancerTokens->instanceScales,
+			HdInstancerTokens->instanceRotations,
+			HdInstancerTokens->instanceTranslations,
+#endif
 		};
 		HdTimeSampleArray<VtValue, 4> xform_primvars[4];
 
