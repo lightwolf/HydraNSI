@@ -97,8 +97,9 @@ void HdNSILight::Sync(
 
 		/* Get LPE tag, create set, and add transform handle to this set. */
 		std::string tag = sceneDelegate->GetLightParamValue(
-			GetId(), TfToken("karma:light:lpetag")).Get<std::string>();
-		if (tag.size())
+			GetId(), TfToken("karma:light:lpetag"))
+				.GetWithDefault<std::string>();
+		if (!tag.empty())
 		{
 			const std::string &light_set_handle = tag;
 			nsi.Create(light_set_handle, "set");
