@@ -8,16 +8,8 @@
 #include <pxr/imaging/hd/sceneDelegate.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usdLux/blackbody.h>
-#include <pxr/usd/usdLux/tokens.h>
 
 #include <cmath>
-
-/* See USD commit b5d3809c943950cd3ff6be0467858a3297df0bb7. */
-#if defined(PXR_VERSION) && PXR_VERSION <= 2011
-#	define LUX_INPUT(old_token, new_token) old_token
-#else
-#	define LUX_INPUT(old_token, new_token) new_token
-#endif
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -62,8 +54,7 @@ void HdNSILight::Sync(
 		    m_typeId == HdPrimTypeTokens->sphereLight)
 		{
 			float radius = sceneDelegate->GetLightParamValue(
-				GetId(),
-				UsdLuxTokens->LUX_INPUT(radius, inputsRadius)).Get<float>();
+				GetId(), HdLightTokens->radius).Get<float>();
 			if (radius == 0.0f)
 			{
 				// Set to a small value - pick this to match
@@ -80,28 +71,24 @@ void HdNSILight::Sync(
 		else if (m_typeId == HdPrimTypeTokens->distantLight)
 		{
 			VtValue angle_v = sceneDelegate->GetLightParamValue(
-				GetId(), UsdLuxTokens->LUX_INPUT(angle, inputsAngle));
+				GetId(), HdLightTokens->angle);
 			float angle = angle_v.Get<float>();
 			nsi.SetAttribute(geo_handle, NSI::DoubleArg("angle", angle));
 		}
 		else if (m_typeId == HdPrimTypeTokens->cylinderLight)
 		{
 			float length = sceneDelegate->GetLightParamValue(
-				GetId(),
-				UsdLuxTokens->LUX_INPUT(length, inputsLength)).Get<float>();
+				GetId(), HdLightTokens->length).Get<float>();
 			float radius = sceneDelegate->GetLightParamValue(
-				GetId(),
-				UsdLuxTokens->LUX_INPUT(radius, inputsRadius)).Get<float>();
+				GetId(), HdLightTokens->radius).Get<float>();
 			GenCylinder(nsi, geo_handle, length, radius);
 		}
 		else if (m_typeId == HdPrimTypeTokens->rectLight)
 		{
 			float width = sceneDelegate->GetLightParamValue(
-				GetId(),
-				UsdLuxTokens->LUX_INPUT(width, inputsWidth)).Get<float>();
+				GetId(), HdLightTokens->width).Get<float>();
 			float height = sceneDelegate->GetLightParamValue(
-				GetId(),
-				UsdLuxTokens->LUX_INPUT(height, inputsHeight)).Get<float>();
+				GetId(), HdLightTokens->height).Get<float>();
 			float hw = 0.5f * width;
 			float hh = 0.5f * height;
 			float P[12] = {hw, -hh, 0, -hw, -hh, 0, -hw, hh, 0, hw, hh, 0};
@@ -244,24 +231,21 @@ void HdNSILight::SetShaderParams(
 	std::string shader_handle = xform_handle + "|shader";
 
 	float intensity = sceneDelegate->GetLightParamValue(
-		GetId(),
-		UsdLuxTokens->LUX_INPUT(intensity, inputsIntensity)).Get<float>();
+		GetId(), HdLightTokens->intensity).Get<float>();
 	float exposure = sceneDelegate->GetLightParamValue(
-		GetId(),
-		UsdLuxTokens->LUX_INPUT(exposure, inputsExposure)).Get<float>();
+		GetId(), HdLightTokens->exposure).Get<float>();
 	float diffuse = sceneDelegate->GetLightParamValue(
-		GetId(), UsdLuxTokens->LUX_INPUT(diffuse, inputsDiffuse)).Get<float>();
+		GetId(), HdLightTokens->diffuse).GetWithDefault<float>(1.0f);
 	float specular = sceneDelegate->GetLightParamValue(
-		GetId(),
-		UsdLuxTokens->LUX_INPUT(specular, inputsSpecular)).Get<float>();
+		GetId(), HdLightTokens->specular).GetWithDefault<float>(1.0f);
 	bool normalize = sceneDelegate->GetLightParamValue(
-		GetId(),
-		UsdLuxTokens->LUX_INPUT(normalize, inputsNormalize)).Get<bool>();
+		GetId(), HdLightTokens->normalize).GetWithDefault<bool>(false);
 	GfVec3f color = sceneDelegate->GetLightParamValue(
-		GetId(), UsdLuxTokens->LUX_INPUT(color, inputsColor)).Get<GfVec3f>();
+		GetId(), HdLightTokens->color).Get<GfVec3f>();
 	bool enableColorTemperature = sceneDelegate->GetLightParamValue(
-		GetId(), UsdLuxTokens->LUX_INPUT(
-			enableColorTemperature, inputsEnableColorTemperature)).Get<bool>();
+		GetId(), HdLightTokens->enableColorTemperature)
+			.GetWithDefault<bool>(false);
+	// TODO: shaping params
 
 	/* Let's duplicate UsdLuxLight::ComputeBaseEmission(). Because why not.
 	   Because I don't have access to USD scene to build a UsdLuxLight. */
@@ -269,8 +253,7 @@ void HdNSILight::SetShaderParams(
 	if (enableColorTemperature)
 	{
 		float colorTemperature = sceneDelegate->GetLightParamValue(
-			GetId(), UsdLuxTokens->LUX_INPUT(
-				colorTemperature, inputsColorTemperature)).Get<float>();
+			GetId(), HdLightTokens->colorTemperature).Get<float>();
 		emission = GfCompMult(emission,
 			UsdLuxBlackbodyTemperatureAsRgb(colorTemperature));
 	}
@@ -285,7 +268,7 @@ void HdNSILight::SetShaderParams(
 	if (m_typeId == HdPrimTypeTokens->domeLight)
 	{
 		VtValue tex_v = sceneDelegate->GetLightParamValue(
-			GetId(), UsdLuxTokens->LUX_INPUT(textureFile, inputsTextureFile));
+			GetId(), HdLightTokens->textureFile);
 		if (tex_v.IsHolding<SdfAssetPath>())
 		{
 			std::string path = tex_v.Get<SdfAssetPath>().GetResolvedPath();
@@ -294,8 +277,7 @@ void HdNSILight::SetShaderParams(
 		}
 
 		VtValue format_v = sceneDelegate->GetLightParamValue(
-			GetId(),
-			UsdLuxTokens->LUX_INPUT(textureFormat, inputsTextureFormat));
+			GetId(), HdLightTokens->textureFormat);
 		if (format_v.IsHolding<TfToken>())
 		{
 			TfToken format = format_v.Get<TfToken>();
