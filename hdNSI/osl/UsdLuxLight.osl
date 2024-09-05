@@ -42,7 +42,7 @@ surface UsdLuxLight(
 		result *= specular;
 	}
 
-	if (texturefile != "" && textureformat != "")
+	if (texturefile != "")
 	{
 		/* only support lat/long so far */
 		vector In = normalize(I);
