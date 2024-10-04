@@ -499,6 +499,17 @@ HdNSIRenderDelegate::GetResourceRegistry() const
     return _resourceRegistry;
 }
 
+/*
+    Returns an open-format dictionary of render statistics.
+
+    Houdini will display some of those in its viewport.
+*/
+VtDictionary HdNSIRenderDelegate::GetRenderStats() const
+{
+    std::lock_guard guard(m_render_stats_mutex);
+    return m_render_stats;
+}
+
 HdRenderPassSharedPtr
 HdNSIRenderDelegate::CreateRenderPass(HdRenderIndex *index,
                                       HdRprimCollection const& collection)
@@ -763,6 +774,15 @@ bool HdNSIRenderDelegate::IsBatch() const
         return render_mode == "batch";
     }
     return render_mode == batch;
+}
+
+void HdNSIRenderDelegate::ProgressUpdate(const NSI::ProgressCallback::Value &i_progress)
+{
+    std::lock_guard guard(m_render_stats_mutex);
+    m_render_stats["percent_complete"] = i_progress.m_render_progress * 100.0f;
+    m_render_stats["seconds_rendering"] = i_progress.m_seconds_rendering;
+    m_render_stats["render_passes"] = GfVec2i(
+        i_progress.m_completed_passes, i_progress.m_total_passes);
 }
 
 void HdNSIRenderDelegate::SetDisableLighting() const

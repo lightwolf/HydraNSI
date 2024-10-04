@@ -31,6 +31,7 @@
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/pxr.h>
 
+#include <3Delight/Progress.h>
 #include <3Delight/ShaderQuery.h>
 #include <nsi_dynamic.hpp>
 
@@ -100,6 +101,8 @@ public:
 
     /// Returns the HdResourceRegistry instance used by this render delegate.
     virtual HdResourceRegistrySharedPtr GetResourceRegistry() const override;
+
+    virtual VtDictionary GetRenderStats() const;
 
     /// Create a renderpass. Hydra renderpasses are responsible for drawing
     /// a subset of the scene (specified by the "collection" parameter) to the
@@ -230,6 +233,8 @@ public:
     bool IsBatch() const;
     bool HasAPIStreamProduct() const { return m_apistream_product; }
 
+    void ProgressUpdate(const NSI::ProgressCallback::Value &i_progress);
+
 private:
     void CreateNSIContext();
 
@@ -292,6 +297,10 @@ private:
 
     /* List of shaders loaded for default connections. */
     std::vector<DlShaderInfo*> m_default_shaders;
+
+    /* Rendering stats for GetRenderStats(). */
+    mutable std::mutex m_render_stats_mutex;
+    VtDictionary m_render_stats;
 
 public:
     // A callback that interprets NSI error codes and injects them into

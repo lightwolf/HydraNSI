@@ -26,7 +26,8 @@
 #ifndef HDNSI_RENDER_PARAM_H
 #define HDNSI_RENDER_PARAM_H
 
-#include <pxr/imaging/hd/renderDelegate.h>
+#include "renderDelegate.h"
+
 #include <pxr/pxr.h>
 
 #include <nsi_dynamic.hpp>
@@ -35,8 +36,6 @@
 #include <cassert>
 
 PXR_NAMESPACE_OPEN_SCOPE
-
-class HdNSIRenderDelegate;
 
 ///
 /// \class HdNSIRenderParam
@@ -51,6 +50,7 @@ public:
 		HdNSIRenderDelegate *renderDelegate,
 		const std::shared_ptr<NSI::Context> &nsi)
 	: _renderDelegate(renderDelegate)
+	, _progress_cb(*renderDelegate)
 	, _nsi(nsi)
 	, _sceneEdited(false)
 	, _numLights{0}
@@ -98,6 +98,7 @@ public:
 			NSI::CStringPArg("action", "start"),
 			NSI::PointerArg("stoppedcallback", (void*)StatusCB),
 			NSI::PointerArg("stoppedcallbackdata", this),
+			NSI::PointerArg("progresscallback", &_progress_cb),
 			NSI::IntegerArg("interactive", batch ? 0 : 1),
 			NSI::IntegerArg("progressive", batch ? 0 : 1)));
 	}
@@ -147,8 +148,21 @@ private:
 			param->_isConverged = false;
 	}
 
+	struct ProgressCB : NSI::ProgressCallback
+	{
+		HdNSIRenderDelegate &m_delegate;
+		ProgressCB(HdNSIRenderDelegate &delegate) : m_delegate{delegate} {}
+
+		void Update(NSIContext_t ctx, const Value &progress) override
+		{
+			m_delegate.ProgressUpdate(progress);
+		}
+	};
+
 private:
 	HdNSIRenderDelegate *_renderDelegate;
+
+	ProgressCB _progress_cb;
 
 	/// A smart pointer to the NSI API.
 	std::shared_ptr<NSI::Context> _nsi;
