@@ -506,7 +506,7 @@ HdNSIRenderDelegate::GetResourceRegistry() const
 */
 VtDictionary HdNSIRenderDelegate::GetRenderStats() const
 {
-    std::lock_guard guard(m_render_stats_mutex);
+    std::lock_guard<std::mutex> guard(m_render_stats_mutex);
     return m_render_stats;
 }
 
