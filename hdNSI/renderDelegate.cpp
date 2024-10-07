@@ -778,7 +778,7 @@ bool HdNSIRenderDelegate::IsBatch() const
 
 void HdNSIRenderDelegate::ProgressUpdate(const NSI::ProgressCallback::Value &i_progress)
 {
-    std::lock_guard guard(m_render_stats_mutex);
+    std::lock_guard<std::mutex> guard(m_render_stats_mutex);
     m_render_stats["percent_complete"] = i_progress.m_render_progress * 100.0f;
     m_render_stats["seconds_rendering"] = i_progress.m_seconds_rendering;
     m_render_stats["render_passes"] = GfVec2i(
