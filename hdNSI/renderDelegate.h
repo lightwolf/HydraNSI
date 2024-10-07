@@ -102,7 +102,7 @@ public:
     /// Returns the HdResourceRegistry instance used by this render delegate.
     virtual HdResourceRegistrySharedPtr GetResourceRegistry() const override;
 
-    virtual VtDictionary GetRenderStats() const;
+    virtual VtDictionary GetRenderStats() const override;
 
     /// Create a renderpass. Hydra renderpasses are responsible for drawing
     /// a subset of the scene (specified by the "collection" parameter) to the
