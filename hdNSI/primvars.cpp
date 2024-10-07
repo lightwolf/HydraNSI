@@ -5,6 +5,8 @@
 
 #include <nsi_dynamic.hpp>
 
+#include <cassert>
+
 PXR_NAMESPACE_OPEN_SCOPE
 
 /**
